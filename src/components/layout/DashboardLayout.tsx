@@ -1,8 +1,11 @@
 import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { cn } from '@/lib/utils';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,9 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { cn } from '@/lib/utils';
 import {
-  Building2,
   Clock,
   Calendar,
   FileText,
@@ -27,9 +28,20 @@ import {
   Timer,
   MapPin,
   BarChart3,
-  Bell,
+  DollarSign,
+  Check,
   User,
+  PanelLeftClose,
+  PanelLeft,
+  ChevronRight,
+  Megaphone,
+  Receipt,
+  Navigation,
+  Wallet,
+  Smartphone,
+  Briefcase
 } from 'lucide-react';
+import { AppLogo } from '@/components/AppLogo';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -39,31 +51,56 @@ interface NavItem {
   title: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
-  roles?: ('admin_hr' | 'manager' | 'employee')[];
+  roles?: ('super_admin' | 'admin_hr' | 'manager' | 'employee')[];
 }
 
-const navItems: NavItem[] = [
-  { title: 'Dashboard', href: '/dashboard', icon: Home },
-  { title: 'Absensi', href: '/attendance', icon: Clock },
-  { title: 'Riwayat', href: '/history', icon: Calendar },
-  { title: 'Cuti & Izin', href: '/leave', icon: FileText },
-  { title: 'Lembur', href: '/overtime', icon: Timer },
-  { title: 'Karyawan', href: '/employees', icon: Users, roles: ['admin_hr'] },
-  { title: 'Persetujuan', href: '/approvals', icon: ClipboardCheck, roles: ['admin_hr', 'manager'] },
-  { title: 'Lokasi Kantor', href: '/locations', icon: MapPin, roles: ['admin_hr'] },
-  { title: 'Laporan', href: '/reports', icon: BarChart3, roles: ['admin_hr', 'manager'] },
-  { title: 'Pengaturan', href: '/settings', icon: Settings, roles: ['admin_hr'] },
+// Define Navigation Groups
+const navGroups = [
+  {
+    title: 'Menu Karyawan',
+    items: [
+      { title: 'Dashboard', href: '/dashboard', icon: Home },
+      { title: 'Absensi', href: '/attendance', icon: Clock },
+      { title: 'Cuti / Izin', href: '/leave', icon: Briefcase },
+      { title: 'Lembur', href: '/overtime', icon: Timer },
+      { title: 'Riwayat', href: '/history', icon: Calendar },
+      { title: 'Reimbursement', href: '/reimbursement', icon: Receipt },
+    ]
+  },
+  {
+    title: 'Manajemen Tim',
+    roles: ['admin_hr', 'manager'],
+    items: [
+      { title: 'Jadwal & Shift', href: '/shifts', icon: Clock, roles: ['admin_hr'] },
+      { title: 'Pantau Tim', href: '/team-map', icon: Navigation, roles: ['admin_hr', 'manager'] },
+      { title: 'Lokasi Kantor', href: '/locations', icon: MapPin, roles: ['admin_hr'] },
+    ]
+  },
+  {
+    title: 'Finansial & Laporan',
+    roles: ['admin_hr'],
+    items: [
+      { title: 'Gaji & Payroll', href: '/payroll', icon: DollarSign, roles: ['admin_hr'] },
+      { title: 'Laporan Gaji', href: '/payroll-report', icon: Receipt, roles: ['admin_hr'] },
+    ]
+  },
+  {
+    title: 'Coming Soon',
+    roles: ['admin_hr', 'manager'],
+    items: [
+      { title: 'Penilaian KPI', href: '/coming-soon', icon: Check, roles: ['admin_hr', 'manager'] },
+      { title: 'Struktur Org', href: '/coming-soon', icon: BarChart3 },
+      { title: 'Inventaris Alat', href: '/coming-soon', icon: Smartphone, roles: ['admin_hr'] },
+    ]
+  }
 ];
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
-  const { profile, role, signOut } = useAuth();
+  const { profile, roles, activeRole, switchRole, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  const filteredNavItems = navItems.filter(
-    (item) => !item.roles || (role && item.roles.includes(role))
-  );
+  const [collapsed, setCollapsed] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -71,136 +108,293 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
+    return name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
   };
 
   const getRoleBadge = () => {
-    switch (role) {
-      case 'admin_hr':
-        return 'Admin HR';
-      case 'manager':
-        return 'Manager';
-      case 'employee':
-        return 'Karyawan';
-      default:
-        return '';
+    if (!activeRole) return '';
+    switch (activeRole) {
+      case 'super_admin': return 'Super Admin';
+      case 'admin_hr': return 'HRD';
+      case 'manager': return 'Manager';
+      case 'employee': return 'Staff';
+      default: return '';
     }
   };
 
-  const NavContent = () => (
-    <nav className="flex flex-col gap-1 p-4">
-      {filteredNavItems.map((item) => {
-        const Icon = item.icon;
-        const isActive = location.pathname === item.href;
-        return (
-          <Link
-            key={item.href}
-            to={item.href}
-            onClick={() => setMobileOpen(false)}
-            className={cn(
-              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
-              isActive
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-            )}
-          >
-            <Icon className="h-4 w-4" />
-            {item.title}
-          </Link>
-        );
-      })}
+  const getRoleLabel = (role: 'super_admin' | 'admin_hr' | 'manager' | 'employee') => {
+    switch (role) {
+      case 'super_admin': return 'Super Admin';
+      case 'admin_hr': return 'Administrator';
+      case 'manager': return 'Manajer';
+      case 'employee': return 'Karyawan';
+    }
+  };
+
+  const NavContent = ({ isMobile = false }) => (
+    <nav className={cn("flex flex-col gap-1 overflow-y-auto py-4", collapsed && !isMobile ? "items-center" : "")}>
+      {!isMobile && (
+        <div className={cn("flex items-center h-16 border-b border-sidebar-border mb-4 shrink-0", collapsed ? "justify-center px-0" : "px-6")}>
+          {collapsed ? (
+            <div className="h-10 w-10 flex items-center justify-center bg-sidebar-primary rounded-xl shadow-lg shadow-sidebar-primary/20">
+              <span className="font-bold text-sidebar-primary-foreground text-xl">C</span>
+            </div>
+          ) : (
+            <div className="w-full">
+              <AppLogo variant="light" className="h-9 w-auto" />
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className={cn("flex-1 space-y-6", collapsed ? "px-2" : "px-4")}>
+        {navGroups.map((group, groupIndex) => {
+          // Check if user has access to this group
+          if (group.roles && !group.roles.some(r => roles.includes(r))) return null;
+
+          // Filter items within the group
+          const visibleItems = group.items.filter(
+            (item) => !item.roles || (activeRole && item.roles.includes(activeRole))
+          );
+
+          if (visibleItems.length === 0) return null;
+
+          return (
+            <div key={group.title}>
+              {!collapsed && !isMobile && (
+                <p className="text-[10px] font-bold text-sidebar-foreground/50 uppercase tracking-widest px-2 mb-2">
+                  {group.title}
+                </p>
+              )}
+              <div className="space-y-1">
+                {visibleItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = location.pathname === item.href;
+                  return (
+                    <Link
+                      key={`${item.href}-${item.title}`}
+                      to={item.href}
+                      onClick={() => setMobileOpen(false)}
+                      title={collapsed && !isMobile ? item.title : undefined}
+                      className={cn(
+                        'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200 group relative',
+                        isActive
+                          ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-lg shadow-sidebar-primary/20 font-medium'
+                          : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent',
+                        collapsed && !isMobile ? 'justify-center px-2 py-3' : ''
+                      )}
+                    >
+                      <Icon className={cn("h-[18px] w-[18px] flex-shrink-0", isActive ? "text-sidebar-primary-foreground" : "text-sidebar-foreground/60 group-hover:text-sidebar-foreground")} />
+                      {!collapsed || isMobile ? (
+                        <>
+                          <span className="truncate flex-1">{item.title}</span>
+                          {isActive && <ChevronRight className="h-3 w-3 opacity-50" />}
+                        </>
+                      ) : null}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </nav>
   );
 
   return (
     <div className="min-h-screen bg-muted/30">
-      {/* Desktop Sidebar */}
-      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 border-r bg-card lg:block">
-        <div className="flex h-16 items-center gap-3 border-b px-6">
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-            <Building2 className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <div>
-            <h1 className="text-sm font-semibold text-foreground">CMS Duta Solusi</h1>
-            <p className="text-xs text-muted-foreground">Sistem Absensi</p>
-          </div>
-        </div>
-        <NavContent />
-      </aside>
+      {/* Professional Dark Sidebar */}
+      <aside
+        className={cn(
+          "fixed left-0 top-0 z-40 hidden h-screen bg-sidebar text-sidebar-foreground border-r border-sidebar-border shadow-sm transition-all duration-300 lg:block",
+          collapsed ? "w-[80px]" : "w-[280px]"
+        )}
+      >
+        <div className="flex flex-col h-full">
+          <NavContent />
 
-      {/* Main Content */}
-      <div className="lg:pl-64">
-        {/* Header */}
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-card px-4 lg:px-6">
-          {/* Mobile Menu */}
-          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="lg:hidden">
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-64 p-0">
-              <div className="flex h-16 items-center gap-3 border-b px-6">
-                <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-                  <Building2 className="h-5 w-5 text-primary-foreground" />
-                </div>
-                <div>
-                  <h1 className="text-sm font-semibold">CMS Duta Solusi</h1>
-                  <p className="text-xs text-muted-foreground">Sistem Absensi</p>
-                </div>
-              </div>
-              <NavContent />
-            </SheetContent>
-          </Sheet>
-
-          <div className="flex-1" />
-
-          {/* Notifications */}
-          <Button variant="ghost" size="icon">
-            <Bell className="h-5 w-5" />
-          </Button>
-
-          {/* User Menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center gap-2">
-                <Avatar className="h-8 w-8">
+          <div className="mt-auto p-4 border-t border-sidebar-border bg-sidebar/50">
+            {!collapsed ? (
+              <div className="flex items-center gap-3">
+                <Avatar className="h-9 w-9 border-2 border-sidebar-border">
                   <AvatarImage src={profile?.avatar_url || undefined} />
-                  <AvatarFallback className="text-xs">
+                  <AvatarFallback className="text-xs bg-sidebar-accent text-sidebar-accent-foreground">
                     {profile?.full_name ? getInitials(profile.full_name) : 'U'}
                   </AvatarFallback>
                 </Avatar>
-                <div className="hidden text-left md:block">
-                  <p className="text-sm font-medium">{profile?.full_name || 'User'}</p>
-                  <p className="text-xs text-muted-foreground">{getRoleBadge()}</p>
+                <div className="flex-1 overflow-hidden">
+                  <p className="text-sm font-medium text-sidebar-foreground truncate">{profile?.full_name}</p>
+                  <p className="text-xs text-sidebar-foreground/70 truncate">{getRoleBadge()}</p>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                  onClick={() => setCollapsed(!collapsed)}
+                >
+                  <PanelLeft className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="w-full justify-center text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                onClick={() => setCollapsed(!collapsed)}
+              >
+                <PanelLeftClose className="h-4 w-4" />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Akun Saya</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/profile" className="flex items-center">
+            )}
+          </div>
+        </div>
+      </aside>
+
+      {/* Content Area */}
+      <div
+        className={cn(
+          "transition-all duration-300 min-h-screen flex flex-col pb-24 lg:pb-0",
+          collapsed ? "lg:pl-[80px]" : "lg:pl-[280px]"
+        )}
+      >
+        {/* Desktop Header Only - Mobile uses page-specific headers */}
+        <header className="hidden lg:flex sticky top-0 z-30 h-16 items-center gap-4 bg-background/95 backdrop-blur-sm border-b border-border px-6">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {/* Mobile Logo */}
+            <div className="lg:hidden">
+              <AppLogo className="h-8 w-auto" />
+            </div>
+
+            {/* Desktop Breadcrumbs */}
+            <Home className="h-4 w-4 text-muted-foreground/70" />
+            <span className="text-border">/</span>
+            <span className="font-medium text-foreground">{navGroups.find(g => g.items.some(i => i.href === location.pathname))?.title || 'System'}</span>
+          </div>
+
+          <div className="flex-1" />
+
+          <div className="flex items-center gap-3">
+            <NotificationBell />
+            <div className="h-6 w-[1px] bg-border" />
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center gap-2 hover:bg-muted h-10 px-3 rounded-xl border border-transparent hover:border-border transition-all">
+                  <Avatar className="h-8 w-8 border border-border">
+                    <AvatarImage src={profile?.avatar_url || ''} />
+                    <AvatarFallback className="text-xs bg-muted text-muted-foreground">
+                      {profile?.full_name ? getInitials(profile.full_name) : 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col items-start text-xs">
+                    <span className="font-medium text-foreground">{profile?.full_name?.split(' ')[0]}</span>
+                    <span className="text-muted-foreground">{getRoleBadge()}</span>
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Akun Saya</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate('/profile')}>
                   <User className="mr-2 h-4 w-4" />
-                  Profil
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
-                <LogOut className="mr-2 h-4 w-4" />
-                Keluar
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  <span>Profil</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+
+                {roles.length > 1 && (
+                  <>
+                    <DropdownMenuLabel>Ganti Role</DropdownMenuLabel>
+                    {roles.map(role => (
+                      <DropdownMenuItem
+                        key={role}
+                        onClick={() => switchRole(role)}
+                        className={role === activeRole ? "bg-muted" : ""}
+                      >
+                        <Users className="mr-2 h-4 w-4" />
+                        <span>{getRoleLabel(role)}</span>
+                        {role === activeRole && <Check className="ml-auto h-4 w-4" />}
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+
+                <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Keluar</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </header>
 
-        {/* Page Content */}
-        <main className="p-4 lg:p-6">{children}</main>
+        {/* Main Content with Mobile Safe Area */}
+        <main className="flex-1 overflow-x-hidden pb-24 lg:pb-8">
+          {children}
+        </main>
+
+        {/* Mobile Navigation Bottom Bar */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-t border-border flex items-center justify-around px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+          <Link to="/dashboard" className={cn("flex flex-col items-center gap-1 p-2 rounded-lg transition-colors min-w-[60px]", location.pathname === '/dashboard' ? "text-primary" : "text-muted-foreground")}>
+            <Home className="h-5 w-5" />
+            <span className="text-[10px] font-medium">Home</span>
+          </Link>
+          <Link to="/attendance" className={cn("flex flex-col items-center gap-1 p-2 rounded-lg transition-colors min-w-[60px]", location.pathname === '/attendance' ? "text-primary" : "text-muted-foreground")}>
+            <Clock className="h-5 w-5" />
+            <span className="text-[10px] font-medium">Absen</span>
+          </Link>
+          <div className="relative -top-6">
+            <button
+              onClick={() => navigate('/attendance')}
+              className="h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 flex items-center justify-center transform transition-transform active:scale-95 border-4 border-background"
+            >
+              <Clock className="h-6 w-6" />
+            </button>
+          </div>
+          <Link to="/history" className={cn("flex flex-col items-center gap-1 p-2 rounded-lg transition-colors min-w-[60px]", location.pathname === '/history' ? "text-primary" : "text-muted-foreground")}>
+            <Calendar className="h-5 w-5" />
+            <span className="text-[10px] font-medium">Riwayat</span>
+          </Link>
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            <SheetTrigger asChild>
+              <button className={cn("flex flex-col items-center gap-1 p-2 rounded-lg transition-colors min-w-[60px]", mobileOpen ? "text-primary" : "text-muted-foreground")}>
+                <Menu className="h-5 w-5" />
+                <span className="text-[10px] font-medium">Menu</span>
+              </button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[300px] p-0 bg-sidebar text-sidebar-foreground border-sidebar-border">
+              <div className="flex flex-col h-full">
+                <div className="p-6 border-b border-sidebar-border">
+                  <div className="flex items-center gap-3 mb-6">
+                    <Avatar className="h-12 w-12 border-2 border-sidebar-border">
+                      <AvatarImage src={profile?.avatar_url || undefined} />
+                      <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground">
+                        {profile?.full_name ? getInitials(profile.full_name) : 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-bold text-lg">{profile?.full_name}</p>
+                      <p className="text-sm text-sidebar-foreground/70">{getRoleBadge()}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  <NavContent isMobile={true} />
+                </div>
+                <div className="p-4 border-t border-sidebar-border">
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-950/30"
+                    onClick={handleSignOut}
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Keluar Aplikasi
+                  </Button>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
     </div>
   );

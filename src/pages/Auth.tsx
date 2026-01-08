@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Building2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { z } from 'zod';
+import { AppLogo } from '@/components/AppLogo';
 
 const emailSchema = z.string().email('Email tidak valid');
 const passwordSchema = z.string().min(6, 'Password minimal 6 karakter');
@@ -18,7 +19,7 @@ export default function Auth() {
   const navigate = useNavigate();
   const { signIn, signUp, user, loading: authLoading } = useAuth();
   const { toast } = useToast();
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -34,7 +35,7 @@ export default function Auth() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       emailSchema.parse(loginEmail);
       passwordSchema.parse(loginPassword);
@@ -50,9 +51,9 @@ export default function Auth() {
     }
 
     setIsLoading(true);
-    
+
     const { error } = await signIn(loginEmail, loginPassword);
-    
+
     if (error) {
       let message = 'Terjadi kesalahan saat login';
       if (error.message.includes('Invalid login credentials')) {
@@ -60,7 +61,7 @@ export default function Auth() {
       } else if (error.message.includes('Email not confirmed')) {
         message = 'Email belum dikonfirmasi. Silakan cek inbox Anda';
       }
-      
+
       toast({
         title: 'Login Gagal',
         description: message,
@@ -73,13 +74,13 @@ export default function Auth() {
       });
       navigate('/dashboard');
     }
-    
+
     setIsLoading(false);
   };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       nameSchema.parse(registerName);
       emailSchema.parse(registerEmail);
@@ -96,15 +97,15 @@ export default function Auth() {
     }
 
     setIsLoading(true);
-    
+
     const { error } = await signUp(registerEmail, registerPassword, registerName);
-    
+
     if (error) {
       let message = 'Terjadi kesalahan saat registrasi';
       if (error.message.includes('User already registered')) {
         message = 'Email sudah terdaftar. Silakan login';
       }
-      
+
       toast({
         title: 'Registrasi Gagal',
         description: message,
@@ -116,7 +117,7 @@ export default function Auth() {
         description: 'Akun Anda telah dibuat. Silakan login.',
       });
     }
-    
+
     setIsLoading(false);
   };
 
@@ -130,17 +131,12 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-muted/30 p-4">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center">
-          <Building2 className="h-7 w-7 text-primary-foreground" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">CMS Duta Solusi</h1>
-          <p className="text-sm text-muted-foreground">Sistem Absensi Online</p>
-        </div>
+      <div className="flex flex-col items-center gap-4 mb-8">
+        <AppLogo className="h-16 w-auto" />
+        <p className="text-sm text-muted-foreground font-medium uppercase tracking-wide">HR Information System</p>
       </div>
 
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md shadow-lg border-slate-200">
         <Tabs defaultValue="login">
           <CardHeader>
             <TabsList className="grid w-full grid-cols-2">
@@ -181,7 +177,7 @@ export default function Auth() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isLoading}>
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -206,7 +202,7 @@ export default function Auth() {
                   <Input
                     id="register-name"
                     type="text"
-                    placeholder="John Doe"
+                    placeholder="Nama lengkap Anda"
                     value={registerName}
                     onChange={(e) => setRegisterName(e.target.value)}
                     disabled={isLoading}
@@ -239,7 +235,7 @@ export default function Auth() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button type="submit" className="w-full bg-slate-900 hover:bg-slate-800" disabled={isLoading}>
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -255,7 +251,7 @@ export default function Auth() {
         </Tabs>
       </Card>
 
-      <p className="mt-6 text-sm text-muted-foreground text-center">
+      <p className="mt-6 text-xs text-muted-foreground text-center">
         © 2026 CMS Duta Solusi. All rights reserved.
       </p>
     </div>

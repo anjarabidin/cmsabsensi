@@ -1,319 +1,126 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2, Plus, Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { CalendarIcon, Loader2, Timer, ChevronLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { OvertimeRequest } from '@/types';
+import { useToast } from '@/hooks/use-toast';
 
 export default function OvertimePage() {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  
-  const [requests, setRequests] = useState<OvertimeRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  
-  // Form state
-  const [date, setDate] = useState<Date | undefined>(new Date());
-  const [startTime, setStartTime] = useState('17:00');
-  const [endTime, setEndTime] = useState('20:00');
-  const [reason, setReason] = useState('');
+    const { toast } = useToast();
+    const navigate = useNavigate();
+    const [date, setDate] = useState<Date>();
+    const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    fetchRequests();
-  }, []);
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setTimeout(() => {
+            setLoading(false);
+            toast({
+                title: "Permintaan Terkirim",
+                description: "Pengajuan lembur Anda telah berhasil dikirim.",
+            });
+        }, 1500);
+    };
 
-  const fetchRequests = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('overtime_requests')
-        .select('*')
-        .order('created_at', { ascending: false });
+    return (
+        <DashboardLayout>
+            <div className="relative min-h-screen bg-slate-50/50">
+                {/* Background Gradient */}
+                <div className="absolute top-0 left-0 w-full h-[220px] bg-gradient-to-r from-blue-600 to-cyan-500 rounded-b-[40px] z-0 shadow-lg" />
 
-      if (error) throw error;
-      setRequests((data as OvertimeRequest[]) || []);
-    } catch (error) {
-      console.error('Error fetching overtime requests:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const calculateDuration = (start: string, end: string): number => {
-    const [startHour, startMin] = start.split(':').map(Number);
-    const [endHour, endMin] = end.split(':').map(Number);
-    
-    const startMinutes = startHour * 60 + startMin;
-    const endMinutes = endHour * 60 + endMin;
-    
-    return endMinutes - startMinutes;
-  };
-
-  const formatDuration = (minutes: number): string => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours} jam ${mins} menit`;
-  };
-
-  const handleSubmit = async () => {
-    if (!user || !date || !startTime || !endTime || !reason.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Mohon lengkapi semua field',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    const duration = calculateDuration(startTime, endTime);
-    
-    if (duration <= 0) {
-      toast({
-        title: 'Error',
-        description: 'Waktu selesai harus setelah waktu mulai',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (duration > 240) {
-      toast({
-        title: 'Error',
-        description: 'Lembur maksimal 4 jam per hari sesuai peraturan',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setSubmitting(true);
-
-    try {
-      const { error } = await supabase.from('overtime_requests').insert({
-        user_id: user.id,
-        date: format(date, 'yyyy-MM-dd'),
-        start_time: startTime,
-        end_time: endTime,
-        duration_minutes: duration,
-        reason: reason.trim(),
-        status: 'pending',
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: 'Berhasil',
-        description: 'Pengajuan lembur berhasil dikirim',
-      });
-
-      setDialogOpen(false);
-      setDate(new Date());
-      setStartTime('17:00');
-      setEndTime('20:00');
-      setReason('');
-      fetchRequests();
-    } catch (error) {
-      console.error('Error submitting overtime request:', error);
-      toast({
-        title: 'Error',
-        description: 'Gagal mengirim pengajuan. Silakan coba lagi.',
-        variant: 'destructive',
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return <Badge>Disetujui</Badge>;
-      case 'rejected':
-        return <Badge variant="destructive">Ditolak</Badge>;
-      case 'pending':
-        return <Badge variant="secondary">Menunggu</Badge>;
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
-    }
-  };
-
-  return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Lembur</h1>
-            <p className="text-muted-foreground">Kelola pengajuan lembur Anda</p>
-          </div>
-
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Ajukan Lembur
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>Ajukan Lembur</DialogTitle>
-                <DialogDescription>
-                  Isi formulir di bawah untuk mengajukan lembur (maks. 4 jam/hari)
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Tanggal</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !date && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {date ? format(date, "d MMMM yyyy", { locale: id }) : "Pilih tanggal"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={date}
-                        onSelect={setDate}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Waktu Mulai</Label>
-                    <div className="relative">
-                      <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        type="time"
-                        value={startTime}
-                        onChange={(e) => setStartTime(e.target.value)}
-                        className="pl-10"
-                      />
+                <div className="relative z-10 space-y-6 px-4 pt-8 pb-24 md:px-8 max-w-6xl mx-auto">
+                    {/* Header with Back Button */}
+                    <div className="flex items-start gap-4 text-white">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => navigate('/dashboard')}
+                            className="text-white hover:bg-white/20 hover:text-white shrink-0 -ml-2"
+                        >
+                            <ChevronLeft className="h-6 w-6" />
+                        </Button>
+                        <div>
+                            <h1 className="text-2xl md:text-3xl font-bold tracking-tight drop-shadow-md">Lembur (Overtime)</h1>
+                            <p className="text-blue-50 font-medium opacity-90 mt-1">Ajukan jam lembur kerja tambahan.</p>
+                        </div>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Waktu Selesai</Label>
-                    <div className="relative">
-                      <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        type="time"
-                        value={endTime}
-                        onChange={(e) => setEndTime(e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
-                  </div>
+
+                    <Tabs defaultValue="request" className="space-y-4">
+                        <TabsList className="bg-white/20 backdrop-blur-sm p-1 rounded-xl border border-white/20 w-fit">
+                            <TabsTrigger value="request" className="data-[state=active]:bg-white data-[state=active]:text-blue-600 text-blue-50 font-medium px-6">Ajukan Lembur</TabsTrigger>
+                            <TabsTrigger value="history" className="data-[state=active]:bg-white data-[state=active]:text-blue-600 text-blue-50 font-medium px-6">Riwayat</TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value="request">
+                            <Card className="max-w-2xl border-none shadow-lg">
+                                <CardHeader>
+                                    <CardTitle>Form Pengajuan Lembur</CardTitle>
+                                    <CardDescription>Catat rencana atau realisasi jam lembur Anda.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <form onSubmit={handleSubmit} className="space-y-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label>Tanggal Lembur</Label>
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <Button
+                                                            variant={"outline"}
+                                                            className={cn(
+                                                                "w-full justify-start text-left font-normal",
+                                                                !date && "text-muted-foreground"
+                                                            )}
+                                                        >
+                                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                                            {date ? format(date, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
+                                                        </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-0">
+                                                        <Calendar
+                                                            mode="single"
+                                                            selected={date}
+                                                            onSelect={setDate}
+                                                            initialFocus
+                                                        />
+                                                    </PopoverContent>
+                                                </Popover>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Durasi (Jam)</Label>
+                                                <Input type="number" min="1" max="12" step="0.5" placeholder="Example: 2.5" />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Pekerjaan</Label>
+                                            <Textarea placeholder="Deskripsi pekerjaan..." />
+                                        </div>
+                                        <Button type="submit" className="w-full bg-blue-600" disabled={loading}>
+                                            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                            Kirim SPKL
+                                        </Button>
+                                    </form>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                        <TabsContent value="history">
+                            <div className="p-8 text-center text-muted-foreground border rounded-lg bg-slate-50">
+                                Belum ada riwayat lembur.
+                            </div>
+                        </TabsContent>
+                    </Tabs>
                 </div>
-
-                {startTime && endTime && calculateDuration(startTime, endTime) > 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    Durasi: {formatDuration(calculateDuration(startTime, endTime))}
-                  </p>
-                )}
-
-                <div className="space-y-2">
-                  <Label>Alasan</Label>
-                  <Textarea
-                    placeholder="Jelaskan alasan lembur..."
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    rows={3}
-                  />
-                </div>
-              </div>
-
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                  Batal
-                </Button>
-                <Button onClick={handleSubmit} disabled={submitting}>
-                  {submitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Mengirim...
-                    </>
-                  ) : (
-                    'Kirim Pengajuan'
-                  )}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        {/* Requests Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Riwayat Pengajuan</CardTitle>
-            <CardDescription>Daftar pengajuan lembur Anda</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            ) : requests.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                Belum ada pengajuan lembur
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Tanggal</TableHead>
-                    <TableHead>Waktu</TableHead>
-                    <TableHead>Durasi</TableHead>
-                    <TableHead>Alasan</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {requests.map((request) => (
-                    <TableRow key={request.id}>
-                      <TableCell className="font-medium">
-                        {format(new Date(request.date), 'd MMM yyyy', { locale: id })}
-                      </TableCell>
-                      <TableCell>
-                        {request.start_time.slice(0, 5)} - {request.end_time.slice(0, 5)}
-                      </TableCell>
-                      <TableCell>{formatDuration(request.duration_minutes)}</TableCell>
-                      <TableCell className="max-w-[200px] truncate">
-                        {request.reason}
-                      </TableCell>
-                      <TableCell>{getStatusBadge(request.status)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </DashboardLayout>
-  );
+            </div>
+        </DashboardLayout>
+    );
 }

@@ -130,29 +130,31 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-muted/30 p-4">
-      <div className="flex flex-col items-center gap-4 mb-8">
-        <AppLogo className="h-16 w-auto" />
-        <p className="text-sm text-muted-foreground font-medium uppercase tracking-wide">HR Information System</p>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-700 via-indigo-700 to-slate-900 p-4">
+      <div className="flex flex-col items-center gap-6 mb-8 animate-in slide-in-from-top-10 duration-700">
+        <div className="p-4 bg-white/10 rounded-3xl backdrop-blur-md shadow-2xl ring-1 ring-white/20">
+          <AppLogo className="h-20 w-auto" variant="light" />
+        </div>
+        <div className="text-center space-y-1">
+          <h1 className="text-2xl font-bold text-white tracking-tight">Duta Mruput</h1>
+          <p className="text-xs text-blue-100 font-medium uppercase tracking-widest opacity-80">CMS Duta Solusi System</p>
+        </div>
       </div>
 
-      <Card className="w-full max-w-md shadow-lg border-slate-200">
-        <Tabs defaultValue="login">
-          <CardHeader>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Masuk</TabsTrigger>
-              <TabsTrigger value="register">Daftar</TabsTrigger>
+      <Card className="w-full max-w-md shadow-2xl border-0 bg-white/95 backdrop-blur-xl animate-in zoom-in-95 duration-500 rounded-3xl overflow-hidden">
+        <Tabs defaultValue="login" className="w-full">
+          <div className="px-6 pt-6">
+            <TabsList className="grid w-full grid-cols-2 h-12 rounded-xl bg-slate-100 p-1">
+              <TabsTrigger value="login" className="rounded-lg text-sm font-semibold data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-sm transition-all duration-300">Masuk</TabsTrigger>
+              <TabsTrigger value="register" className="rounded-lg text-sm font-semibold data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-sm transition-all duration-300">Daftar</TabsTrigger>
             </TabsList>
-          </CardHeader>
+          </div>
 
-          <TabsContent value="login">
+          <TabsContent value="login" className="mt-0">
             <form onSubmit={handleLogin}>
-              <CardContent className="space-y-4">
-                <CardDescription className="text-center">
-                  Masuk ke akun Anda untuk absensi
-                </CardDescription>
+              <CardContent className="space-y-5 pt-6 pb-2">
                 <div className="space-y-2">
-                  <Label htmlFor="login-email">Email</Label>
+                  <Label htmlFor="login-email" className="text-slate-600 font-medium">Email Perusahaan</Label>
                   <Input
                     id="login-email"
                     type="email"
@@ -161,10 +163,14 @@ export default function Auth() {
                     onChange={(e) => setLoginEmail(e.target.value)}
                     disabled={isLoading}
                     required
+                    className="h-12 rounded-xl border-slate-200 bg-slate-50 focus:bg-white transition-all"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="login-password">Password</Label>
+                  <div className="flex justify-between items-center">
+                    <Label htmlFor="login-password" className="text-slate-600 font-medium">Password</Label>
+                    <a href="#" className="text-xs text-blue-600 hover:text-blue-700 font-medium">Lupa?</a>
+                  </div>
                   <Input
                     id="login-password"
                     type="password"
@@ -173,44 +179,43 @@ export default function Auth() {
                     onChange={(e) => setLoginPassword(e.target.value)}
                     disabled={isLoading}
                     required
+                    className="h-12 rounded-xl border-slate-200 bg-slate-50 focus:bg-white transition-all"
                   />
                 </div>
               </CardContent>
-              <CardFooter>
-                <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isLoading}>
+              <CardFooter className="pt-4 pb-8">
+                <Button type="submit" className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-base font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all hover:scale-[1.01] active:scale-95" disabled={isLoading}>
                   {isLoading ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                       Memproses...
                     </>
                   ) : (
-                    'Masuk'
+                    'Masuk Sekarang'
                   )}
                 </Button>
               </CardFooter>
             </form>
           </TabsContent>
 
-          <TabsContent value="register">
+          <TabsContent value="register" className="mt-0">
             <form onSubmit={handleRegister}>
-              <CardContent className="space-y-4">
-                <CardDescription className="text-center">
-                  Buat akun baru untuk mulai absensi
-                </CardDescription>
+              <CardContent className="space-y-4 pt-6 pb-2">
                 <div className="space-y-2">
-                  <Label htmlFor="register-name">Nama Lengkap</Label>
+                  <Label htmlFor="register-name" className="text-slate-600">Nama Lengkap</Label>
                   <Input
                     id="register-name"
                     type="text"
-                    placeholder="Nama lengkap Anda"
+                    placeholder="Nama Lengkap"
                     value={registerName}
                     onChange={(e) => setRegisterName(e.target.value)}
                     disabled={isLoading}
                     required
+                    className="h-11 rounded-xl"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="register-email">Email</Label>
+                  <Label htmlFor="register-email" className="text-slate-600">Email</Label>
                   <Input
                     id="register-email"
                     type="email"
@@ -219,31 +224,26 @@ export default function Auth() {
                     onChange={(e) => setRegisterEmail(e.target.value)}
                     disabled={isLoading}
                     required
+                    className="h-11 rounded-xl"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="register-password">Password</Label>
+                  <Label htmlFor="register-password" className="text-slate-600">Password</Label>
                   <Input
                     id="register-password"
                     type="password"
-                    placeholder="Minimal 6 karakter"
+                    placeholder="••••••••"
                     value={registerPassword}
                     onChange={(e) => setRegisterPassword(e.target.value)}
                     disabled={isLoading}
                     required
+                    className="h-11 rounded-xl"
                   />
                 </div>
               </CardContent>
-              <CardFooter>
-                <Button type="submit" className="w-full bg-slate-900 hover:bg-slate-800" disabled={isLoading}>
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Memproses...
-                    </>
-                  ) : (
-                    'Daftar'
-                  )}
+              <CardFooter className="pt-4 pb-8">
+                <Button type="submit" className="w-full h-12 bg-slate-800 hover:bg-slate-900 text-base font-bold rounded-xl shadow-lg" disabled={isLoading}>
+                  {isLoading ? 'Memproses...' : 'Daftar Akun Baru'}
                 </Button>
               </CardFooter>
             </form>
@@ -251,7 +251,7 @@ export default function Auth() {
         </Tabs>
       </Card>
 
-      <p className="mt-6 text-xs text-muted-foreground text-center">
+      <p className="mt-8 text-[10px] text-blue-200/60 font-medium text-center uppercase tracking-widest">
         © 2026 CMS Duta Solusi. All rights reserved.
       </p>
     </div>

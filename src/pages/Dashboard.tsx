@@ -183,8 +183,8 @@ export default function Dashboard() {
             {/* Header Section */}
             <div className="flex items-center justify-between pt-[calc(env(safe-area-inset-top)+1rem)] pb-4 px-4 text-white">
               <div className="flex items-center gap-3">
-                <div className="h-10 min-w-[120px] px-3 rounded-xl bg-white/95 shadow-md flex items-center justify-center backdrop-blur-sm">
-                  <AppLogo className="h-6 w-auto" />
+                <div className="h-14 min-w-[140px] px-4 rounded-xl bg-white/95 shadow-md flex items-center justify-center backdrop-blur-sm">
+                  <AppLogo className="h-9 w-auto" />
                 </div>
                 <div>
                   <h1 className="text-lg font-bold tracking-tight text-white drop-shadow-md leading-none">Hi, {profile?.full_name?.split(' ')[0]}</h1>

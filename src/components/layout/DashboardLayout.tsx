@@ -133,7 +133,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </main>
 
         {/* Fixed Bottom Navigation - Mobile Only (Compact) */}
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 flex items-center justify-around h-[60px] pb-[env(safe-area-inset-bottom)] px-1 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 flex items-center justify-around h-20 pb-[env(safe-area-inset-bottom)] px-2 shadow-[0_-2px_15px_rgba(0,0,0,0.08)]">
           <Link to="/dashboard" className={cn("flex flex-1 flex-col items-center justify-center gap-0.5 h-full transition-all", location.pathname === '/dashboard' ? "text-blue-600" : "text-slate-400 hover:text-slate-600")}>
             <Home className={cn("h-5 w-5", location.pathname === '/dashboard' ? "fill-blue-600/10" : "")} />
             <span className="text-[9px] font-bold">Home</span>

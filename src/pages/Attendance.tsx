@@ -103,7 +103,21 @@ export default function AttendancePage() {
 
   // Validate Location Logic
   useEffect(() => {
-    if (workMode === 'wfo' && latitude && longitude && selectedLocationId && officeLocations.length > 0) {
+    // If GPS is not available at all
+    if (!latitude || !longitude) {
+      setIsLocationValid(false);
+      if (locationError) {
+        setLocationErrorMsg(locationError);
+      } else if (locationLoading) {
+        setLocationErrorMsg("Menunggu GPS terkunci...");
+      } else {
+        setLocationErrorMsg("GPS belum terkunci. Klik 'Perbarui GPS' untuk mencoba lagi.");
+      }
+      return;
+    }
+
+    // GPS is available, now validate based on work mode
+    if (workMode === 'wfo' && selectedLocationId && officeLocations.length > 0) {
       const office = officeLocations.find(l => l.id === selectedLocationId);
       if (office) {
         const dist = getDistanceFromLatLonInM(latitude, longitude, office.latitude, office.longitude);
@@ -117,13 +131,21 @@ export default function AttendancePage() {
           setIsLocationValid(true);
           setLocationErrorMsg(null);
         }
+      } else {
+        setIsLocationValid(false);
+        setLocationErrorMsg("Pilih lokasi kantor terlebih dahulu.");
       }
     } else {
-      // For WFH or Field, location checks are looser (just needs to exist)
-      setIsLocationValid(!!latitude);
-      setLocationErrorMsg(null);
+      // For WFH or Field, just check if GPS is mocked
+      if (isMocked) {
+        setIsLocationValid(false);
+        setLocationErrorMsg("Fake GPS Terdeteksi! Mohon gunakan lokasi asli.");
+      } else {
+        setIsLocationValid(true);
+        setLocationErrorMsg(null);
+      }
     }
-  }, [latitude, longitude, selectedLocationId, workMode, officeLocations]);
+  }, [latitude, longitude, selectedLocationId, workMode, officeLocations, isMocked, locationError, locationLoading]);
 
   const fetchData = async () => {
     try {
@@ -413,8 +435,41 @@ export default function AttendancePage() {
                   <h3 className="font-black text-slate-800 tracking-tight text-lg">Data Kehadiran</h3>
                 </div>
 
+                {/* GPS Status Indicator */}
+                {latitude && longitude ? (
+                  <div className="bg-green-50 border border-green-200 rounded-2xl p-3 flex items-center gap-3">
+                    <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
+                      <MapPin className="h-4 w-4 text-green-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-bold text-green-700">GPS Terkunci</p>
+                      <p className="text-[10px] text-green-600">
+                        Lat: {latitude.toFixed(6)}, Lon: {longitude.toFixed(6)}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-3 flex items-center gap-3">
+                    <div className="h-8 w-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                      {locationLoading ? (
+                        <Loader2 className="h-4 w-4 text-yellow-600 animate-spin" />
+                      ) : (
+                        <AlertOctagon className="h-4 w-4 text-yellow-600" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-bold text-yellow-700">
+                        {locationLoading ? 'Mencari GPS...' : 'GPS Belum Terkunci'}
+                      </p>
+                      <p className="text-[10px] text-yellow-600">
+                        {locationError || 'Klik "Perbarui GPS" untuk mencoba lagi'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Location Alert */}
-                {!isLocationValid && workMode === 'wfo' && (
+                {!isLocationValid && workMode === 'wfo' && latitude && longitude && (
                   <Alert variant="destructive" className="bg-red-50 border-red-200 text-red-800 rounded-2xl">
                     <AlertOctagon className="h-4 w-4" />
                     <AlertTitle className="text-sm font-bold">Lokasi Tidak Valid</AlertTitle>

@@ -155,7 +155,7 @@ export default function CorrectionsPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-5xl mx-auto pt-[calc(2.5rem+env(safe-area-inset-top))] md:pt-6 pb-20 px-4 md:px-0 animate-in fade-in duration-500">
+      <div className="space-y-6 max-w-5xl mx-auto pt-[calc(1rem+env(safe-area-inset-top))] md:pt-6 pb-20 px-4 md:px-0 animate-in fade-in duration-500">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Koreksi Absensi</h1>

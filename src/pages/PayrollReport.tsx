@@ -173,7 +173,7 @@ export default function PayrollReportPage() {
         <div className="absolute -top-6 -left-6 w-[calc(100%+3rem)] h-[100px] bg-gradient-to-r from-blue-600 to-cyan-500 rounded-b-[40px] z-0 shadow-lg" />
 
         {/* Floating Content */}
-        <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto pt-[calc(1.5rem+env(safe-area-inset-top))] pb-20 px-4 md:px-6">
+        <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto pt-[calc(1rem+env(safe-area-inset-top))] pb-20 px-4 md:px-6">
           {/* Header */}
           <div className="text-white">
             <h1 className="text-xl font-bold tracking-tight text-white drop-shadow-md">Laporan Payroll</h1>

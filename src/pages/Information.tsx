@@ -72,7 +72,7 @@ export default function InformationPage() {
 
     return (
         <DashboardLayout>
-            <div className="max-w-5xl mx-auto space-y-8 px-4 md:px-0 pt-[calc(1.5rem+env(safe-area-inset-top))] md:pt-8 pb-20">
+            <div className="max-w-5xl mx-auto space-y-8 px-4 md:px-0 pt-[calc(1rem+env(safe-area-inset-top))] md:pt-8 pb-20">
 
                 {/* Header Section */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

@@ -156,7 +156,7 @@ export default function OnboardingPage() {
 
     return (
         <DashboardLayout>
-            <div className="max-w-3xl mx-auto pt-[calc(1.5rem+env(safe-area-inset-top))] pb-8 px-4">
+            <div className="max-w-3xl mx-auto pt-[calc(1rem+env(safe-area-inset-top))] pb-8 px-4">
                 {/* Progress Bar */}
                 <div className="mb-8">
                     <h1 className="text-2xl font-bold text-slate-800 mb-2">Lengkapi Data Karyawan</h1>

@@ -37,7 +37,7 @@ export function useCamera() {
       return stream;
     } catch (error) {
       let errorMessage = 'Gagal mengakses kamera';
-      
+
       if (error instanceof Error) {
         if (error.name === 'NotAllowedError') {
           errorMessage = 'Izin kamera ditolak. Silakan aktifkan izin kamera di browser Anda';
@@ -53,7 +53,7 @@ export function useCamera() {
         error: errorMessage,
         isActive: false,
       }));
-      
+
       throw new Error(errorMessage);
     }
   }, []);
@@ -77,32 +77,43 @@ export function useCamera() {
       }
 
       const video = videoRef.current;
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        reject(new Error('Gagal membuat canvas context'));
+
+      // Ensure video has dimensions
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        reject(new Error('Kamera belum siap (dimensions 0)'));
         return;
       }
 
-      // Mirror the image for selfie
-      ctx.translate(canvas.width, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(video, 0, 0);
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
 
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            resolve(blob);
-          } else {
-            reject(new Error('Gagal mengambil foto'));
-          }
-        },
-        'image/jpeg',
-        0.8
-      );
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Gagal membuat canvas context'));
+          return;
+        }
+
+        // Mirror the image for selfie
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, 0, 0);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error('Gagal mengkonversi foto'));
+            }
+          },
+          'image/jpeg',
+          0.8
+        );
+      } catch (err: any) {
+        reject(new Error('Error saat mengambil foto: ' + err.message));
+      }
     });
   }, [state.stream]);
 

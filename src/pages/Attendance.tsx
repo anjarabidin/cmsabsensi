@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useCamera } from '@/hooks/useCamera';
-import { Loader2, Camera, MapPin, CheckCircle2, LogIn, LogOut, RefreshCw, Smartphone, ChevronLeft, Map, AlertOctagon } from 'lucide-react';
+import { Loader2, Camera, MapPin, CheckCircle2, LogIn, LogOut, RefreshCw, Smartphone, ChevronLeft, Map, AlertOctagon, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { Attendance, OfficeLocation, WorkMode, EmployeeSchedule } from '@/types';
@@ -70,7 +70,7 @@ export default function AttendancePage() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { latitude, longitude, getLocation } = useGeolocation();
+  const { latitude, longitude, isMocked, getLocation } = useGeolocation();
   const { stream, videoRef, startCamera, stopCamera, capturePhoto } = useCamera();
 
   const [todayAttendance, setTodayAttendance] = useState<Attendance | null>(null);
@@ -169,15 +169,29 @@ export default function AttendancePage() {
 
   const openCamera = async () => {
     try {
-      await getLocation(); // Refresh location before camera
-      await startCamera();
+      // First open the dialog to show loading state
       setCameraOpen(true);
+
+      // Refresh location before camera
+      await getLocation();
+
+      // Request camera permission and start stream
+      await startCamera();
+
     } catch (error) {
+      // Close dialog on error
+      setCameraOpen(false);
+
+      // Show detailed error message
+      const errorMessage = error instanceof Error ? error.message : 'Gagal mengakses kamera';
+
       toast({
-        title: 'Izin Ditolak',
-        description: 'Mohon izinkan akses kamera dan lokasi.',
+        title: 'Gagal Membuka Kamera',
+        description: errorMessage,
         variant: 'destructive',
       });
+
+      console.error('Camera error:', error);
     }
   };
 
@@ -199,8 +213,29 @@ export default function AttendancePage() {
       return;
     }
 
+    // Anti Fake GPS Barrier
+    if (isMocked) {
+      toast({
+        title: 'Manipulasi Lokasi Terdeteksi!',
+        description: 'Sistem mendeteksi penggunaan Fake GPS. Mohon matikan aplikasi manipulasi lokasi dan gunakan GPS asli perangkat.',
+        variant: 'destructive'
+      });
+      // Optionally log this behavior to a security table in database
+      return;
+    }
+
     if (!isLocationValid) {
       toast({ title: 'Lokasi Tidak Valid', description: locationErrorMsg || 'Anda berada di luar jangkauan.', variant: 'destructive' });
+      return;
+    }
+
+    // Check for Day Off / Holiday Barrier
+    if (todaySchedule?.is_day_off) {
+      toast({
+        title: 'Hari Libur!',
+        description: 'Hari ini adalah jadwal libur Anda. Tidak dapat melakukan absensi.',
+        variant: 'destructive'
+      });
       return;
     }
 
@@ -273,57 +308,109 @@ export default function AttendancePage() {
   return (
     <DashboardLayout>
       <div className="relative min-h-screen bg-slate-50/50">
-        {/* Background Gradient */}
-        <div className="absolute top-0 left-0 w-full h-[220px] bg-gradient-to-r from-blue-600 to-cyan-500 rounded-b-[40px] z-0 shadow-lg" />
+        {/* Background Gradient - Matching Dashboard Theme */}
+        <div className="absolute top-0 left-0 w-full h-[120px] bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 rounded-b-[40px] z-0 shadow-lg" />
 
         {/* Floating Content */}
-        <div className="relative z-10 max-w-2xl mx-auto space-y-6 px-4 pt-[calc(3.5rem+env(safe-area-inset-top))] pb-24 md:px-0">
-          <div className="flex items-start gap-4 text-white">
+        <div className="relative z-10 max-w-2xl mx-auto space-y-4 px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-24 md:px-0">
+          <div className="flex items-center gap-3 text-white mb-2">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => navigate('/dashboard')}
-              className="text-white hover:bg-white/20 hover:text-white shrink-0 -ml-2"
+              className="text-white hover:bg-white/20 hover:text-white shrink-0 -ml-1 h-10 w-10 rounded-full"
             >
               <ChevronLeft className="h-6 w-6" />
             </Button>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-white drop-shadow-md">Presensi</h1>
-              <p className="text-sm text-blue-50 font-medium opacity-90">{format(new Date(), 'EEEE, d MMMM yyyy', { locale: id })}</p>
+              <h1 className="text-xl font-black tracking-tight drop-shadow-sm">Presensi</h1>
+              <p className="text-[10px] text-blue-50 font-bold opacity-80 uppercase tracking-widest leading-none">Record your activity</p>
             </div>
           </div>
 
-
-          {todayAttendance?.clock_out ? (
-            <Card className="border-green-200 bg-green-50">
-              <CardContent className="flex flex-col items-center justify-center py-10">
-                <div className="h-16 w-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4">
-                  <CheckCircle2 className="h-8 w-8" />
+          {/* 1. Status Info Card - Premium Restyling */}
+          <Card className="border-none shadow-xl shadow-slate-200/50 rounded-[32px] overflow-hidden bg-white/95 backdrop-blur-sm">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Hari ini</span>
+                  <span className="text-sm font-bold text-slate-700">{format(new Date(), 'EEEE, d MMMM yyyy', { locale: id })}</span>
                 </div>
-                <h3 className="font-bold text-green-900">Selesai Bekerja</h3>
-                <p className="text-green-700 text-sm">Sampai jumpa besok!</p>
+                <div className="flex flex-col items-end">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Jam Berjalan</span>
+                  <span className="text-xl font-black text-blue-600 tracking-tighter tabular-nums">{format(new Date(), 'HH:mm')}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col gap-1">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase leading-none">Jadwal Masuk</span>
+                  <span className="text-sm font-black text-slate-800">{todaySchedule?.shift?.start_time?.substring(0, 5) || '--:--'}</span>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col gap-1">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase leading-none">Jadwal Pulang</span>
+                  <span className="text-sm font-black text-slate-800">{todaySchedule?.shift?.end_time?.substring(0, 5) || '--:--'}</span>
+                </div>
+              </div>
+
+              {todayAttendance && (
+                <div className="mt-4 p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 rounded-xl">
+                      <Clock className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-blue-400 uppercase">Clock In</p>
+                      <p className="text-sm font-black text-blue-700">{format(new Date(todayAttendance.clock_in), 'HH:mm:ss')}</p>
+                    </div>
+                  </div>
+                  {todayAttendance.is_late && (
+                    <Badge variant="destructive" className="rounded-full font-black text-[9px] px-2 py-0.5 animate-pulse">
+                      TERLAMBAT {todayAttendance.late_minutes}m
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* 2. Attendance Action Form */}
+          {todayAttendance?.clock_out ? (
+            <Card className="border-none shadow-xl shadow-slate-200/50 rounded-[32px] overflow-hidden bg-white/95 backdrop-blur-sm">
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <div className="h-20 w-20 bg-green-50 text-green-500 rounded-[28px] shadow-sm border border-green-100 flex items-center justify-center mb-6">
+                  <CheckCircle2 className="h-10 w-10" />
+                </div>
+                <h3 className="text-xl font-black text-slate-900 mb-1">Tugas Selesai!</h3>
+                <p className="text-slate-500 text-sm font-medium">Sampai jumpa di hari kerja berikutnya.</p>
               </CardContent>
             </Card>
           ) : (
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Left Column: Form */}
-              <Card className="shadow-sm border-slate-200 h-fit">
-                <CardContent className="p-6 space-y-4">
-                  {/* Location Alert */}
-                  {!isLocationValid && workMode === 'wfo' && (
-                    <Alert variant="destructive" className="bg-red-50 border-red-200 text-red-800">
-                      <AlertOctagon className="h-4 w-4" />
-                      <AlertTitle className="text-sm font-bold">Lokasi Tidak Valid</AlertTitle>
-                      <AlertDescription className="text-xs">
-                        {locationErrorMsg || "GPS belum terkunci."}
-                      </AlertDescription>
-                    </Alert>
-                  )}
+            <Card className="border-none shadow-xl shadow-slate-200/50 rounded-[32px] overflow-hidden bg-white">
+              <CardContent className="p-6 space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-blue-50 rounded-2xl text-blue-600">
+                    <MapPin className="h-5 w-5" />
+                  </div>
+                  <h3 className="font-black text-slate-800 tracking-tight text-lg">Data Kehadiran</h3>
+                </div>
 
+                {/* Location Alert */}
+                {!isLocationValid && workMode === 'wfo' && (
+                  <Alert variant="destructive" className="bg-red-50 border-red-200 text-red-800 rounded-2xl">
+                    <AlertOctagon className="h-4 w-4" />
+                    <AlertTitle className="text-sm font-bold">Lokasi Tidak Valid</AlertTitle>
+                    <AlertDescription className="text-xs">
+                      {locationErrorMsg || "GPS belum terkunci."}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-500 uppercase">Mode & Lokasi</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Mode & Lokasi</label>
                     <Select value={workMode} onValueChange={(v) => setWorkMode(v as WorkMode)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-slate-50/50"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="wfo">Work From Office</SelectItem>
                         <SelectItem value="wfh">Work From Home</SelectItem>
@@ -333,7 +420,7 @@ export default function AttendancePage() {
 
                     {workMode === 'wfo' && (
                       <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
-                        <SelectTrigger><SelectValue placeholder="Pilih Lokasi" /></SelectTrigger>
+                        <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-slate-50/50"><SelectValue placeholder="Pilih Lokasi" /></SelectTrigger>
                         <SelectContent>
                           {officeLocations.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
                         </SelectContent>
@@ -341,15 +428,15 @@ export default function AttendancePage() {
                     )}
                   </div>
 
-                  {/* --- Map Integration --- */}
+                  {/* Map Integration */}
                   {latitude && longitude ? (
-                    <div className="h-40 w-full rounded-lg overflow-hidden border border-slate-200 relative z-0">
+                    <div className="h-44 w-full rounded-[24px] overflow-hidden border border-slate-100 relative z-0 shadow-inner">
                       {(MapContainer as any) && (
                         <MapContainer
                           center={[latitude, longitude] as any}
                           zoom={16}
                           style={{ height: '100%', width: '100%' }}
-                          dragging={false} // Static map-ish
+                          dragging={false}
                           scrollWheelZoom={false}
                         >
                           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OSM' {...{ attribution: '&copy; OSM' } as any} />
@@ -357,7 +444,6 @@ export default function AttendancePage() {
                           <Marker position={[latitude, longitude] as any}>
                             <Popup>Posisi Anda</Popup>
                           </Marker>
-                          {/* Show Office Circle if WFO */}
                           {workMode === 'wfo' && selectedLocationId && (() => {
                             const office = officeLocations.find(l => l.id === selectedLocationId);
                             if (office) {
@@ -369,8 +455,7 @@ export default function AttendancePage() {
                                   <Circle
                                     center={[office.latitude, office.longitude] as any}
                                     radius={MAX_RADIUS_M}
-                                    pathOptions={{ fillColor: isLocationValid ? 'green' : 'red', color: isLocationValid ? 'green' : 'red', opacity: 0.2 }}
-                                    {...{ radius: MAX_RADIUS_M } as any}
+                                    pathOptions={{ fillColor: isLocationValid ? '#3b82f6' : '#ef4444', color: isLocationValid ? '#3b82f6' : '#ef4444', opacity: 0.1, weight: 1 }}
                                   />
                                 </>
                               )
@@ -380,117 +465,169 @@ export default function AttendancePage() {
                       )}
                     </div>
                   ) : (
-                    <div className="h-40 w-full rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-xs text-slate-400">
-                      <MapPin className="h-4 w-4 mr-2 animate-pulse" /> Mencari GPS...
+                    <div className="h-44 w-full rounded-[24px] bg-slate-50 border border-slate-100 flex flex-col items-center justify-center text-[10px] text-slate-400 font-bold uppercase tracking-widest gap-2">
+                      <div className="h-10 w-10 bg-white rounded-full flex items-center justify-center shadow-sm">
+                        <MapPin className="h-5 w-5 text-blue-500 animate-bounce" />
+                      </div>
+                      Mencari Posisi...
                     </div>
                   )}
 
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-500 uppercase">Catatan</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Catatan</label>
                     <Textarea
-                      placeholder="Opsional..."
+                      placeholder="Tambahkan keterangan..."
                       rows={2}
                       value={notes}
                       onChange={e => setNotes(e.target.value)}
-                      className="resize-none"
+                      className="resize-none rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-colors"
                     />
                   </div>
 
                   {/* Photo Trigger */}
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-500 uppercase">Verifikasi Foto</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Verifikasi Kamera</label>
                     {!photoPreview ? (
                       <div
-                        onClick={openCamera}
-                        className="border-2 border-dashed border-slate-200 rounded-xl h-32 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 transition-colors group"
+                        onClick={() => setCameraOpen(true)}
+                        className="border-2 border-dashed border-slate-200 rounded-[24px] h-36 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-blue-200 transition-all group"
                       >
-                        <Camera className="h-8 w-8 text-slate-300 group-hover:text-blue-500 mb-2" />
-                        <span className="text-sm text-slate-500 font-medium">Buka Kamera</span>
+                        <div className="h-12 w-12 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform mb-3">
+                          <Camera className="h-6 w-6" />
+                        </div>
+                        <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">Mulai Ambil Foto</span>
                       </div>
                     ) : (
-                      <div className="relative rounded-xl overflow-hidden h-48 bg-black group">
-                        <img src={photoPreview} className="w-full h-full object-cover opacity-80" />
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button variant="secondary" size="sm" onClick={() => setPhotoPreview(null)}>
-                            <RefreshCw className="mr-2 h-4 w-4" /> Ambil Ulang
+                      <div className="relative rounded-[24px] overflow-hidden h-48 bg-black shadow-lg group">
+                        <img src={photoPreview} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                        <div className="absolute top-4 right-4">
+                          <Button size="icon" variant="secondary" className="h-10 w-10 rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white/40 border-none" onClick={() => setPhotoPreview(null)}>
+                            <RefreshCw className="h-4 w-4" />
                           </Button>
                         </div>
-                        <div className="absolute bottom-2 left-2 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded">
-                          {latitude?.toFixed(5)}, {longitude?.toFixed(5)}
+                        <div className="absolute bottom-4 left-4 flex items-center gap-2">
+                          <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+                          <span className="text-white text-[10px] font-black tracking-widest uppercase tabular-nums">
+                            GPS LOCKED: {latitude?.toFixed(4)}, {longitude?.toFixed(4)}
+                          </span>
                         </div>
                       </div>
                     )}
                   </div>
 
+                  {todaySchedule?.is_day_off && (
+                    <Alert variant="default" className="bg-blue-50 border-blue-200 text-blue-800 rounded-2xl">
+                      <Info className="h-4 w-4" />
+                      <AlertTitle className="text-sm font-bold">Hari Libur</AlertTitle>
+                      <AlertDescription className="text-xs">
+                        Hari ini adalah hari libur. Anda tidak perlu melakukan absensi.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
                   <Button
-                    onClick={handleSubmit}
-                    disabled={submitting || !photoPreview || !isLocationValid}
+                    size="lg"
                     className={cn(
-                      "w-full h-11 font-semibold transition-all",
+                      "w-full h-14 text-white font-bold text-lg shadow-xl transition-all rounded-2xl",
                       !todayAttendance
-                        ? (isLocationValid ? "bg-blue-600 hover:bg-blue-700" : "bg-slate-300 text-slate-500 cursor-not-allowed")
-                        : "bg-slate-900 hover:bg-slate-800"
+                        ? "bg-blue-600 hover:bg-blue-700 shadow-blue-500/25"
+                        : "bg-orange-500 hover:bg-orange-600 shadow-orange-500/25",
+                      (loading || submitting || todaySchedule?.is_day_off || (todayAttendance?.clock_out)) && "opacity-50 grayscale cursor-not-allowed transform-none shadow-none"
                     )}
+                    onClick={openCamera}
+                    disabled={loading || submitting || !!todaySchedule?.is_day_off || !!todayAttendance?.clock_out}
                   >
-                    {submitting ? <Loader2 className="animate-spin" /> : (!todayAttendance ? 'Clock In' : 'Clock Out')}
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Memuat...
+                      </>
+                    ) : !todayAttendance ? (
+                      <>
+                        <LogIn className="mr-2 h-5 w-5" />
+                        Absen Masuk
+                      </>
+                    ) : !todayAttendance.clock_out ? (
+                      <>
+                        <LogOut className="mr-2 h-5 w-5" />
+                        Absen Pulang
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="mr-2 h-5 w-5" />
+                        Selesai Bekerja
+                      </>
+                    )}
                   </Button>
-                </CardContent>
-              </Card>
-
-              {/* Right Column: Status/Info */}
-              <div className="space-y-4">
-                <Card className="shadow-sm border-slate-200 bg-slate-50">
-                  <CardContent className="p-5">
-                    <h3 className="font-semibold text-slate-800 mb-4">Status Hari Ini</h3>
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-slate-500">Jam Masuk</span>
-                        <span className="font-mono font-medium">
-                          {todayAttendance?.clock_in ? format(new Date(todayAttendance.clock_in), 'HH:mm') : '--:--'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-slate-500">Jam Keluar</span>
-                        <span className="font-mono font-medium">
-                          {todayAttendance?.clock_out ? format(new Date(todayAttendance.clock_out), 'HH:mm') : '--:--'}
-                        </span>
-                      </div>
-                      <div className="pt-3 border-t border-slate-200 flex justify-between items-center">
-                        <span className="text-sm text-slate-500">Total Jam</span>
-                        <span className="font-bold text-slate-800">
-                          {todayAttendance?.work_hours_minutes ? `${Math.floor(todayAttendance.work_hours_minutes / 60)}h ${todayAttendance.work_hours_minutes % 60}m` : '-'}
-                        </span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <div className="text-xs text-slate-400 text-center px-4">
-                  <p>Pastikan Anda berada di lokasi yang ditentukan sebelum melakukan absensi.</p>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           )}
 
-          {/* Fullscreen Camera Modal */}
-          <Dialog open={cameraOpen} onOpenChange={setCameraOpen}>
-            <DialogContent className="max-w-md p-0 border-none bg-black text-white gap-0 overflow-hidden">
-              <div className="relative h-[60vh] md:h-[500px] w-full bg-black">
-                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
-                <div className="absolute bottom-6 inset-x-0 flex justify-center">
-                  <Button
-                    size="icon"
-                    className="h-16 w-16 rounded-full bg-white text-black hover:bg-slate-200 border-4 border-slate-300"
-                    onClick={handleCapturePhoto}
-                  >
-                    <Camera className="h-6 w-6" />
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <div className="text-[10px] text-slate-400 text-center px-8 leading-relaxed font-bold uppercase tracking-widest opacity-60">
+            Pastikan Anda berada di lokasi yang ditentukan sebelum menekan tombol absensi.
+          </div>
         </div>
+
+        {/* Fullscreen Camera Modal - WhatsApp Style */}
+        <Dialog open={cameraOpen} onOpenChange={(open) => {
+          if (!open) {
+            stopCamera();
+            setCameraOpen(false);
+          }
+        }}>
+          <DialogContent className="max-w-md p-0 border-none bg-black text-white gap-0 overflow-hidden rounded-none sm:rounded-[40px]">
+            <div className="relative aspect-[3/4] w-full bg-black">
+              {!stream ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-6">
+                  <div className="h-16 w-16 bg-white/10 rounded-full flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-white" />
+                  </div>
+                  <p className="text-sm font-black uppercase tracking-[0.2em] text-white/80">Mengakses Kamera</p>
+                </div>
+              ) : (
+                <>
+                  <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                  <div className="absolute top-10 inset-x-0 flex justify-center">
+                    <div className="border-2 border-dashed border-white/30 w-64 h-80 rounded-[60px] flex items-center justify-center">
+                      <span className="bg-black/40 backdrop-blur-md px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">Selfie Area</span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className="absolute bottom-10 inset-x-0 flex justify-center items-center gap-12">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-14 w-14 rounded-full text-white hover:bg-white/20"
+                  onClick={() => {
+                    stopCamera();
+                    setCameraOpen(false);
+                  }}
+                >
+                  <ChevronLeft className="h-8 w-8" />
+                </Button>
+                <button
+                  onClick={async () => {
+                    try {
+                      await handleCapturePhoto();
+                    } catch (e) {
+                      toast({ title: "Gagal", description: "Gagal mengambil foto", variant: "destructive" });
+                    }
+                  }}
+                  disabled={!stream}
+                  className="h-24 w-24 rounded-full border-4 border-white flex items-center justify-center p-1.5 bg-transparent group active:scale-90 transition-transform"
+                >
+                  <div className="h-full w-full rounded-full bg-white group-hover:bg-slate-200" />
+                </button>
+                <div className="w-14" />
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
-    </DashboardLayout >
+    </DashboardLayout>
   );
 }

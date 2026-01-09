@@ -31,7 +31,8 @@ import {
   MapPin,
   BarChart3,
   DollarSign,
-  TrendingUp
+  TrendingUp,
+  StickyNote
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -46,13 +47,24 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { getDailyArticles } from '@/lib/articles';
 import { AppLogo } from '@/components/AppLogo';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 type Announcement = {
   id: string;
   title: string;
   content: string;
   created_at: string;
+  expires_at?: string;
   is_active: boolean;
+};
+
+type UpcomingActivity = {
+  id: string;
+  type: 'agenda' | 'note';
+  title: string;
+  time: string;
+  location?: string;
+  is_completed?: boolean;
 };
 
 export default function Dashboard() {
@@ -64,15 +76,20 @@ export default function Dashboard() {
   const [stats, setStats] = useState({ present: 0, late: 0, leave: 0, overtime: 0 });
   const [loading, setLoading] = useState(true);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [upcomingActivities, setUpcomingActivities] = useState<UpcomingActivity[]>([]);
 
   // Announcement Form State
   const [announcementOpen, setAnnouncementOpen] = useState(false);
-  const [announcementForm, setAnnouncementForm] = useState({ title: '', content: '' });
+  const [announcementForm, setAnnouncementForm] = useState({
+    title: '',
+    content: '',
+    expires_at: '' // Default to empty (never expires)
+  });
   const [submittingAnnouncement, setSubmittingAnnouncement] = useState(false);
   const [selectedArticle, setSelectedArticle] = useState<any>(null);
 
-  // Allow admin_hr, super_admin, OR any email containing 'admin' (for dev convenience)
-  const isAdmin = profile?.role === 'admin_hr' || profile?.role === 'super_admin' || profile?.email?.includes('admin');
+  // Allow admin_hr OR any email containing 'admin' (for dev convenience)
+  const isAdmin = profile?.role === 'admin_hr' || profile?.email?.includes('admin');
 
   useEffect(() => {
     fetchDashboardData();
@@ -84,21 +101,30 @@ export default function Dashboard() {
       const today = format(new Date(), 'yyyy-MM-dd');
       const startOfMonth = format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd');
 
+      let announcementQuery = supabase.from('announcements')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (!isAdmin) {
+        announcementQuery = announcementQuery.eq('is_active', true);
+      }
+
       const [todayRes, monthRes, announcementsRes] = await Promise.all([
         supabase.from('attendances').select('*').eq('user_id', user.id).eq('date', today).maybeSingle(),
         supabase.from('attendances').select('*').eq('user_id', user.id).gte('date', startOfMonth).lte('date', today),
-        supabase.from('announcements')
-          .select('*')
-          // If admin, fetch all (to manage). If user, fetch only active. 
-          // However, RLS handles this, so we just select *.
-          .order('created_at', { ascending: false })
-          .limit(10)
+        announcementQuery
       ]);
 
       setTodayAttendance(todayRes.data as Attendance | null);
 
       if (announcementsRes.data) {
-        setAnnouncements(announcementsRes.data as Announcement[]);
+        const filteredAnnouncements = isAdmin ? (announcementsRes.data as Announcement[]) : (announcementsRes.data as Announcement[]).filter(a => {
+          if (!a.is_active) return false;
+          if (!a.expires_at) return true;
+          return new Date(a.expires_at) > new Date();
+        });
+        setAnnouncements(filteredAnnouncements);
       }
 
       if (monthRes.data) {
@@ -109,6 +135,48 @@ export default function Dashboard() {
           overtime: monthRes.data.reduce((acc, a) => acc + (a.work_hours_minutes && a.work_hours_minutes > 480 ? 1 : 0), 0),
         });
       }
+
+      // Fetch Upcoming Activities (Agenda & Notes)
+      const now = new Date().toISOString();
+      const endOfToday = new Date();
+      endOfToday.setHours(23, 59, 59, 999);
+      const endOfTodayISO = endOfToday.toISOString();
+
+      const [agendaRes, notesRes] = await Promise.all([
+        supabase.from('agendas')
+          .select('*, agenda_participants!inner(user_id)')
+          .eq('agenda_participants.user_id', user.id)
+          .gte('start_time', now)
+          .lte('start_time', endOfTodayISO)
+          .order('start_time', { ascending: true }),
+        supabase.from('personal_reminders' as any)
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('is_completed', false)
+          .gte('remind_at', now)
+          .lte('remind_at', endOfTodayISO)
+          .order('remind_at', { ascending: true })
+      ]);
+
+      const agendaActivities: UpcomingActivity[] = (agendaRes.data || []).map(a => ({
+        id: a.id,
+        type: 'agenda',
+        title: a.title,
+        time: a.start_time,
+        location: a.location
+      }));
+
+      const noteActivities: UpcomingActivity[] = (notesRes.data || []).map(n => ({
+        id: n.id,
+        type: 'note',
+        title: n.title,
+        time: n.remind_at,
+        is_completed: n.is_completed
+      }));
+
+      setUpcomingActivities([...agendaActivities, ...noteActivities].sort((a, b) =>
+        new Date(a.time).getTime() - new Date(b.time).getTime()
+      ).slice(0, 3));
     } catch (error) {
       console.error(error);
     } finally {
@@ -127,6 +195,7 @@ export default function Dashboard() {
       const { error } = await supabase.from('announcements').insert({
         title: announcementForm.title.trim(),
         content: announcementForm.content.trim(),
+        expires_at: announcementForm.expires_at || null,
         created_by: user?.id
       });
 
@@ -134,7 +203,7 @@ export default function Dashboard() {
 
       toast({ title: "Berhasil", description: "Pengumuman berhasil dibuat" });
       setAnnouncementOpen(false);
-      setAnnouncementForm({ title: '', content: '' });
+      setAnnouncementForm({ title: '', content: '', expires_at: '' });
       fetchDashboardData();
     } catch (error) {
       toast({ title: "Error", description: "Gagal membuat pengumuman", variant: "destructive" });
@@ -176,28 +245,45 @@ export default function Dashboard() {
     return (
       <DashboardLayout>
         <div className="relative">
-          {/* Custom Background Header for Mobile Feel */}
-          <div className="absolute -top-4 -left-4 w-[calc(100%+2rem)] h-[140px] bg-gradient-to-r from-blue-600 to-cyan-500 rounded-b-[30px] z-0 shadow-lg" />
+          {/* Custom Background Header for Mobile Feel - More compact while keeping Avatar large */}
+          <div className="absolute top-0 left-0 w-full h-[95px] bg-gradient-to-r from-blue-600 to-cyan-500 rounded-b-[32px] z-0 shadow-lg" />
 
-          <div className="relative z-10 space-y-4 max-w-5xl mx-auto pb-24">
-            {/* Header Section */}
-            <div className="flex items-center justify-between pt-[calc(env(safe-area-inset-top)+1rem)] pb-4 px-4 text-white">
+          <div className="relative z-10 space-y-3 max-w-5xl mx-auto pb-24">
+            {/* Header Section - Compact but Heroic */}
+            <div className="flex items-center justify-between pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2 px-4 text-white">
               <div className="flex items-center gap-3">
-                <div className="h-14 min-w-[140px] px-4 rounded-xl bg-white/95 shadow-md flex items-center justify-center backdrop-blur-sm">
-                  <AppLogo className="h-9 w-auto" />
+                <div className="relative group shrink-0" onClick={() => navigate('/profile')}>
+                  <div className="absolute -inset-1.5 bg-white/20 rounded-full blur-md group-active:bg-white/40 transition-all" />
+                  <Avatar className="h-[72px] w-[72px] border-2 border-white/95 shadow-2xl relative mt-3">
+                    <AvatarImage src={profile?.avatar_url || ''} className="object-cover" />
+                    <AvatarFallback className="text-2xl bg-white text-blue-600 font-black">
+                      {profile?.full_name?.substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
                 </div>
-                <div>
-                  <h1 className="text-lg font-bold tracking-tight text-white drop-shadow-md leading-none">Hi, {profile?.full_name?.split(' ')[0]}</h1>
-                  <p className="text-[10px] text-blue-50 font-medium opacity-90">{getGreeting()}</p>
+                <div className="min-w-0">
+                  <p className="text-[9px] text-blue-50 font-bold opacity-80 uppercase tracking-widest leading-none mb-1">{getGreeting()} 👋</p>
+                  <h1 className="text-base font-black tracking-tight text-white drop-shadow-md leading-none truncate">{profile?.full_name?.split(' ')[0]}</h1>
+                  <p className="text-[8px] text-white/70 font-bold mt-1.5 bg-black/20 px-2 py-0.5 rounded-full inline-block backdrop-blur-sm border border-white/10 uppercase tracking-tighter">
+                    {profile?.employee_id || 'ID: --'}
+                  </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <NotificationBell iconClassName="text-white h-5 w-5" />
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/notifications')}
+                  className="text-white hover:bg-white/20 text-[10px] font-bold h-7 px-2"
+                >
+                  Lihat Semua
+                </Button>
+                <NotificationBell iconClassName="text-white h-6 w-6" />
               </div>
             </div>
 
             {/* Main Features Grid - Compact Style */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 -mt-2 mx-3 relative z-20">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-3 -mt-1 mx-3 relative z-20">
               <h3 className="text-xs font-bold text-slate-700 mb-3 flex items-center gap-2">
                 <div className="h-1 w-3 bg-blue-500 rounded-full" /> Menu Karyawan
               </h3>
@@ -206,11 +292,55 @@ export default function Dashboard() {
                 <MenuGridItem href="/history" icon={Calendar} label="Riwayat" color="text-purple-600" bg="bg-purple-50" />
                 <MenuGridItem href="/leave" icon={FileText} label="Cuti" color="text-orange-600" bg="bg-orange-50" />
                 <MenuGridItem href="/overtime" icon={Clock} label="Lembur" color="text-red-500" bg="bg-red-50" />
+                <MenuGridItem href="/agenda" icon={Calendar} label="Agenda" color="text-indigo-600" bg="bg-indigo-50" />
+                <MenuGridItem href="/notes" icon={StickyNote} label="Catatan" color="text-yellow-600" bg="bg-yellow-100/50" />
 
-                <MenuGridItem href="/reimbursement" icon={Receipt} label="Klaim" color="text-emerald-600" bg="bg-emerald-50" />
-                <MenuGridItem href="/salary-slips" icon={Wallet} label="Gaji" color="text-teal-600" bg="bg-teal-50" />
+                <MenuGridItem href="/reimbursement" icon={Receipt} label="Klaim" color="text-emerald-600" bg="bg-emerald-50" isComingSoon />
+                <MenuGridItem href="/salary-slips" icon={Wallet} label="Gaji" color="text-teal-600" bg="bg-teal-50" isComingSoon />
                 <MenuGridItem href="/profile" icon={SettingsIcon} label="Profil" color="text-slate-600" bg="bg-slate-50" />
               </div>
+
+              {/* Upcoming Activities Section (NEW) */}
+              {upcomingActivities.length > 0 && (
+                <div className="mt-6 pt-4 border-t border-slate-50">
+                  <h3 className="text-xs font-bold text-slate-700 mb-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="h-1 w-3 bg-indigo-500 rounded-full" /> Kegiatan Mendatang
+                    </div>
+                    <span className="text-[10px] text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">Hari Ini</span>
+                  </h3>
+                  <div className="space-y-2">
+                    {upcomingActivities.map((act) => (
+                      <div
+                        key={act.id}
+                        onClick={() => navigate(act.type === 'agenda' ? '/agenda' : '/notes')}
+                        className="flex items-center gap-3 p-3 bg-slate-50/50 hover:bg-slate-50 rounded-2xl border border-transparent hover:border-slate-100 transition-all cursor-pointer group"
+                      >
+                        <div className={cn(
+                          "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm",
+                          act.type === 'agenda' ? "bg-indigo-100 text-indigo-600" : "bg-yellow-100 text-yellow-600"
+                        )}>
+                          {act.type === 'agenda' ? <ClipboardCheck className="h-5 w-5" /> : <StickyNote className="h-5 w-5" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-xs font-bold text-slate-800 line-clamp-1 group-hover:text-blue-600 transition-colors">{act.title}</h4>
+                          <div className="flex items-center gap-2 text-[10px] font-medium text-slate-400 mt-0.5">
+                            <Clock className="h-3 w-3" />
+                            <span>{format(new Date(act.time), 'HH:mm')}</span>
+                            {act.location && (
+                              <>
+                                <span>•</span>
+                                <span className="line-clamp-1">{act.location}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-blue-400 group-hover:translate-x-1 transition-all" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Admin Section - Only Visible to HR/Manager */}
               {(profile?.role === 'admin_hr' || profile?.role === 'manager') && (
@@ -236,7 +366,7 @@ export default function Dashboard() {
             <div className="mx-3 md:mx-0">
               <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide md:grid md:grid-cols-3 md:overflow-visible md:pb-0">
                 {/* Attendance Summary Slide */}
-                <div className="w-[260px] md:w-full h-[120px] rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 p-3 text-white shadow-lg shadow-blue-900/10 flex flex-col justify-between shrink-0 relative overflow-hidden transition-all active:scale-95">
+                <div className="w-[85vw] md:w-full h-[120px] rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 p-3 text-white shadow-lg shadow-blue-900/10 flex flex-col justify-between shrink-0 relative overflow-hidden transition-all active:scale-95">
                   <div className="absolute right-0 top-0 h-20 w-20 bg-white/10 rounded-bl-full -mr-4 -mt-4" />
                   <div>
                     <p className="text-[10px] font-medium text-blue-100 mb-0.5">Status Hari Ini</p>
@@ -256,7 +386,7 @@ export default function Dashboard() {
                 {/* Announcement Slide */}
                 {announcements.length > 0 ? (
                   announcements.map((ann, idx) => (
-                    <div key={ann.id} className="w-[280px] md:w-full h-[140px] rounded-2xl bg-white border border-slate-200 p-4 shadow-sm flex flex-col justify-between shrink-0 transition-all hover:shadow-md">
+                    <div key={ann.id} className="w-[85vw] md:w-full h-[140px] rounded-2xl bg-white border border-slate-200 p-4 shadow-sm flex flex-col justify-between shrink-0 transition-all hover:shadow-md">
                       <div>
                         <div className="flex items-center gap-2 mb-2">
                           <Megaphone className="h-4 w-4 text-orange-500" />
@@ -269,7 +399,7 @@ export default function Dashboard() {
                     </div>
                   ))
                 ) : (
-                  <div className="w-[280px] md:w-full h-[140px] rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 p-4 flex flex-col items-center justify-center text-center shrink-0">
+                  <div className="w-[85vw] md:w-full h-[140px] rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 p-4 flex flex-col items-center justify-center text-center shrink-0">
                     <Info className="h-8 w-8 text-slate-300 mb-2" />
                     <p className="text-sm font-medium text-slate-500">Tidak ada pengumuman baru</p>
                   </div>
@@ -396,6 +526,15 @@ export default function Dashboard() {
                         value={announcementForm.content}
                         onChange={e => setAnnouncementForm({ ...announcementForm, content: e.target.value })}
                       />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Tampil Sampai (Opsional)</label>
+                      <Input
+                        type="datetime-local"
+                        value={announcementForm.expires_at}
+                        onChange={e => setAnnouncementForm({ ...announcementForm, expires_at: e.target.value })}
+                      />
+                      <p className="text-[10px] text-slate-500">Jika dikosongkan, pengumuman akan tampil selamanya.</p>
                     </div>
                   </div>
                   <DialogFooter>
@@ -566,19 +705,41 @@ export default function Dashboard() {
 }
 
 // Helper Components
-function MenuGridItem({ href, icon: Icon, label, color, bg, roles }: any) {
+function MenuGridItem({ href, icon: Icon, label, color, bg, roles, isComingSoon }: any) {
   const { hasRole } = useAuth();
+  const { toast } = useToast();
 
   // Check role access if roles prop is provided
   if (roles && !roles.some((r: any) => hasRole(r))) return null;
 
-  return (
-    <Link to={href} className="flex flex-col items-center gap-2 group">
-      <div className={cn("h-14 w-14 rounded-2xl flex items-center justify-center transition-all duration-200 group-hover:scale-105 shadow-sm border border-slate-50", bg)}>
+  const content = (
+    <div className="flex flex-col items-center gap-2 group relative">
+      <div className={cn("h-14 w-14 rounded-2xl flex items-center justify-center transition-all duration-200 group-hover:scale-105 shadow-sm border border-slate-50 relative", bg)}>
         <Icon className={cn("h-7 w-7", color)} />
+        {isComingSoon && (
+          <div className="absolute -top-1 -right-1 bg-slate-800 text-[8px] font-black text-white px-1.5 py-0.5 rounded-full border-2 border-white uppercase tracking-tighter">
+            Soon
+          </div>
+        )}
       </div>
       <span className="text-xs font-medium text-slate-600 leading-tight group-hover:text-blue-600">{label}</span>
-      {/* Desktop uses different styling in original file, but we unify for simplicity unless requested specifically otherwise */}
+    </div>
+  );
+
+  if (isComingSoon) {
+    return (
+      <button
+        onClick={() => toast({ title: "Fitur Segera Hadir", description: `Fitur ${label} masih dalam tahap pengembangan.`, variant: "default" })}
+        className="cursor-pointer"
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <Link to={href}>
+      {content}
     </Link>
   );
 }

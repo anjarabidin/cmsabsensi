@@ -196,21 +196,21 @@ export default function LocationsPage() {
         <DashboardLayout>
             <div className="relative min-h-screen bg-slate-50/50">
                 {/* Background Gradient */}
-                <div className="absolute top-0 left-0 w-full h-[220px] bg-gradient-to-r from-blue-600 to-cyan-500 rounded-b-[40px] z-0 shadow-lg" />
+                <div className="absolute top-0 left-0 w-full h-[100px] bg-gradient-to-r from-blue-600 to-cyan-500 rounded-b-[40px] z-0 shadow-lg" />
 
-                <div className="relative z-10 space-y-6 max-w-7xl mx-auto px-4 pt-[calc(3.5rem+env(safe-area-inset-top))] pb-24 md:px-6">
-                    <div className="flex items-start gap-4 text-white pb-2">
+                <div className="relative z-10 space-y-6 max-w-7xl mx-auto px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-24 md:px-6">
+                    <div className="flex items-start gap-3 text-white pb-2">
                         <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => navigate('/dashboard')}
-                            className="text-white hover:bg-white/20 hover:text-white shrink-0 -ml-2"
+                            className="text-white hover:bg-white/20 hover:text-white shrink-0 -ml-2 h-8 w-8"
                         >
-                            <ChevronLeft className="h-6 w-6" />
+                            <ChevronLeft className="h-5 w-5" />
                         </Button>
                         <div className="flex-1">
-                            <h1 className="text-2xl font-bold tracking-tight drop-shadow-md">Lokasi Kantor</h1>
-                            <p className="text-blue-50 font-medium opacity-90 mt-1">Kelola geo-fencing untuk lokasi absensi karyawan.</p>
+                            <h1 className="text-xl font-bold tracking-tight drop-shadow-md">Lokasi Kantor</h1>
+                            <p className="text-blue-50 font-medium opacity-90 mt-1 text-xs">Kelola geo-fencing untuk lokasi absensi karyawan.</p>
                         </div>
                         <Button onClick={() => { resetForm(); setDialogOpen(true); }} className="bg-white text-blue-600 hover:bg-blue-50 shadow-lg">
                             <Plus className="mr-2 h-4 w-4" />

@@ -1,0 +1,29 @@
+{
+    "project_info": {
+        "project_number": "842500705577",
+        "project_id": "cms-absensi",
+        "storage_bucket": "cms-absensi.firebasestorage.app"
+    },
+    "client": [
+        {
+            "client_info": {
+                "mobilesdk_app_id": "1:842500705577:android:87c6fc1292785090bffb38",
+                "android_client_info": {
+                    "package_name": "com.dutasol.mruput"
+                }
+            },
+            "oauth_client": [],
+            "api_key": [
+                {
+                    "current_key": "AIzaSyC7fptvj2AVbM83daGUCaD9YZcP7KNSDok"
+                }
+            ],
+            "services": {
+                "appinvite_service": {
+                    "other_platform_oauth_client": []
+                }
+            }
+        }
+    ],
+    "configuration_version": "1"
+}

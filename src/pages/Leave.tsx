@@ -195,23 +195,33 @@ export default function LeavePage() {
     return (
         <DashboardLayout>
             <div className="relative min-h-screen bg-slate-50/50">
-                <div className="absolute top-0 left-0 w-full h-[220px] bg-gradient-to-r from-blue-600 to-cyan-500 rounded-b-[40px] z-0 shadow-lg" />
+                <div className="absolute top-0 left-0 w-full h-[100px] bg-gradient-to-r from-blue-600 to-cyan-500 rounded-b-[40px] z-0 shadow-lg" />
 
-                <div className="relative z-10 space-y-6 px-4 pt-[calc(3.5rem+env(safe-area-inset-top))] pb-24 md:px-8 max-w-6xl mx-auto">
-                    <div className="flex items-start gap-4 text-white">
-                        <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')} className="text-white hover:bg-white/20 hover:text-white shrink-0 -ml-2">
-                            <ChevronLeft className="h-6 w-6" />
+                <div className="relative z-10 space-y-6 px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-24 md:px-8 max-w-6xl mx-auto">
+                    <div className="flex items-start gap-3 text-white">
+                        <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')} className="text-white hover:bg-white/20 hover:text-white shrink-0 -ml-2 h-8 w-8">
+                            <ChevronLeft className="h-5 w-5" />
                         </Button>
                         <div>
-                            <h1 className="text-2xl md:text-3xl font-bold tracking-tight drop-shadow-md">Cuti & Izin</h1>
-                            <p className="text-blue-50 font-medium opacity-90 mt-1">Ajukan cuti atau izin ketidakhadiran kerja.</p>
+                            <h1 className="text-xl md:text-2xl font-bold tracking-tight drop-shadow-md">Cuti & Izin</h1>
+                            <p className="text-blue-50 font-medium opacity-90 mt-1 text-xs">Ajukan cuti atau izin ketidakhadiran kerja.</p>
                         </div>
                     </div>
 
                     <Tabs defaultValue="request" className="space-y-4">
-                        <TabsList className="bg-white/20 backdrop-blur-sm p-1 rounded-xl border border-white/20 w-fit">
-                            <TabsTrigger value="request" className="data-[state=active]:bg-white data-[state=active]:text-blue-600 text-blue-50 font-medium px-6">Ajukan Baru</TabsTrigger>
-                            <TabsTrigger value="history" className="data-[state=active]:bg-white data-[state=active]:text-blue-600 text-blue-50 font-medium px-6">Riwayat</TabsTrigger>
+                        <TabsList className="bg-slate-200/50 backdrop-blur-md p-1 rounded-2xl border border-white/20 w-fit">
+                            <TabsTrigger
+                                value="request"
+                                className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm text-slate-600 font-bold px-6 rounded-xl transition-all"
+                            >
+                                Ajukan Baru
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="history"
+                                className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm text-slate-600 font-bold px-6 rounded-xl transition-all"
+                            >
+                                Riwayat
+                            </TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="request">

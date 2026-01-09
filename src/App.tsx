@@ -33,6 +33,9 @@ import SalarySlips from "./pages/SalarySlips";
 import FaceRegistrationPage from "./pages/FaceRegistration";
 import QuickAttendancePage from "./pages/QuickAttendance";
 import InformationPage from "./pages/Information";
+import NotificationsPage from "./pages/Notifications";
+import AgendaPage from "./pages/Agenda";
+import Notes from "./pages/Notes";
 
 const queryClient = new QueryClient();
 
@@ -81,6 +84,7 @@ const App = () => (
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
               <Route path="/information" element={<ProtectedRoute><InformationPage /></ProtectedRoute>} />
               <Route path="/reimbursement" element={<ProtectedRoute><Reimbursement /></ProtectedRoute>} />
               <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
@@ -103,6 +107,8 @@ const App = () => (
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
               <Route path="/shifts" element={<ProtectedRoute allowedRoles={['admin_hr']}><Shifts /></ProtectedRoute>} />
+              <Route path="/agenda" element={<ProtectedRoute><AgendaPage /></ProtectedRoute>} />
+              <Route path="/notes" element={<ProtectedRoute><Notes /></ProtectedRoute>} />
               <Route path="/coming-soon" element={<ProtectedRoute><ComingSoon /></ProtectedRoute>} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>

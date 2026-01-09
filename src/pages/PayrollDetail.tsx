@@ -180,9 +180,9 @@ export default function PayrollDetailPage() {
   return (
     <DashboardLayout>
       <div className="relative">
-        <div className="absolute -top-6 -left-6 w-[calc(100%+3rem)] h-[280px] bg-gradient-to-br from-indigo-800 via-blue-700 to-cyan-500 rounded-b-[64px] z-0 shadow-2xl opacity-95 transition-all" />
+        <div className="absolute -top-6 -left-6 w-[calc(100%+3rem)] h-[120px] bg-gradient-to-br from-indigo-800 via-blue-700 to-cyan-500 rounded-b-[64px] z-0 shadow-2xl opacity-95 transition-all" />
 
-        <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto pt-2 pb-24 animate-in fade-in slide-in-from-top-4 duration-700">
+        <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto pt-[calc(1rem+env(safe-area-inset-top))] pb-24 animate-in fade-in slide-in-from-top-4 duration-700">
           {/* Header Action Bar */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 py-4">
             <div className="flex items-center gap-5">

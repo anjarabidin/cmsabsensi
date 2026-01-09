@@ -57,11 +57,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const userRoles = (roleData || []).map(r => r.role as AppRole);
       setRoles(userRoles);
-      const primaryRole = userRoles.includes('super_admin') ? 'super_admin'
-        : userRoles.includes('admin_hr') ? 'admin_hr'
-          : userRoles.includes('manager') ? 'manager'
-            : userRoles.includes('employee') ? 'employee'
-              : (profileData.role as AppRole); // Fallback to profile.role if user_roles table is empty/unsynced
+      const primaryRole = userRoles.includes('admin_hr') ? 'admin_hr'
+        : userRoles.includes('manager') ? 'manager'
+          : userRoles.includes('employee') ? 'employee'
+            : (profileData.role as AppRole); // Fallback to profile.role if user_roles table is empty/unsynced
 
       setRole(primaryRole);
       setActiveRole(primaryRole);

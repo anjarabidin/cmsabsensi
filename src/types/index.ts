@@ -1,4 +1,4 @@
-export type AppRole = 'super_admin' | 'admin_hr' | 'manager' | 'employee';
+export type AppRole = 'admin_hr' | 'manager' | 'employee';
 export type WorkMode = 'wfo' | 'wfh' | 'field';
 export type AttendanceStatus = 'present' | 'late' | 'absent' | 'leave' | 'sick';
 export type RequestStatus = 'pending' | 'approved' | 'rejected';
@@ -449,4 +449,27 @@ export interface EmployeeSkill {
   is_certified: boolean;
   expiry_date: string | null;
   created_at: string;
+}
+
+export interface Agenda {
+  id: string;
+  title: string;
+  description: string | null;
+  start_time: string;
+  end_time: string;
+  location: string | null;
+  meeting_link: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  participants?: AgendaParticipant[];
+}
+
+export interface AgendaParticipant {
+  id: string;
+  agenda_id: string;
+  user_id: string;
+  status: 'pending' | 'accepted' | 'declined';
+  created_at: string;
+  user?: Profile;
 }

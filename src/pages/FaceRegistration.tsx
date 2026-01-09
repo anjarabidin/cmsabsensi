@@ -28,7 +28,7 @@ export default function FaceRegistrationPage() {
 
     try {
       setLoading(true);
-      
+
       // Check if user has face enrollment
       const { data } = await supabase
         .rpc('has_face_enrollment', { p_user_id: user.id });
@@ -89,7 +89,7 @@ export default function FaceRegistrationPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 pt-[calc(1.5rem+env(safe-area-inset-top))] md:pt-0 pb-10 px-4 md:px-0">
         {/* Header */}
         <div className="flex items-center gap-4">
           <Button variant="outline" onClick={() => navigate(-1)}>
@@ -121,8 +121,8 @@ export default function FaceRegistrationPage() {
                     {hasFaceEnrollment ? 'Face Registered' : 'No Face Registration'}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {hasFaceEnrollment 
-                      ? 'Your face is registered for biometric authentication' 
+                    {hasFaceEnrollment
+                      ? 'Your face is registered for biometric authentication'
                       : 'Register your face to enable face recognition authentication'
                     }
                   </div>
@@ -154,7 +154,7 @@ export default function FaceRegistrationPage() {
                     Your face has been successfully registered for biometric authentication.
                   </p>
                 </div>
-                
+
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">
                     You can now use face recognition for:

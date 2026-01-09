@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,14 +16,18 @@ interface Announcement {
     title: string;
     content: string;
     created_at: string;
+    expires_at?: string;
     created_by: string;
     is_active: boolean;
 }
 
 export default function InformationPage() {
+    const { profile } = useAuth();
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+
+    const isAdmin = profile?.role === 'admin_hr' || profile?.email?.includes('admin');
 
     useEffect(() => {
         fetchAnnouncements();
@@ -31,14 +36,28 @@ export default function InformationPage() {
     const fetchAnnouncements = async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase
+            let query = supabase
                 .from('announcements')
                 .select('*')
-                .eq('is_active', true)
                 .order('created_at', { ascending: false });
 
+            // If not admin, only show active and non-expired
+            if (!isAdmin) {
+                query = query.eq('is_active', true);
+            }
+
+            const { data, error } = await query;
+
             if (error) throw error;
-            setAnnouncements(data || []);
+
+            // Client-side filtering for non-admins (even if RLS handles it, it's safer/redundant)
+            const filteredData = isAdmin ? (data || []) : (data || []).filter(a => {
+                if (!a.is_active) return false;
+                if (!a.expires_at) return true;
+                return new Date(a.expires_at) > new Date();
+            });
+
+            setAnnouncements(filteredData);
         } catch (error) {
             console.error('Error fetching announcements:', error);
         } finally {
@@ -53,7 +72,7 @@ export default function InformationPage() {
 
     return (
         <DashboardLayout>
-            <div className="max-w-5xl mx-auto space-y-8 px-4 md:px-0 pt-4 md:pt-0 pb-20">
+            <div className="max-w-5xl mx-auto space-y-8 px-4 md:px-0 pt-[calc(1.5rem+env(safe-area-inset-top))] md:pt-8 pb-20">
 
                 {/* Header Section */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -92,6 +111,16 @@ export default function InformationPage() {
                                         <Badge className="bg-white/20 hover:bg-white/30 text-white border-none mb-4 backdrop-blur-sm">
                                             Terbaru
                                         </Badge>
+                                        {isAdmin && filteredAnnouncements[0].expires_at && new Date(filteredAnnouncements[0].expires_at) < new Date() && (
+                                            <Badge variant="destructive" className="ml-2 mb-4 bg-red-500/80 border-none animate-pulse">
+                                                Expired
+                                            </Badge>
+                                        )}
+                                        {isAdmin && !filteredAnnouncements[0].is_active && (
+                                            <Badge variant="outline" className="ml-2 mb-4 bg-white/20 text-white border-white/40">
+                                                Inactive
+                                            </Badge>
+                                        )}
                                         <h2 className="text-2xl md:text-4xl font-black mb-4 leading-tight">
                                             {filteredAnnouncements[0].title}
                                         </h2>
@@ -117,6 +146,16 @@ export default function InformationPage() {
                                         <Badge variant="secondary" className="bg-slate-100 text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
                                             Info
                                         </Badge>
+                                        {isAdmin && ann.expires_at && new Date(ann.expires_at) < new Date() && (
+                                            <Badge variant="destructive" className="ml-2 animate-pulse">
+                                                Expired
+                                            </Badge>
+                                        )}
+                                        {isAdmin && !ann.is_active && (
+                                            <Badge variant="outline" className="ml-2 bg-slate-100">
+                                                Inactive
+                                            </Badge>
+                                        )}
                                         <span className="text-xs text-slate-400 font-medium">
                                             {format(new Date(ann.created_at), 'd MMM yyyy', { locale: id })}
                                         </span>

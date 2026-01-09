@@ -132,25 +132,25 @@ export default function ReimbursementPage() {
         <DashboardLayout>
             <div className="relative min-h-screen bg-slate-50/50">
                 {/* Background Gradient */}
-                <div className="absolute top-0 left-0 w-full h-[200px] bg-gradient-to-r from-blue-600 to-cyan-500 rounded-b-[40px] z-0 shadow-lg" />
+                <div className="absolute top-0 left-0 w-full h-[100px] bg-gradient-to-r from-blue-600 to-cyan-500 rounded-b-[40px] z-0 shadow-lg" />
 
                 {/* Floating Content */}
-                <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto px-4 pt-[calc(3.5rem+env(safe-area-inset-top))] pb-24 md:px-6">
+                <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-24 md:px-6">
 
                     {/* Header Section */}
                     <div className="flex items-center justify-between text-white">
-                        <div className="flex items-start gap-4">
+                        <div className="flex items-start gap-3">
                             <Button
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => navigate('/dashboard')}
-                                className="text-white hover:bg-white/20 hover:text-white shrink-0 -ml-2"
+                                className="text-white hover:bg-white/20 hover:text-white shrink-0 -ml-2 h-8 w-8"
                             >
-                                <ChevronLeft className="h-6 w-6" />
+                                <ChevronLeft className="h-5 w-5" />
                             </Button>
                             <div>
-                                <h1 className="text-2xl font-bold tracking-tight text-white drop-shadow-md">Reimbursement</h1>
-                                <p className="text-sm text-blue-50 font-medium opacity-90">Ajukan dan pantau klaim pengeluaran operasional.</p>
+                                <h1 className="text-xl font-bold tracking-tight text-white drop-shadow-md">Reimbursement</h1>
+                                <p className="text-xs text-blue-50 font-medium opacity-90">Ajukan dan pantau klaim pengeluaran operasional.</p>
                             </div>
                         </div>
                         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

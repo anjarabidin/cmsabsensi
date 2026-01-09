@@ -91,7 +91,7 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground overflow-x-hidden;
     font-family: 'Plus Jakarta Sans', sans-serif;
     /* Friendly, modern font */
     letter-spacing: -0.015em;
@@ -105,6 +105,25 @@
   h5,
   h6 {
     @apply tracking-tight font-bold;
+  }
+
+  /* Prevent horizontal scroll on mobile */
+  html,
+  body {
+    @apply overflow-x-hidden;
+    width: 100%;
+    position: relative;
+  }
+
+  #root {
+    @apply overflow-x-hidden;
+    width: 100%;
+    min-height: 100vh;
+  }
+
+  /* Prevent any element from overflowing */
+  * {
+    max-width: 100vw;
   }
 }
 
@@ -138,6 +157,12 @@
     @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600;
   }
 }
-  /* Safe Area Utilities */
-  .pt-safe { padding-top: env(safe-area-inset-top); }
-  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+
+/* Safe Area Utilities */
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}

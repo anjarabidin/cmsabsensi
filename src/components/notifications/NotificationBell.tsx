@@ -27,7 +27,11 @@ interface Notification {
   is_action_required?: boolean;
 }
 
-export function NotificationBell() {
+interface NotificationBellProps {
+  iconClassName?: string;
+}
+
+export function NotificationBell({ iconClassName }: NotificationBellProps) {
   const { user, activeRole } = useAuth();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -37,8 +41,59 @@ export function NotificationBell() {
   useEffect(() => {
     if (user?.id) {
       fetchNotifications();
+      requestNotificationPermission();
+
+      // Subscribe to Realtime Notifications
+      const channel = supabase
+        .channel('public:notifications')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            const newNotif = payload.new as Notification;
+            setNotifications((prev) => [newNotif, ...prev]);
+            setUnreadCount((prev) => prev + 1);
+
+            // Toast Alert (Sonner)
+            import('sonner').then(({ toast }) => {
+              toast(newNotif.title, {
+                description: newNotif.message,
+                icon: getNotificationIcon(newNotif.type, newNotif.title),
+                action: newNotif.link ? {
+                  label: 'Buka',
+                  onClick: () => navigate(newNotif.link!)
+                } : undefined
+              });
+            });
+
+            // Trigger Native Browser Notification (Muncul di HP)
+            if (Notification.permission === 'granted') {
+              new Notification(newNotif.title, {
+                body: newNotif.message,
+                icon: '/logo.png', // Pastikan ada logo.png di public
+              });
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
-  }, [user?.id, activeRole, open]); // Re-fetch when opening or role changes
+  }, [user?.id, activeRole]);
+
+  const requestNotificationPermission = async () => {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'default') {
+      await Notification.requestPermission();
+    }
+  };
 
   const fetchNotifications = async () => {
     try {
@@ -125,13 +180,15 @@ export function NotificationBell() {
       .eq('read', false);
   };
 
-  const getNotificationIcon = (type: string) => {
+  const getNotificationIcon = (type: string, title?: string) => {
+    if (title?.includes('Pengumuman')) return '📢';
     switch (type) {
       case 'leave': return '🏖️';
       case 'overtime': return '⏰';
       case 'payroll': return '💰';
       case 'onboarding': return '👋';
-      default: return '📢';
+      case 'system': return '⚙️';
+      default: return '🔔';
     }
   };
 
@@ -139,7 +196,7 @@ export function NotificationBell() {
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative group">
-          <Bell className="h-5 w-5 text-slate-500 group-hover:text-blue-600 transition-colors" />
+          <Bell className={iconClassName || "h-5 w-5 text-slate-500 group-hover:text-blue-600 transition-colors"} />
           {unreadCount > 0 && (
             <Badge
               variant="destructive"
@@ -188,7 +245,7 @@ export function NotificationBell() {
                 <div className="flex items-start gap-3 w-full">
                   <div className={`mt-1 h-8 w-8 rounded-full flex items-center justify-center text-sm shadow-sm ${notification.type === 'onboarding' ? 'bg-blue-100 text-blue-600' : 'bg-white border border-slate-100'
                     }`}>
-                    {notification.type === 'onboarding' ? <UserPlus className="h-4 w-4" /> : getNotificationIcon(notification.type)}
+                    {notification.type === 'onboarding' ? <UserPlus className="h-4 w-4" /> : getNotificationIcon(notification.type, notification.title)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm ${!notification.read ? 'font-semibold text-slate-800' : 'font-medium text-slate-600'}`}>

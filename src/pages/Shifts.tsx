@@ -245,25 +245,25 @@ export default function ShiftsPage() {
         <DashboardLayout>
             <div className="relative min-h-screen bg-slate-50/50">
                 {/* Background Gradient */}
-                <div className="absolute top-0 left-0 w-full h-[220px] bg-gradient-to-r from-blue-600 to-cyan-500 rounded-b-[40px] z-0 shadow-lg" />
+                <div className="absolute top-0 left-0 w-full h-[100px] bg-gradient-to-r from-blue-600 to-cyan-500 rounded-b-[40px] z-0 shadow-lg" />
 
-                <div className="relative z-10 space-y-6 px-4 pt-[calc(3.5rem+env(safe-area-inset-top))] pb-24 md:px-8">
+                <div className="relative z-10 space-y-6 px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-24 md:px-8">
                     {/* Header with Back Button */}
-                    <div className="flex items-start gap-4 text-white">
+                    <div className="flex items-start gap-3 text-white">
                         <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => navigate('/dashboard')}
-                            className="text-white hover:bg-white/20 hover:text-white shrink-0 -ml-2"
+                            className="text-white hover:bg-white/20 hover:text-white shrink-0 -ml-2 h-8 w-8"
                         >
-                            <ChevronLeft className="h-6 w-6" />
+                            <ChevronLeft className="h-5 w-5" />
                         </Button>
                         <div>
-                            <h1 className="text-2xl font-bold tracking-tight drop-shadow-md flex items-center gap-2">
-                                <Clock className="h-6 w-6 text-blue-200" />
+                            <h1 className="text-xl font-bold tracking-tight drop-shadow-md flex items-center gap-2">
+                                <Clock className="h-5 w-5 text-blue-200" />
                                 Manajemen Jadwal & Shift
                             </h1>
-                            <p className="text-blue-50 font-medium opacity-90 mt-1">Atur master shift dan penugasan jadwal karyawan.</p>
+                            <p className="text-blue-50 font-medium opacity-90 mt-1 text-xs">Atur master shift dan penugasan jadwal karyawan.</p>
                         </div>
                     </div>
 

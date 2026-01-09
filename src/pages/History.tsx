@@ -10,8 +10,9 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Calendar as CalendarIcon, Download, Filter, LayoutList, CalendarDays, ChevronLeft } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isSameDay, getDay } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { jsPDF } from 'jspdf';
@@ -28,7 +29,7 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
 
   useEffect(() => {
     fetchAttendances();
@@ -160,23 +161,23 @@ export default function HistoryPage() {
     <DashboardLayout>
       <div className="relative min-h-screen bg-slate-50/50">
         {/* Background Gradient */}
-        <div className="absolute top-0 left-0 w-full h-[220px] bg-gradient-to-r from-blue-600 to-cyan-500 rounded-b-[40px] z-0 shadow-lg" />
+        <div className="absolute top-0 left-0 w-full h-[100px] bg-gradient-to-r from-blue-600 to-cyan-500 rounded-b-[24px] z-0 shadow-lg" />
 
-        <div className="relative z-10 space-y-6 px-4 pt-[calc(3.5rem+env(safe-area-inset-top))] pb-24 md:px-8">
+        <div className="relative z-10 space-y-4 px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-24 md:px-8">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 text-white">
-            <div className="flex items-start gap-4">
+            <div className="flex items-start gap-3">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => navigate('/dashboard')}
-                className="text-white hover:bg-white/20 hover:text-white shrink-0 -ml-2"
+                className="text-white hover:bg-white/20 hover:text-white shrink-0 -ml-2 h-8 w-8"
               >
-                <ChevronLeft className="h-6 w-6" />
+                <ChevronLeft className="h-5 w-5" />
               </Button>
               <div>
-                <h1 className="text-2xl font-bold tracking-tight text-white drop-shadow-md">Riwayat Absensi</h1>
-                <p className="text-sm text-blue-50 font-medium opacity-90">Lihat riwayat kehadiran dan rekap bulanan Anda</p>
+                <h1 className="text-xl font-bold tracking-tight text-white drop-shadow-md">Riwayat Absensi</h1>
+                <p className="text-xs text-blue-50 font-medium opacity-90">Lihat riwayat kehadiran dan rekap bulanan Anda</p>
               </div>
             </div>
 
@@ -184,7 +185,7 @@ export default function HistoryPage() {
               <Button
                 variant="secondary"
                 size="sm"
-                className="bg-white hover:bg-slate-50 text-red-600 border-none shadow-md font-semibold"
+                className="bg-white hover:bg-white/90 text-blue-700 border-none shadow-lg font-bold transition-all active:scale-95"
                 onClick={handleExportPDF}
                 disabled={loading || attendances.length === 0}
               >
@@ -192,40 +193,6 @@ export default function HistoryPage() {
                 PDF
               </Button>
 
-              <div className="flex items-center bg-white/10 backdrop-blur-sm rounded-lg p-1 border border-white/20">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setSelectedMonth(subMonths(selectedMonth, 1))}
-                  className="h-8 w-8 text-white hover:bg-white/20"
-                >
-                  ←
-                </Button>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="ghost" className="h-8 min-w-[140px] font-bold text-white hover:bg-white/20">
-                      <CalendarIcon className="mr-2 h-4 w-4 text-blue-100" />
-                      {format(selectedMonth, 'MMMM yyyy', { locale: id })}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="end">
-                    <Calendar
-                      mode="single"
-                      selected={selectedMonth}
-                      onSelect={(date) => date && setSelectedMonth(date)}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
-                  className="h-8 w-8 text-white hover:bg-white/20"
-                >
-                  →
-                </Button>
-              </div>
             </div>
           </div>
 
@@ -250,16 +217,36 @@ export default function HistoryPage() {
             </div>
           </div>
 
-          {/* Filter & View Toggle */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
+          {/* View Mode Tabs */}
+          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'list' | 'calendar')} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 bg-slate-200/50 backdrop-blur-md p-1.5 rounded-2xl h-11 border border-white/20">
+              <TabsTrigger
+                value="list"
+                className="data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-sm font-bold text-slate-600 rounded-xl transition-all h-full"
+              >
+                <LayoutList className="h-4 w-4 mr-2" />
+                Daftar
+              </TabsTrigger>
+              <TabsTrigger
+                value="calendar"
+                className="data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-sm font-bold text-slate-600 rounded-xl transition-all h-full"
+              >
+                <CalendarDays className="h-4 w-4 mr-2" />
+                Kalender
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {/* Filter & Navigation Bar */}
+          <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm h-12 group transition-all hover:border-blue-200">
+            <div className="flex items-center flex-1 min-w-0 px-2">
+              <Filter className="h-3.5 w-3.5 text-slate-400 mr-2 shrink-0" />
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter status" />
+                <SelectTrigger className="border-none shadow-none focus:ring-0 h-8 bg-transparent font-bold text-slate-700 text-xs p-0 w-full">
+                  <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Semua</SelectItem>
+                  <SelectItem value="all">Semua Status</SelectItem>
                   <SelectItem value="present">Hadir</SelectItem>
                   <SelectItem value="late">Terlambat</SelectItem>
                   <SelectItem value="leave">Cuti</SelectItem>
@@ -268,30 +255,52 @@ export default function HistoryPage() {
               </Select>
             </div>
 
-            <div className="flex items-center bg-slate-100 p-1 rounded-lg">
+            <div className="h-6 w-[1px] bg-slate-100" />
+
+            <div className="flex items-center shrink-0">
               <Button
                 variant="ghost"
-                size="sm"
-                onClick={() => setViewMode('list')}
-                className={cn(
-                  "h-7 px-3 text-xs font-medium rounded-md",
-                  viewMode === 'list' ? "bg-white shadow-sm text-slate-900" : "text-slate-500 hover:text-slate-900"
-                )}
+                size="icon"
+                onClick={() => setSelectedMonth(subMonths(selectedMonth, 1))}
+                className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
               >
-                <LayoutList className="h-3.5 w-3.5 mr-2" />
-                List
+                <ChevronLeft className="h-4 w-4" />
               </Button>
+
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" className="h-8 px-2 font-black text-slate-800 hover:bg-blue-50 rounded-xl tracking-tight text-[11px] flex items-center gap-1.5 transition-all">
+                    <CalendarIcon className="h-3.5 w-3.5 text-blue-600" />
+                    <span className="whitespace-nowrap">{format(selectedMonth, 'MMM yyyy', { locale: id })}</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    mode="single"
+                    selected={selectedMonth}
+                    onSelect={(date) => date && setSelectedMonth(date)}
+                    initialFocus
+                  />
+                  <div className="p-2 border-t border-slate-100 flex justify-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-blue-600 text-[10px] font-black uppercase tracking-wider h-7"
+                      onClick={() => setSelectedMonth(new Date())}
+                    >
+                      Hari Ini
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
               <Button
                 variant="ghost"
-                size="sm"
-                onClick={() => setViewMode('calendar')}
-                className={cn(
-                  "h-7 px-3 text-xs font-medium rounded-md",
-                  viewMode === 'calendar' ? "bg-white shadow-sm text-slate-900" : "text-slate-500 hover:text-slate-900"
-                )}
+                size="icon"
+                onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
+                className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
               >
-                <CalendarDays className="h-3.5 w-3.5 mr-2" />
-                Kalender
+                <ChevronLeft className="h-4 w-4 rotate-180" />
               </Button>
             </div>
           </div>
@@ -304,162 +313,211 @@ export default function HistoryPage() {
                 <div className="p-6">
                   <TableSkeleton rows={8} columns={6} />
                 </div>
-              ) : attendances.length === 0 ? (
-                <EmptyState
-                  icon={CalendarIcon}
-                  title="Tidak ada data absensi"
-                  description="Belum ada riwayat absensi untuk periode yang dipilih"
-                  action={viewMode === 'calendar' ? undefined : { label: "Absen Sekarang", onClick: () => navigate('/attendance') }}
-                />
               ) : (
-                <>
+                <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-100">
                   {viewMode === 'list' ? (
-                    <>
-                      {/* Desktop Table View */}
-                      <div className="hidden md:block">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Tanggal</TableHead>
-                              <TableHead>Clock In</TableHead>
-                              <TableHead>Clock Out</TableHead>
-                              <TableHead>Jam Kerja</TableHead>
-                              <TableHead>Mode</TableHead>
-                              <TableHead>Status</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {attendances.map((attendance) => (
-                              <TableRow key={attendance.id}>
-                                <TableCell className="font-medium">
-                                  {format(new Date(attendance.date), 'd MMM yyyy', { locale: id })}
-                                </TableCell>
-                                <TableCell>{formatTime(attendance.clock_in)}</TableCell>
-                                <TableCell>{formatTime(attendance.clock_out)}</TableCell>
-                                <TableCell>{formatMinutes(attendance.work_hours_minutes)}</TableCell>
-                                <TableCell>{getWorkModeBadge(attendance.work_mode)}</TableCell>
-                                <TableCell>{getStatusBadge(attendance)}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                    attendances.length === 0 ? (
+                      <div className="p-12">
+                        <EmptyState
+                          icon={CalendarIcon}
+                          title="Tidak ada data absensi"
+                          description="Belum ada riwayat absensi untuk periode yang dipilih"
+                          action={{ label: "Absen Sekarang", onClick: () => navigate('/attendance') }}
+                        />
                       </div>
-
-                      {/* Mobile Compact List View */}
-                      <div className="md:hidden space-y-0 divide-y divide-slate-100">
-                        {/* Simple Header */}
-                        <div className="grid grid-cols-12 gap-2 p-3 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                          <div className="col-span-4">Tanggal</div>
-                          <div className="col-span-4 text-center">Jam Kerja</div>
-                          <div className="col-span-4 text-right">Status</div>
+                    ) : (
+                      <>
+                        {/* Desktop Table View */}
+                        <div className="hidden md:block">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Tanggal</TableHead>
+                                <TableHead>Clock In</TableHead>
+                                <TableHead>Clock Out</TableHead>
+                                <TableHead>Jam Kerja</TableHead>
+                                <TableHead>Mode</TableHead>
+                                <TableHead>Status</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {attendances.map((attendance) => (
+                                <TableRow key={attendance.id}>
+                                  <TableCell className="font-medium">
+                                    {format(new Date(attendance.date), 'd MMM yyyy', { locale: id })}
+                                  </TableCell>
+                                  <TableCell>{formatTime(attendance.clock_in)}</TableCell>
+                                  <TableCell>{formatTime(attendance.clock_out)}</TableCell>
+                                  <TableCell>{formatMinutes(attendance.work_hours_minutes)}</TableCell>
+                                  <TableCell>{getWorkModeBadge(attendance.work_mode)}</TableCell>
+                                  <TableCell>{getStatusBadge(attendance)}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
                         </div>
 
-                        {/* Rows */}
-                        <div className="divide-y divide-slate-100">
-                          {attendances.map((attendance) => (
-                            <div key={attendance.id} className="grid grid-cols-12 gap-2 p-3 items-center hover:bg-slate-50 transition-colors">
-                              {/* Date */}
-                              <div className="col-span-4">
-                                <span className="text-xs font-bold text-slate-800 block">
-                                  {format(new Date(attendance.date), 'dd MMM', { locale: id })}
-                                </span>
-                                <span className="text-[10px] text-slate-400">
-                                  {format(new Date(attendance.date), 'yyyy', { locale: id })}
-                                </span>
-                              </div>
+                        {/* Mobile Compact List View */}
+                        <div className="md:hidden space-y-0 divide-y divide-slate-100">
+                          {/* Simple Header */}
+                          <div className="grid grid-cols-12 gap-2 p-3 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                            <div className="col-span-4">Tanggal</div>
+                            <div className="col-span-4 text-center">Jam Kerja</div>
+                            <div className="col-span-4 text-right">Status</div>
+                          </div>
 
-                              {/* Time */}
-                              <div className="col-span-4 flex flex-col items-center justify-center">
-                                <div className="text-xs font-mono font-medium text-slate-700">
-                                  {formatTime(attendance.clock_in)}
+                          {/* Rows */}
+                          <div className="divide-y divide-slate-100">
+                            {attendances.map((attendance) => (
+                              <div key={attendance.id} className="grid grid-cols-12 gap-2 p-3 items-center hover:bg-slate-50 transition-colors">
+                                {/* Date */}
+                                <div className="col-span-4">
+                                  <span className="text-xs font-bold text-slate-800 block">
+                                    {format(new Date(attendance.date), 'dd MMM', { locale: id })}
+                                  </span>
+                                  <span className="text-[10px] text-slate-400">
+                                    {format(new Date(attendance.date), 'yyyy', { locale: id })}
+                                  </span>
                                 </div>
-                                <div className="h-2 w-[1px] bg-slate-200 my-0.5" />
-                                <div className="text-xs font-mono font-medium text-slate-700">
-                                  {formatTime(attendance.clock_out)}
+
+                                {/* Time */}
+                                <div className="col-span-4 flex flex-col items-center justify-center">
+                                  <div className="text-xs font-mono font-medium text-slate-700">
+                                    {formatTime(attendance.clock_in)}
+                                  </div>
+                                  <div className="h-2 w-[1px] bg-slate-200 my-0.5" />
+                                  <div className="text-xs font-mono font-medium text-slate-700">
+                                    {formatTime(attendance.clock_out)}
+                                  </div>
+                                </div>
+
+                                {/* Status */}
+                                <div className="col-span-4 flex justify-end">
+                                  {attendance.is_late ? (
+                                    <Badge variant="outline" className="text-[10px] px-1.5 h-5 text-red-600 bg-red-50 border-red-200">Telat</Badge>
+                                  ) : attendance.status === 'present' ? (
+                                    <Badge variant="outline" className="text-[10px] px-1.5 h-5 text-green-600 bg-green-50 border-green-200">Hadir</Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="text-[10px] px-1.5 h-5 bg-slate-50">{attendance.status}</Badge>
+                                  )}
                                 </div>
                               </div>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )
+                  ) : (
+                    <div className="p-4">
+                      {/* Custom Grid Calendar */}
+                      <div className="grid grid-cols-7 gap-1">
+                        {['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map((day) => (
+                          <div key={day} className="text-center py-2 text-[10px] font-bold text-slate-400 uppercase">
+                            {day}
+                          </div>
+                        ))}
 
-                              {/* Status */}
-                              <div className="col-span-4 flex justify-end">
-                                {attendance.is_late ? (
-                                  <Badge variant="outline" className="text-[10px] px-1.5 h-5 text-red-600 bg-red-50 border-red-200">Telat</Badge>
-                                ) : attendance.status === 'present' ? (
-                                  <Badge variant="outline" className="text-[10px] px-1.5 h-5 text-green-600 bg-green-50 border-green-200">Hadir</Badge>
-                                ) : (
-                                  <Badge variant="outline" className="text-[10px] px-1.5 h-5 bg-slate-50">{attendance.status}</Badge>
+                        {(() => {
+                          const monthStart = startOfMonth(selectedMonth);
+                          const monthEnd = endOfMonth(monthStart);
+                          const calendarStart = startOfWeek(monthStart);
+                          const calendarEnd = endOfWeek(monthEnd);
+
+                          const days = eachDayOfInterval({
+                            start: calendarStart,
+                            end: calendarEnd
+                          });
+
+                          return days.map((day, idx) => {
+                            const dateStr = format(day, 'yyyy-MM-dd');
+                            const attendance = attendances.find(a => a.date === dateStr);
+                            const holiday = holidays.find(h => h.date === dateStr);
+                            const isSunday = getDay(day) === 0;
+                            const isCurrentMonth = isSameMonth(day, monthStart);
+
+                            let bgColor = 'bg-transparent';
+                            let textColor = 'text-slate-900';
+                            let borderColor = 'border-transparent';
+
+                            if (attendance) {
+                              if (attendance.is_late) {
+                                bgColor = 'bg-red-50';
+                                textColor = 'text-red-700';
+                                borderColor = 'border-red-200';
+                              } else if (attendance.status === 'present') {
+                                bgColor = 'bg-green-50';
+                                textColor = 'text-green-700';
+                                borderColor = 'border-green-200';
+                              } else if (attendance.status === 'leave') {
+                                bgColor = 'bg-purple-50';
+                                textColor = 'text-purple-700';
+                                borderColor = 'border-purple-200';
+                              } else if (attendance.status === 'sick') {
+                                bgColor = 'bg-yellow-50';
+                                textColor = 'text-yellow-700';
+                                borderColor = 'border-yellow-200';
+                              }
+                            } else if (holiday || isSunday) {
+                              textColor = 'text-red-500';
+                              if (holiday) bgColor = 'bg-red-50/30';
+                            }
+
+                            return (
+                              <div
+                                key={idx}
+                                className={cn(
+                                  "aspect-square flex flex-col items-center justify-center rounded-xl border text-sm transition-all",
+                                  !isCurrentMonth ? "opacity-20 translate-y-1 scale-95 pointer-events-none" : "hover:scale-105 cursor-default",
+                                  bgColor,
+                                  borderColor,
+                                  isSameDay(day, new Date()) && "ring-2 ring-blue-500 ring-offset-2"
+                                )}
+                              >
+                                <span className={cn("font-bold text-xs", textColor)}>
+                                  {format(day, 'd')}
+                                </span>
+                                {holiday && isCurrentMonth && (
+                                  <div className="w-1 h-1 bg-red-500 rounded-full mt-0.5" />
+                                )}
+                                {attendance && isCurrentMonth && (
+                                  <div className={cn(
+                                    "w-1 h-1 rounded-full mt-0.5",
+                                    attendance.is_late ? "bg-red-500" : "bg-green-500"
+                                  )} />
                                 )}
                               </div>
-                            </div>
-                          ))}
-                        </div>
+                            );
+                          });
+                        })()}
                       </div>
-                    </>
-                  ) : (
-                    <div className="p-6 flex flex-col items-center">
-                      <Calendar
-                        mode="single"
-                        selected={selectedMonth}
-                        onSelect={(date) => date && setSelectedMonth(date)}
-                        month={selectedMonth}
-                        onMonthChange={setSelectedMonth}
-                        className="rounded-md border shadow p-4 w-fit"
-                        modifiers={{
-                          present: attendances.filter(a => a.status === 'present' && !a.is_late).map(a => new Date(a.date)),
-                          late: attendances.filter(a => a.is_late).map(a => new Date(a.date)),
-                          leave: attendances.filter(a => a.status === 'leave').map(a => new Date(a.date)),
-                          sick: attendances.filter(a => a.status === 'sick').map(a => new Date(a.date)),
-                          absent: attendances.filter(a => a.status === 'absent').map(a => new Date(a.date)),
-                          holiday: (date) => {
-                            // Import this efficiently or copy logic. Since we can't import easily in replace_block without top-level, 
-                            // we will assume we added the import at top, OR generic logic here if simple.
-                            // But better to use the helper. 
-                            // For this block let's rely on the import I will add in a separate step or just inline the data if small? 
-                            // No, I created the file. I need to add the import.
-                            // I will add the import in a separate multi_replace or use multi_replace for this too.
-                            const d = format(date, 'yyyy-MM-dd');
-                            // Check holidays list (I'll need to pass it in or import it)
-                            return holidays.some(h => h.date === d);
-                          },
-                          sunday: (date) => date.getDay() === 0,
-                        }}
-                        modifiersStyles={{
-                          present: { backgroundColor: '#dcfce7', color: '#166534', fontWeight: 'bold' },
-                          late: { backgroundColor: '#fee2e2', color: '#991b1b', fontWeight: 'bold' },
-                          leave: { backgroundColor: '#f3e8ff', color: '#6b21a8', fontWeight: 'bold' },
-                          sick: { backgroundColor: '#fef9c3', color: '#854d0e', fontWeight: 'bold' },
-                          absent: { backgroundColor: '#f1f5f9', color: '#64748b', fontWeight: 'bold' },
-                          holiday: { color: '#ef4444', fontWeight: 'bold' }, // Red text for holidays
-                          sunday: { color: '#ef4444' } // Red text for Sundays
-                        }}
-                      // Custom footer to show holiday name if selected or hovered could be cool, but for now just Legend
-                      />
 
                       {/* Calendar Legend */}
-                      <div className="flex flex-wrap gap-4 mt-6 justify-center">
+                      <div className="grid grid-cols-3 gap-2 mt-8 p-3 bg-slate-50/50 rounded-2xl border border-slate-100">
                         <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-green-200 border border-green-600"></div>
-                          <span className="text-xs text-slate-600">Hadir</span>
+                          <div className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]"></div>
+                          <span className="text-[10px] font-bold text-slate-600">Hadir</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-red-200 border border-red-600"></div>
-                          <span className="text-xs text-slate-600">Terlambat</span>
+                          <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]"></div>
+                          <span className="text-[10px] font-bold text-slate-600">Telat</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-purple-200 border border-purple-600"></div>
-                          <span className="text-xs text-slate-600">Cuti</span>
+                          <div className="w-2.5 h-2.5 rounded-full bg-purple-500"></div>
+                          <span className="text-[10px] font-bold text-slate-600">Cuti</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-yellow-200 border border-yellow-600"></div>
-                          <span className="text-xs text-slate-600">Sakit</span>
+                          <div className="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
+                          <span className="text-[10px] font-bold text-slate-600">Sakit</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                          <span className="text-xs text-slate-600">Libur Nasional</span>
+                          <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></div>
+                          <span className="text-[10px] font-bold text-slate-600">Libur</span>
                         </div>
                       </div>
 
-                      {/* Holiday List for Selected Month */}
-                      <div className="w-full mt-6 space-y-2">
+                      {/* Holiday List */}
+                      <div className="mt-6 space-y-2">
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Daftar Hari Libur</h4>
                         {holidays
                           .filter(h => {
                             const date = new Date(h.date);
@@ -467,22 +525,37 @@ export default function HistoryPage() {
                               date.getFullYear() === selectedMonth.getFullYear();
                           })
                           .map((h, idx) => (
-                            <div key={idx} className="flex items-start gap-2 text-xs bg-red-50 p-2 rounded-lg border border-red-100">
-                              <span className="font-bold text-red-600 shrink-0 border-r border-red-200 pr-2 mr-1">
-                                {format(new Date(h.date), 'd MMM', { locale: id })}
-                              </span>
-                              <span className="text-red-700">{h.name}</span>
+                            <div key={idx} className="flex items-center gap-3 bg-white p-3 rounded-2xl border border-slate-100 shadow-sm animate-in slide-in-from-left-4 duration-300" style={{ animationDelay: `${idx * 50}ms` }}>
+                              <div className="w-10 h-10 rounded-xl bg-red-50 flex flex-col items-center justify-center shrink-0">
+                                <span className="text-[10px] font-bold text-red-400 leading-none">
+                                  {format(new Date(h.date), 'MMM', { locale: id })}
+                                </span>
+                                <span className="text-sm font-black text-red-600 leading-none mt-0.5">
+                                  {format(new Date(h.date), 'd')}
+                                </span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-slate-800 truncate">{h.name}</p>
+                                <p className="text-[10px] text-slate-400 font-medium">Libur Nasional</p>
+                              </div>
                             </div>
                           ))}
+                        {holidays.filter(h => {
+                          const date = new Date(h.date);
+                          return date.getMonth() === selectedMonth.getMonth() &&
+                            date.getFullYear() === selectedMonth.getFullYear();
+                        }).length === 0 && (
+                            <p className="text-[10px] text-slate-400 text-center py-4 italic">Tidak ada hari libur nasional bulan ini</p>
+                          )}
                       </div>
                     </div>
                   )}
-                </>
+                </div>
               )}
             </CardContent>
           </Card>
         </div>
       </div>
-    </DashboardLayout >
+    </DashboardLayout>
   );
 }

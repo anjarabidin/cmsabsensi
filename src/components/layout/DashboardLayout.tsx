@@ -37,9 +37,11 @@ import {
   Timer,
   Briefcase,
   ClipboardCheck,
-  Newspaper
+  Newspaper,
+  StickyNote
 } from 'lucide-react';
 import { AppLogo } from '@/components/AppLogo';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -49,7 +51,7 @@ interface NavItem {
   title: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
-  roles?: ('super_admin' | 'admin_hr' | 'manager' | 'employee')[];
+  roles?: ('admin_hr' | 'manager' | 'employee')[];
 }
 
 // Global Nav Groups for Desktop Sidebar
@@ -60,6 +62,8 @@ const navGroups = [
       { title: 'Dashboard', href: '/dashboard', icon: Home },
       { title: 'Berita & Info', href: '/information', icon: Newspaper },
       { title: 'Absensi', href: '/attendance', icon: Clock },
+      { title: 'Agenda Kerja', href: '/agenda', icon: ClipboardCheck },
+      { title: 'Catatan Pribadi', href: '/notes', icon: StickyNote },
       { title: 'Cuti / Izin', href: '/leave', icon: Briefcase },
       { title: 'Lembur', href: '/overtime', icon: Timer },
       { title: 'Riwayat', href: '/history', icon: Calendar },
@@ -87,6 +91,7 @@ const navGroups = [
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const isMobile = useIsMobile();
+  usePushNotifications();
   const { profile, roles, activeRole, switchRole, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -104,7 +109,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const getRoleBadge = () => {
     if (!activeRole) return '';
     switch (activeRole) {
-      case 'super_admin': return 'Super Admin';
       case 'admin_hr': return 'HRD';
       case 'manager': return 'Manager';
       case 'employee': return 'Staff';
@@ -114,7 +118,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const getRoleLabel = (role: string) => {
     switch (role) {
-      case 'super_admin': return 'Super Admin';
       case 'admin_hr': return 'Administrator';
       case 'manager': return 'Manajer';
       case 'employee': return 'Karyawan';
@@ -127,8 +130,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   // -------------------------------------------------------------------------
   if (isMobile) {
     return (
-      <div className="min-h-screen bg-slate-50/50 flex flex-col">
-        <main className="flex-1 pb-20">
+      <div className="min-h-screen bg-slate-50/50 flex flex-col overflow-x-hidden">
+        <main className="flex-1 pb-20 px-1 overflow-x-hidden">
           {children}
         </main>
 

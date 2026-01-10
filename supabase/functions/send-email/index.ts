@@ -20,7 +20,7 @@ interface EmailResponse {
   error?: string;
 }
 
-function handler(req: Request): Promise<Response> {
+async function handler(req: Request): Promise<Response> {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -28,24 +28,24 @@ function handler(req: Request): Promise<Response> {
 
   try {
     if (req.method !== 'POST') {
-      return new Response('Method not allowed', { 
-        status: 405, 
-        headers: corsHeaders 
+      return new Response('Method not allowed', {
+        status: 405,
+        headers: corsHeaders
       })
     }
 
     const body: EmailRequest = await req.json()
-    
+
     // Validate required fields
     if (!body.to || !body.subject || !body.html) {
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          message: 'Missing required fields: to, subject, html' 
+        JSON.stringify({
+          success: false,
+          message: 'Missing required fields: to, subject, html'
         } as EmailResponse),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
@@ -56,7 +56,7 @@ function handler(req: Request): Promise<Response> {
     // - SendGrid
     // - AWS SES
     // - Nodemailer (with SMTP)
-    
+
     console.log('📧 Email Details:', {
       to: body.to,
       subject: body.subject,
@@ -71,7 +71,7 @@ function handler(req: Request): Promise<Response> {
     const mockSendEmail = async (): Promise<boolean> => {
       // Simulate email sending delay
       await new Promise(resolve => setTimeout(resolve, 1000))
-      
+
       // For development, always return success
       // In production, this would be your actual email sending logic
       return true
@@ -81,41 +81,43 @@ function handler(req: Request): Promise<Response> {
 
     if (emailSent) {
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: 'Email sent successfully' 
+        JSON.stringify({
+          success: true,
+          message: 'Email sent successfully'
         } as EmailResponse),
-        { 
-          status: 200, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     } else {
       return new Response(
-        JSON.stringify({ 
-          success: false, 
+        JSON.stringify({
+          success: false,
           message: 'Failed to send email',
           error: 'Email service unavailable'
         } as EmailResponse),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
 
   } catch (error) {
     console.error('Email sending error:', error)
-    
+
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+
     return new Response(
-      JSON.stringify({ 
-        success: false, 
+      JSON.stringify({
+        success: false,
         message: 'Internal server error',
-        error: error.message 
+        error: errorMessage
       } as EmailResponse),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
   }

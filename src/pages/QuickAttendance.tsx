@@ -272,47 +272,7 @@ export default function QuickAttendancePage() {
 
                         <div className="px-6 pb-6 space-y-6">
 
-                            {/* GPS & Map Section - Always Visible to show Accuracy */}
-                            <div className="relative group rounded-3xl overflow-hidden shadow-lg ring-4 ring-white transition-all transform hover:scale-[1.01]">
-                                {latitude && longitude ? (
-                                    <div className="relative">
-                                        <GoogleMapsEmbed latitude={latitude} longitude={longitude} />
-                                        {/* Overlay Status Bar */}
-                                        <div className="absolute bottom-2 left-2 right-2 bg-white/90 backdrop-blur-md p-3 rounded-2xl shadow-sm flex items-center justify-between border border-white/50">
-                                            <div className="flex items-center gap-3">
-                                                <div className={cn("h-10 w-10 rounded-full flex items-center justify-center shadow-inner", gpsStatus.bg)}>
-                                                    <Navigation className={cn("h-5 w-5", gpsStatus.color, accuracy && accuracy > 50 ? "animate-pulse" : "")} />
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Akurasi GPS</p>
-                                                    <div className="flex items-center gap-1">
-                                                        <span className={cn("text-sm font-black", gpsStatus.color)}>{accuracy ? Math.round(accuracy) : '-'} Meter</span>
-                                                        <Badge variant="secondary" className={cn("text-[8px] h-4 px-1.5", gpsStatus.bg, gpsStatus.color)}>{gpsStatus.text}</Badge>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            {/* Signal Bars */}
-                                            <div className="flex items-end gap-0.5 h-4">
-                                                {[1, 2, 3, 4].map(i => (
-                                                    <div key={i} className={cn("w-1 rounded-t-sm transition-all", i <= gpsStatus.bar ? "bg-green-500" : "bg-slate-200")} style={{ height: `${i * 25}%` }} />
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="h-[200px] w-full bg-slate-50 flex flex-col items-center justify-center text-slate-400 gap-3">
-                                        <div className="relative">
-                                            <div className="absolute inset-0 bg-blue-500/20 rounded-full animate-ping" />
-                                            <div className="relative bg-white p-3 rounded-full shadow-sm">
-                                                <Navigation className="h-6 w-6 text-blue-500 animate-pulse" />
-                                            </div>
-                                        </div>
-                                        <p className="text-xs font-medium animate-pulse">Mencari titik lokasi...</p>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Camera / Action Section */}
+                            {/* Camera / Action Section - FIRST */}
                             <div className="bg-white rounded-3xl pt-2">
                                 {step === 'idle' && (
                                     <div className="text-center">
@@ -425,6 +385,47 @@ export default function QuickAttendancePage() {
                                     </div>
                                 )}
                             </div>
+
+                            {/* GPS & Map Section - SECOND */}
+                            <div className="relative group rounded-3xl overflow-hidden shadow-lg ring-4 ring-white transition-all transform hover:scale-[1.01]">
+                                {latitude && longitude ? (
+                                    <div className="relative">
+                                        <GoogleMapsEmbed latitude={latitude} longitude={longitude} />
+                                        {/* Overlay Status Bar */}
+                                        <div className="absolute bottom-2 left-2 right-2 bg-white/90 backdrop-blur-md p-3 rounded-2xl shadow-sm flex items-center justify-between border border-white/50">
+                                            <div className="flex items-center gap-3">
+                                                <div className={cn("h-10 w-10 rounded-full flex items-center justify-center shadow-inner", gpsStatus.bg)}>
+                                                    <Navigation className={cn("h-5 w-5", gpsStatus.color, accuracy && accuracy > 50 ? "animate-pulse" : "")} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Akurasi GPS</p>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className={cn("text-sm font-black", gpsStatus.color)}>{accuracy ? Math.round(accuracy) : '-'} Meter</span>
+                                                        <Badge variant="secondary" className={cn("text-[8px] h-4 px-1.5", gpsStatus.bg, gpsStatus.color)}>{gpsStatus.text}</Badge>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {/* Signal Bars */}
+                                            <div className="flex items-end gap-0.5 h-4">
+                                                {[1, 2, 3, 4].map(i => (
+                                                    <div key={i} className={cn("w-1 rounded-t-sm transition-all", i <= gpsStatus.bar ? "bg-green-500" : "bg-slate-200")} style={{ height: `${i * 25}%` }} />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="h-[200px] w-full bg-slate-50 flex flex-col items-center justify-center text-slate-400 gap-3">
+                                        <div className="relative">
+                                            <div className="absolute inset-0 bg-blue-500/20 rounded-full animate-ping" />
+                                            <div className="relative bg-white p-3 rounded-full shadow-sm">
+                                                <Navigation className="h-6 w-6 text-blue-500 animate-pulse" />
+                                            </div>
+                                        </div>
+                                        <p className="text-xs font-medium animate-pulse">Mencari titik lokasi...</p>
+                                    </div>
+                                )}
+                            </div>
+
                         </div>
                     </CardContent>
                 </Card>

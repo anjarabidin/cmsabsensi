@@ -199,41 +199,174 @@ export default function AttendancePage() {
     }
   };
 
-  const openCamera = async () => {
+  // Check face match before allowing attendance
+  const checkFaceMatch = async (): Promise<boolean> => {
+    if (!videoRef.current || !modelsLoaded) {
+      toast({
+        title: 'Sistem Belum Siap',
+        description: 'Model face recognition sedang dimuat',
+        variant: 'destructive'
+      });
+      return false;
+    }
+
+    setCheckingFace(true);
+
     try {
-      // Check if running on native platform
-      if (!Capacitor.isNativePlatform()) {
+      // Get current face descriptor from video
+      const currentDescriptor = await getFaceDescriptor(videoRef.current);
+
+      if (!currentDescriptor) {
+        setFaceDetected(false);
         toast({
-          title: 'Kamera Tidak Tersedia',
-          description: 'Kamera hanya berfungsi di aplikasi mobile native',
+          title: 'Wajah Tidak Terdeteksi',
+          description: 'Pastikan wajah Anda terlihat jelas di kamera',
           variant: 'destructive'
         });
-        return;
+        return false;
       }
 
-      // Refresh location before taking photo
-      await getLocation();
+      setFaceDetected(true);
 
-      // Take photo using Capacitor Camera Plugin
-      const photoDataUrl = await takePhoto();
-      const photoBlob = dataUrlToBlob(photoDataUrl);
+      // Get registered face from database
+      const { data: faceData, error } = await supabase
+        .from('face_descriptors')
+        .select('descriptor')
+        .eq('user_id', user?.id)
+        .order('quality_score', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      setCapturedPhoto(photoBlob);
-      setPhotoPreview(photoDataUrl);
+      if (error || !faceData) {
+        toast({
+          title: 'Belum Registrasi Wajah',
+          description: 'Silakan daftar wajah Anda terlebih dahulu di menu Profile',
+          variant: 'destructive'
+        });
+        return false;
+      }
 
+      // Compare faces
+      const registeredDescriptor = new Float32Array(faceData.descriptor as any);
+      const similarity = compareFaces(currentDescriptor, registeredDescriptor);
+
+      setFaceMatch(similarity);
+
+      // Threshold: 0.6 = 60% match
+      if (similarity < 0.6) {
+        toast({
+          title: 'Wajah Tidak Cocok',
+          description: `Tingkat kemiripan: ${(similarity * 100).toFixed(0)}% (minimum 60%)`,
+          variant: 'destructive'
+        });
+        return false;
+      }
+
+      // Success!
       toast({
-        title: 'Foto Berhasil',
-        description: 'Foto berhasil diambil',
+        title: 'Wajah Terverifikasi ✓',
+        description: `Tingkat kemiripan: ${(similarity * 100).toFixed(0)}%`,
+        className: 'bg-green-600 text-white border-none'
       });
-    } catch (error: any) {
-      console.error('Camera error:', error);
+
+      return true;
+
+    } catch (error) {
+      console.error('Face matching error:', error);
       toast({
-        title: 'Gagal',
-        description: error.message || 'Gagal mengambil foto',
+        title: 'Error',
+        description: 'Gagal memverifikasi wajah',
         variant: 'destructive'
+      });
+      return false;
+    } finally {
+      setCheckingFace(false);
+    }
+  };
+
+  const openCamera = async () => {
+    try {
+      setCameraOpen(true);
+      await getLocation();
+      await startCamera();
+
+      // Auto-check face every 2 seconds
+      const interval = setInterval(async () => {
+        if (videoRef.current && modelsLoaded && !checkingFace) {
+          try {
+            const descriptor = await getFaceDescriptor(videoRef.current);
+            setFaceDetected(descriptor !== null);
+
+            // Auto-match if face detected
+            if (descriptor && user) {
+              const { data: faceData } = await supabase
+                .from('face_descriptors')
+                .select('descriptor')
+                .eq('user_id', user.id)
+                .order('quality_score', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              if (faceData) {
+                const registeredDescriptor = new Float32Array(faceData.descriptor as any);
+                const similarity = compareFaces(descriptor, registeredDescriptor);
+                setFaceMatch(similarity);
+              }
+            }
+          } catch (error) {
+            console.error('Auto face check error:', error);
+          }
+        }
+      }, 2000);
+
+      // Store interval ID to clear later
+      (window as any).faceCheckInterval = interval;
+
+    } catch (error) {
+      setCameraOpen(false);
+      const errorMessage = error instanceof Error ? error.message : 'Gagal mengakses kamera';
+      toast({
+        title: 'Gagal Membuka Kamera',
+        description: errorMessage,
+        variant: 'destructive',
       });
     }
   };
+
+  const handleCapturePhoto = async () => {
+    try {
+      // FIRST: Check face match
+      const isMatch = await checkFaceMatch();
+      if (!isMatch) {
+        return; // Block if no match
+      }
+
+      // THEN: Capture photo
+      const photo = await capturePhoto();
+      setCapturedPhoto(photo);
+      setPhotoPreview(URL.createObjectURL(photo));
+
+      // Clear interval
+      if ((window as any).faceCheckInterval) {
+        clearInterval((window as any).faceCheckInterval);
+      }
+
+      stopCamera();
+      setCameraOpen(false);
+    } catch (error) {
+      console.error('Capture error:', error);
+      toast({ title: 'Gagal', description: 'Gagal mengambil foto', variant: 'destructive' });
+    }
+  };
+
+  // Cleanup for face check interval
+  useEffect(() => {
+    return () => {
+      if ((window as any).faceCheckInterval) {
+        clearInterval((window as any).faceCheckInterval);
+      }
+    };
+  }, []);
 
   const handleSubmit = async () => {
     if (!user || latitude == null || longitude == null || !capturedPhoto) {
@@ -626,7 +759,7 @@ export default function AttendancePage() {
                         : "bg-orange-500 hover:bg-orange-600 shadow-orange-500/25",
                       (loading || submitting || todaySchedule?.is_day_off || (todayAttendance?.clock_out)) && "opacity-50 grayscale cursor-not-allowed transform-none shadow-none"
                     )}
-                    onClick={openCamera}
+                    onClick={() => capturedPhoto ? handleSubmit() : openCamera()}
                     disabled={loading || submitting || !!todaySchedule?.is_day_off || !!todayAttendance?.clock_out}
                   >
                     {loading ? (
@@ -656,10 +789,139 @@ export default function AttendancePage() {
             </Card>
           )}
 
-          <div className="text-[10px] text-slate-400 text-center px-8 leading-relaxed font-bold uppercase tracking-widest opacity-60">
-            Pastikan Anda berada di lokasi yang ditentukan sebelum menekan tombol absensi.
-          </div>
         </div>
+
+        {/* Fullscreen Camera Modal - Face Recognition Version */}
+        <Dialog open={cameraOpen} onOpenChange={(open) => {
+          if (!open) {
+            if ((window as any).faceCheckInterval) {
+              clearInterval((window as any).faceCheckInterval);
+            }
+            stopCamera();
+            setCameraOpen(false);
+          }
+        }}>
+          <DialogContent className="max-w-md p-0 border-none bg-black text-white gap-0 overflow-hidden rounded-none sm:rounded-[40px] z-[100]">
+            <div className="relative aspect-[3/4] w-full bg-black">
+              {!stream ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-6">
+                  <div className="h-20 w-20 bg-white/10 rounded-full flex items-center justify-center">
+                    <Loader2 className="h-10 w-10 animate-spin text-white" />
+                  </div>
+                  <div className="text-center space-y-1">
+                    <p className="text-sm font-black uppercase tracking-[0.2em] text-white">Menyiapkan Kamera</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">Mohon Tunggu Sebentar</p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    style={{ transform: 'scaleX(-1)' }}
+                    className="w-full h-full object-cover"
+                  />
+
+                  {/* Face Recognition Overlay */}
+                  <div className="absolute top-10 inset-x-0 flex flex-col items-center gap-4 z-20">
+                    <div className="flex gap-2">
+                      <Badge
+                        variant={faceDetected ? "default" : "destructive"}
+                        className={cn(
+                          "gap-2 px-3 py-1.5 border-none shadow-lg backdrop-blur-md",
+                          faceDetected ? "bg-green-600/90" : "bg-yellow-600/90"
+                        )}
+                      >
+                        <Scan className={cn("h-3 w-3", faceDetected && "animate-pulse")} />
+                        {faceDetected ? 'Wajah Terdeteksi' : 'Mencari Wajah...'}
+                      </Badge>
+
+                      {faceMatch !== null && (
+                        <Badge
+                          className={cn(
+                            "px-3 py-1.5 font-black border-none shadow-lg backdrop-blur-md",
+                            faceMatch >= 0.6 ? "bg-blue-600/90" : "bg-red-600/90"
+                          )}
+                        >
+                          Match: {(faceMatch * 100).toFixed(0)}%
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Recognition Frame */}
+                  <div className="absolute inset-x-12 inset-y-24 border-2 border-dashed border-white/30 rounded-[60px] flex flex-col items-center justify-center">
+                    {!faceDetected && (
+                      <div className="flex flex-col items-center gap-2 animate-pulse">
+                        <div className="h-12 w-12 rounded-full border-2 border-white/20 flex items-center justify-center">
+                          <Scan className="h-6 w-6 text-white/40" />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Posisikan Wajah Anda</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Loading indicator when checking face */}
+                  {checkingFace && (
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center z-30">
+                      <div className="bg-white rounded-[32px] p-6 flex flex-col items-center gap-4 shadow-2xl animate-in zoom-in duration-300">
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-blue-500/20 rounded-full animate-ping" />
+                          <div className="relative h-16 w-16 bg-blue-600 rounded-full flex items-center justify-center">
+                            <RefreshCw className="h-8 w-8 animate-spin text-white" />
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm font-black text-slate-900 uppercase tracking-tighter">Memverifikasi Wajah</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Verifikasi Biometrik</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Camera Actions */}
+              <div className="absolute bottom-10 inset-x-0 flex justify-center items-center gap-12 z-40">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-16 w-16 rounded-full text-white hover:bg-white/20 active:scale-90 transition-transform"
+                  onClick={() => {
+                    if ((window as any).faceCheckInterval) {
+                      clearInterval((window as any).faceCheckInterval);
+                    }
+                    stopCamera();
+                    setCameraOpen(false);
+                  }}
+                >
+                  <X className="h-8 w-8" />
+                </Button>
+
+                <button
+                  onClick={handleCapturePhoto}
+                  disabled={!stream || checkingFace || !faceDetected || (faceMatch !== null && faceMatch < 0.6)}
+                  className={cn(
+                    "h-24 w-24 rounded-full border-4 border-white flex items-center justify-center p-1.5 transition-all duration-300",
+                    (!stream || checkingFace || !faceDetected || (faceMatch !== null && faceMatch < 0.6))
+                      ? "opacity-20 grayscale scale-90"
+                      : "active:scale-95 hover:scale-105"
+                  )}
+                >
+                  <div className={cn(
+                    "h-full w-full rounded-full transition-colors duration-500",
+                    faceMatch !== null && faceMatch >= 0.6 ? "bg-green-500 shadow-[0_0_20px_rgba(34,197,94,0.6)]" : "bg-white"
+                  )} />
+                </button>
+
+                <div className="h-16 w-16 invisible" />
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
       </div>
     </DashboardLayout>
   );

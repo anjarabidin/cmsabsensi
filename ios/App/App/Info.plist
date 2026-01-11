@@ -55,5 +55,7 @@
 	<string>Aplikasi ini memerlukan izin menyimpan foto absensi.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Aplikasi ini memerlukan akses galeri untuk mengunggah bukti foto.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Aplikasi ini memerlukan akses Face ID untuk verifikasi masuk lebih cepat.</string>
 </dict>
 </plist>

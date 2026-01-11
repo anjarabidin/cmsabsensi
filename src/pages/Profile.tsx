@@ -12,7 +12,13 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
 import { useCamera } from '@/hooks/useCamera';
+import { useFaceRecognition } from '@/hooks/useFaceRecognition';
+import * as faceapi from 'face-api.js';
+import { Switch } from '@/components/ui/switch';
+import { ScanFace } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { NativeBiometric } from '@capgo/capacitor-native-biometric';
+import { Capacitor } from '@capacitor/core';
 import {
   Camera,
   CheckCircle2,
@@ -49,6 +55,81 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { stream, videoRef, startCamera, stopCamera, capturePhoto } = useCamera();
+  const { loadModels, modelsLoaded } = useFaceRecognition();
+
+  const [faceLoginEnabled, setFaceLoginEnabled] = useState(false);
+  const [fingerprintEnabled, setFingerprintEnabled] = useState(false);
+
+  const [faceDataRegistered, setFaceDataRegistered] = useState(false);
+
+  useEffect(() => {
+    setFaceLoginEnabled(localStorage.getItem('face_login_enabled') === 'true');
+    setFingerprintEnabled(localStorage.getItem('fingerprint_enabled') === 'true');
+    checkFaceRegistration();
+  }, [user]);
+
+  const checkFaceRegistration = async () => {
+    if (!user) return;
+    try {
+      const { data } = await supabase
+        .from('face_descriptors')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .maybeSingle();
+      setFaceDataRegistered(!!data);
+    } catch (err) {
+      console.error('Error checking face reg:', err);
+    }
+  };
+
+  const toggleFaceLogin = (enabled: boolean) => {
+    setFaceLoginEnabled(enabled);
+    localStorage.setItem('face_login_enabled', enabled ? 'true' : 'false');
+    if (enabled) toast({ title: 'Login Wajah Diaktifkan', description: 'Anda sekarang bisa login menggunakan wajah.' });
+  };
+
+  const toggleFingerprint = async (enabled: boolean) => {
+    if (enabled) {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const result = await NativeBiometric.isAvailable();
+          if (!result.isAvailable) {
+            toast({
+              title: 'Tidak Didukung',
+              description: 'Perangkat Anda tidak mendukung biometrik native.',
+              variant: 'destructive'
+            });
+            return;
+          }
+
+          // Force verification once before enabling
+          await NativeBiometric.verifyIdentity({
+            reason: "Verifikasi untuk mengaktifkan login biometrik",
+            title: "Konfirmasi Biometrik"
+          });
+
+          setFingerprintEnabled(true);
+          localStorage.setItem('fingerprint_enabled', 'true');
+          toast({ title: 'Biometrik Aktif', description: 'Anda bisa masuk menggunakan Sidik Jari/Face ID perangkat.' });
+        } catch (error) {
+          console.error('Biometric toggle error:', error);
+          toast({ title: 'Gagal Mengaktifkan', description: 'Verifikasi biometrik dibatalkan atau gagal.', variant: 'destructive' });
+        }
+      } else {
+        // Web simulation fallback but with a warning
+        setFingerprintEnabled(true);
+        localStorage.setItem('fingerprint_enabled', 'true');
+        toast({
+          title: 'Mode Browser Terdeteksi',
+          description: 'Fitur sidik jari native akan aktif saat Anda menggunakan aplikasi di HP (Android/iOS).',
+        });
+      }
+    } else {
+      setFingerprintEnabled(false);
+      localStorage.setItem('fingerprint_enabled', 'false');
+    }
+  };
 
   const [consentChecked, setConsentChecked] = useState(false);
   const [consentSaving, setConsentSaving] = useState(false);
@@ -89,8 +170,29 @@ export default function ProfilePage() {
   }, [consentKey]);
 
   const isEnrolled = useMemo(() => {
-    return Boolean(profile?.avatar_url);
-  }, [profile?.avatar_url]);
+    return faceDataRegistered;
+  }, [faceDataRegistered]);
+
+  const handleDeleteFaceData = async () => {
+    if (!user) return;
+    if (!confirm('Hapus data wajah Anda? Anda tidak akan bisa melakukan absen atau login wajah sampai melakukan pendaftaran ulang.')) return;
+
+    try {
+      setEnrolling(true);
+      const { error } = await supabase
+        .from('face_descriptors')
+        .update({ is_active: false })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      setFaceDataRegistered(false);
+      toast({ title: 'Data Wajah Dihapus', description: 'Data biometrik Anda telah dinonaktifkan.' });
+    } catch (err) {
+      toast({ title: 'Gagal menghapus data', variant: 'destructive' });
+    } finally {
+      setEnrolling(false);
+    }
+  };
 
   useEffect(() => {
     if (enrollStep === 'camera' && stream && videoRef.current) {
@@ -252,19 +354,52 @@ export default function ProfilePage() {
     if (!enrollmentBlob || !user) return;
     setEnrolling(true);
     try {
-      const fileName = `${user.id}/avatar_${Date.now()}.jpg`;
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, enrollmentBlob, { upsert: true });
+      // 1. Detect Face and Extract Descriptor
+      if (!modelsLoaded) {
+        await loadModels();
+      }
+
+      const img = await faceapi.fetchImage(URL.createObjectURL(enrollmentBlob));
+      const detection = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
+      if (!detection) {
+        throw new Error('Wajah tidak terdeteksi dengan jelas. Pastikan pencahayaan cukup.');
+      }
+
+      // 2. Upload Reference Photo to dedicated bucket
+      const fileName = `${user.id}/face_${Date.now()}.jpg`;
+      const { error: uploadError } = await supabase.storage.from('face-images').upload(fileName, enrollmentBlob, { upsert: true });
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
-      const { error: updateError } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
-      if (updateError) throw updateError;
+      const { data: { publicUrl } } = supabase.storage.from('face-images').getPublicUrl(fileName);
 
-      toast({ title: 'Enrollment Berhasil', description: 'Wajah Anda telah terdaftar.' });
+      // 3. Update ONLY face_descriptors table (Separate from Profile)
+      const { error: faceError } = await supabase.from('face_descriptors').upsert({
+        user_id: user.id,
+        descriptor: Array.from(detection.descriptor),
+        image_url: publicUrl,
+        is_active: true,
+        updated_at: new Date().toISOString()
+      });
+
+      if (faceError) throw faceError;
+
+      toast({
+        title: 'Data Wajah Tersimpan',
+        description: 'Data ini akan digunakan untuk absensi & login. Foto profil Anda tetap tidak berubah.'
+      });
+
       setEnrollStep('idle');
-      window.location.reload();
+      await checkFaceRegistration();
     } catch (error) {
-      toast({ title: 'Gagal enrollment', variant: 'destructive' });
+      console.error('Enrollment error:', error);
+      toast({
+        title: 'Gagal Mendaftarkan Wajah',
+        description: error instanceof Error ? error.message : 'Terjadi kesalahan sistem',
+        variant: 'destructive'
+      });
     } finally {
       setEnrolling(false);
     }
@@ -452,49 +587,51 @@ export default function ProfilePage() {
 
           {/* 4. Security & Biometrics Section */}
           <div className="space-y-4 pt-4 text-white">
-            <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] ml-4">Keamanan & Perangkat</h3>
+            <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] ml-4">Biometrik Absensi</h3>
             <Card className="border-none shadow-md rounded-3xl overflow-hidden bg-gradient-to-br from-indigo-600 to-blue-800 text-white p-1">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-4">
                     <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-md shadow-sm border border-white/20">
-                      <Fingerprint className="h-6 w-6 text-white" />
+                      <ScanFace className="h-6 w-6 text-white" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-blue-100 mb-1">Verifikasi Biometrik</p>
-                      <h4 className="text-lg font-black">{isEnrolled ? 'Face ID Aktif' : 'Face ID Nonaktif'}</h4>
+                      <p className="text-xs font-bold text-blue-100 mb-1">Status Data Wajah</p>
+                      <h4 className="text-lg font-black">{faceDataRegistered ? 'Terdaftar' : 'Belum Ada Data'}</h4>
                     </div>
                   </div>
-                  <Badge className={`border-none ${isEnrolled ? 'bg-green-400 text-green-900' : 'bg-white/20 text-white'}`}>
-                    {isEnrolled ? 'Aman' : 'Pending'}
+                  <Badge className={`border-none ${faceDataRegistered ? 'bg-green-400 text-green-900' : 'bg-white/20 text-white'}`}>
+                    {faceDataRegistered ? 'AKTIF' : 'PENDING'}
                   </Badge>
                 </div>
 
-                {!isEnrolled ? (
-                  <div className="space-y-4">
-                    <Alert className="bg-white/10 border-white/20 text-white p-3 rounded-2xl">
-                      <Info className="h-4 w-4 text-blue-200" />
-                      <AlertDescription className="text-xs text-blue-50 leading-relaxed ml-2">
-                        Daftarkan wajah Anda untuk melakukan absensi yang lebih cepat dan aman.
-                      </AlertDescription>
-                    </Alert>
+                <div className="space-y-4">
+                  <Alert className="bg-white/10 border-white/20 text-white p-3 rounded-2xl">
+                    <Info className="h-4 w-4 text-blue-200" />
+                    <AlertDescription className="text-xs text-blue-50 leading-relaxed ml-2">
+                      Data wajah ini digunakan khusus untuk <b>Absensi Cerdas</b> dan <b>Login Wajah</b>. Berbeda dengan foto profil Anda.
+                    </AlertDescription>
+                  </Alert>
+
+                  <div className="grid grid-cols-2 gap-3">
                     <Button
-                      className="w-full h-12 bg-white text-blue-600 hover:bg-white/90 rounded-2xl font-black shadow-xl"
+                      className={`h-12 ${faceDataRegistered ? 'bg-white/20 hover:bg-white/30 text-white' : 'bg-white text-blue-600 hover:bg-white/90'} rounded-2xl font-black shadow-xl`}
                       onClick={handleStartEnroll}
                     >
-                      Daftarkan Wajah Sekarang
+                      {faceDataRegistered ? 'Ubah Data' : 'Daftar Sekarang'}
                     </Button>
+
+                    {faceDataRegistered && (
+                      <Button
+                        variant="ghost"
+                        className="h-12 bg-red-400/20 hover:bg-red-400/40 text-red-100 rounded-2xl font-black"
+                        onClick={handleDeleteFaceData}
+                      >
+                        Hapus Data
+                      </Button>
+                    )}
                   </div>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    className="w-full text-blue-100 hover:bg-white/10 rounded-2xl h-12 font-bold"
-                    onClick={handleStartEnroll}
-                  >
-                    <Camera className="mr-2 h-5 w-5" />
-                    Update Foto Wajah
-                  </Button>
-                )}
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -508,34 +645,82 @@ export default function ProfilePage() {
               </Button>
             </div>
             <Card className="border-none shadow-md rounded-3xl overflow-hidden bg-white">
-              <CardContent className="p-2">
-                <div className="grid grid-cols-2">
-                  {[
-                    { icon: <Camera className="h-5 w-5" />, label: 'Kamera', status: cameraPermission, color: 'blue', action: requestCameraPermission },
-                    { icon: <MapPin className="h-5 w-5" />, label: 'Lokasi', status: locationPermission, color: 'emerald', action: requestLocationPermission },
-                    { icon: <Bell className="h-5 w-5" />, label: 'Notif', status: notificationPermission, color: 'purple', action: requestNotificationPermission },
-                    { icon: <HardDrive className="h-5 w-5" />, label: 'Storage', status: storagePermission, color: 'orange', action: null }
-                  ].map((item, idx) => (
-                    <div key={idx} className="p-4 border-b border-r border-slate-50 last:border-0 hover:bg-slate-50 transition-all flex flex-col items-center gap-3">
-                      <div className={`p-3 rounded-2xl bg-${item.color}-50 text-${item.color}-600`}>
+              <CardContent className="p-4 space-y-1">
+                {[
+                  { icon: <Camera className="h-5 w-5" />, label: 'Akses Kamera', desc: 'Absensi & Verifikasi Wajah', status: cameraPermission, color: 'blue', action: requestCameraPermission },
+                  { icon: <MapPin className="h-5 w-5" />, label: 'Akses Lokasi', desc: 'Validasi Lokasi Kerja', status: locationPermission, color: 'emerald', action: requestLocationPermission },
+                  { icon: <Bell className="h-5 w-5" />, label: 'Notifikasi', desc: 'Pengumuman & Info Penting', status: notificationPermission, color: 'purple', action: requestNotificationPermission },
+                  { icon: <HardDrive className="h-5 w-5" />, label: 'Penyimpanan', desc: 'Cache Foto & Data', status: storagePermission, color: 'orange', action: null }
+                ].map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl transition-colors">
+                    <div className="flex items-center gap-4">
+                      <div className={`p-2.5 rounded-xl bg-${item.color}-50 text-${item.color}-600`}>
                         {item.icon}
                       </div>
-                      <p className="text-xs font-bold text-slate-700">{item.label}</p>
-                      <Badge
-                        variant="outline"
-                        className={`text-[9px] px-2 py-0 h-5 border-none ${item.status === 'granted' ? 'bg-green-100 text-green-700' :
-                          item.status === 'denied' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
-                          }`}
-                        onClick={item.action as any}
-                      >
-                        {item.status === 'granted' ? 'OKE' : item.status === 'denied' ? 'OFF' : '??'}
-                      </Badge>
+                      <div>
+                        <p className="text-sm font-bold text-slate-800">{item.label}</p>
+                        <p className="text-[10px] text-slate-500 font-medium">{item.desc}</p>
+                      </div>
                     </div>
-                  ))}
+                    <div className="flex items-center gap-3">
+                      <Badge variant="secondary" className={`h-6 px-3 rounded-full text-[10px] font-bold ${item.status === 'granted' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                        {item.status === 'granted' ? 'DIIZINKAN' : 'NONAKTIF'}
+                      </Badge>
+                      {item.status !== 'granted' && item.action && (
+                        <Switch checked={item.status === 'granted'} onCheckedChange={() => (item.action as any)()} />
+                      )}
+                      {item.status === 'granted' && (
+                        <div className="h-6 w-11 bg-green-500 rounded-full flex items-center justify-end px-1">
+                          <div className="h-4 w-4 bg-white rounded-full shadow-sm" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* 6. Login Settings Section */}
+          <div className="space-y-4 pt-4">
+            <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] ml-4">Pengaturan Masuk</h3>
+            <Card className="border-none shadow-md rounded-3xl overflow-hidden bg-white">
+              <CardContent className="p-6 space-y-6">
+                {/* Face Login Toggle */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-2xl bg-indigo-50 text-indigo-600">
+                      <ScanFace className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">Login Wajah Otomatis</p>
+                      <p className="text-[10px] text-slate-500 leading-tight max-w-[200px]">
+                        Buka kamera otomatis saat login untuk masuk lebih cepat
+                      </p>
+                    </div>
+                  </div>
+                  <Switch checked={faceLoginEnabled} onCheckedChange={toggleFaceLogin} />
+                </div>
+
+                {/* Fingerprint Toggle */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-2xl bg-rose-50 text-rose-600">
+                      <Fingerprint className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">Login Sidik Jari</p>
+                      <p className="text-[10px] text-slate-500 leading-tight max-w-[200px]">
+                        Gunakan sensor sidik jari perangkat (Jika tersedia)
+                      </p>
+                    </div>
+                  </div>
+                  <Switch checked={fingerprintEnabled} onCheckedChange={toggleFingerprint} />
                 </div>
               </CardContent>
             </Card>
           </div>
+
 
           {/* 6. Logout Area */}
           <div className="pt-12 pb-6">

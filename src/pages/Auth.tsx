@@ -12,6 +12,8 @@ import { EnhancedFaceRecognition } from '@/components/face-recognition/EnhancedF
 import { Loader2, Lock, Mail, User, ArrowRight, Sparkles, Fingerprint, ScanFace } from 'lucide-react';
 import { z } from 'zod';
 import { AppLogo } from '@/components/AppLogo';
+import { NativeBiometric } from '@capgo/capacitor-native-biometric';
+import { Capacitor } from '@capacitor/core';
 
 const emailSchema = z.string().email('Email tidak valid');
 const passwordSchema = z.string().min(6, 'Password minimal 6 karakter');
@@ -105,11 +107,65 @@ export default function Auth() {
       return;
     }
 
-    setIsLoading(true);
-    // Open Face ID Dialog
-    setShowFaceLogin(true);
-    setIsLoading(false);
+    const fingerprintEnabled = localStorage.getItem('fingerprint_enabled') === 'true';
+    const isNative = Capacitor.isNativePlatform();
+
+    if (fingerprintEnabled && isNative) {
+      handleNativeBiometric();
+    } else {
+      // Fallback to Face ID (Web-ready)
+      setShowFaceLogin(true);
+    }
   };
+
+  const handleNativeBiometric = async () => {
+    try {
+      setIsLoading(true);
+      const result = await NativeBiometric.isAvailable();
+
+      if (!result.isAvailable) {
+        setShowFaceLogin(true); // Fallback
+        return;
+      }
+
+      const verified = await NativeBiometric.verifyIdentity({
+        reason: "Masuk ke Akun Anda",
+        title: "Verifikasi Biometrik",
+        subtitle: "Gunakan Sidik Jari atau Wajah untuk masuk",
+        description: "Tempelkan jari Anda pada sensor",
+        negativeButtonText: "Batal",
+      });
+
+      if (verified) {
+        toast({
+          title: 'Verifikasi Berhasil',
+          description: `Selamat datang kembali, ${lastUser?.name}!`,
+        });
+        navigate('/dashboard');
+      }
+    } catch (error: any) {
+      console.error('Biometric error:', error);
+      // If error is "user canceled", don't show toast
+      if (error.message?.includes('User canceled') || error.code === 'USER_CANCELED') {
+        return;
+      }
+      setShowFaceLogin(true); // Fallback on any error
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Auto-trigger biometric login if enabled
+  useEffect(() => {
+    const faceLoginEnabled = localStorage.getItem('face_login_enabled') === 'true';
+    if (faceLoginEnabled && lastUser && !isLoading && !showFaceLogin) {
+      // Small delay to ensure smooth UX
+      const timer = setTimeout(() => {
+        handleBiometricLogin();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [lastUser]); // Only run when lastUser loads
 
   const onFaceVerified = (success: boolean, data?: any) => {
     if (success) {

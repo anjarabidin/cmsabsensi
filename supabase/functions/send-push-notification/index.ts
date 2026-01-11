@@ -96,6 +96,7 @@ serve(async (req) => {
                             notification: {
                                 sound: 'default',
                                 channel_id: 'default',
+                                icon: 'ic_launcher'
                             },
                         },
                     },

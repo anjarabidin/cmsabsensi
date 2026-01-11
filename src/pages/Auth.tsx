@@ -65,7 +65,7 @@ export default function Auth() {
 
     setIsLoading(true);
 
-    const { error } = await signIn(loginEmail, loginPassword);
+    const { data: authData, error } = await signIn(loginEmail, loginPassword);
 
     if (error) {
       let message = 'Terjadi kesalahan saat login';
@@ -82,10 +82,10 @@ export default function Auth() {
       });
     } else {
       // Save user for quick access
-      if (data?.user) {
-        const { data: profile } = await supabase.from('profiles').select('full_name, avatar_url').eq('id', data.user.id).single();
+      if (authData?.user) {
+        const { data: profile } = await supabase.from('profiles').select('full_name, avatar_url').eq('id', authData.user.id).single();
         localStorage.setItem('last_active_user', JSON.stringify({
-          id: data.user.id,
+          id: authData.user.id,
           email: loginEmail,
           name: profile?.full_name || 'Karyawan',
           avatar: profile?.avatar_url
@@ -304,7 +304,7 @@ export default function Auth() {
                       <Input
                         id="login-email"
                         type="email"
-                        placeholder="nama@perusahaan.com"
+                        placeholder="masukan email anda"
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
                         disabled={isLoading}
@@ -437,7 +437,7 @@ export default function Auth() {
                       <Input
                         id="register-email"
                         type="email"
-                        placeholder="nama@perusahaan.com"
+                        placeholder="masukan email anda"
                         value={registerEmail}
                         onChange={(e) => setRegisterEmail(e.target.value)}
                         disabled={isLoading}

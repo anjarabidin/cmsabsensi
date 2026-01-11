@@ -24,6 +24,7 @@ BEGIN
         LEFT JOIN attendances a ON a.user_id = es.user_id AND a.date = v_today
         WHERE 
             es.date = v_today 
+            AND es.is_day_off = false -- Ignore on day off
             AND a.clock_in IS NULL -- Has not clocked in
             AND s.start_time > v_now_time 
             AND s.start_time <= (v_now_time + interval '10 minutes') -- Broaden window slightly to catch cron intervals
@@ -37,7 +38,7 @@ BEGIN
         INSERT INTO notifications (user_id, title, message, type, link)
         VALUES (
             v_user_record.user_id,
-            'Pengingat Absensi Masuk',
+            'CMS | Pengingat Absensi Masuk',
             'Halo ' || v_user_record.full_name || ', 5 menit lagi jam kerja Anda (' || v_user_record.shift_name || ') akan dimulai. Jangan lupa absen ya!',
             'reminder_clock_in',
             '/dashboard' -- Direct to dashboard to clock in
@@ -58,6 +59,7 @@ BEGIN
         JOIN attendances a ON a.user_id = es.user_id AND a.date = v_today
         WHERE 
             es.date = v_today 
+            AND es.is_day_off = false -- Ignore on day off
             AND a.clock_in IS NOT NULL -- Currently working
             AND a.clock_out IS NULL -- Has not clocked out
             AND s.end_time > v_now_time 
@@ -72,7 +74,7 @@ BEGIN
         INSERT INTO notifications (user_id, title, message, type, link)
         VALUES (
             v_user_record.user_id,
-            'Pengingat Pulang',
+            'CMS | Pengingat Pulang',
             'Sebentar lagi jam pulang. Rapikan meja kerja dan pastikan tidak ada barang yang tertinggal ya!',
             'reminder_clock_out',
             '/dashboard'

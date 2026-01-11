@@ -185,8 +185,8 @@ export default function NotificationsPage() {
                                             await LocalNotifications.schedule({
                                                 notifications: [
                                                     {
-                                                        title: "ABSENSI CERIA",
-                                                        body: "Notifikasi sistem berfungsi dengan baik! 🎉",
+                                                        title: "CMS Duta Solusi",
+                                                        body: "Sistem notifikasi Anda telah aktif! 🚀",
                                                         id: 1,
                                                         schedule: { at: new Date(Date.now() + 1000) },
                                                         sound: undefined,

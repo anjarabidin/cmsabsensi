@@ -64,7 +64,7 @@ BEGIN
     INSERT INTO notifications (user_id, title, message, type, link)
     SELECT 
         user_id, 
-        'Agenda Baru: ' || (SELECT title FROM agendas WHERE id = NEW.agenda_id),
+        'CMS | Agenda Baru: ' || (SELECT title FROM agendas WHERE id = NEW.agenda_id),
         'Anda diundang ke agenda kerja baru.',
         'system',
         '/agenda'

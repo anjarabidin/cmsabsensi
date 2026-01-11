@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS personal_reminders (
 ALTER TABLE personal_reminders ENABLE ROW LEVEL SECURITY;
 
 -- Policies
+DROP POLICY IF EXISTS "Users can manage their own reminders" ON personal_reminders;
 CREATE POLICY "Users can manage their own reminders" ON personal_reminders
     FOR ALL USING (auth.uid() = user_id);
 
@@ -44,7 +45,7 @@ BEGIN
         INSERT INTO notifications (user_id, title, message, type, link)
         VALUES (
             v_reminder.user_id,
-            'Pengingat: ' || v_reminder.title,
+            'CMS | Pengingat: ' || v_reminder.title,
             COALESCE(v_reminder.description, 'Waktunya mengerjakan catatan Anda!'),
             'system',
             '/notes'

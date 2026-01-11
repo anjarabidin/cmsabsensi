@@ -87,7 +87,7 @@ serve(async (req) => {
                     message: {
                         token: token,
                         notification: {
-                            title: title,
+                            title: title.startsWith('CMS') ? title : `CMS | ${title}`,
                             body: body,
                         },
                         data: data || {},

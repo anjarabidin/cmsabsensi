@@ -77,12 +77,10 @@ export default function ProfilePage() {
   const checkFaceRegistration = async () => {
     if (!user) return;
     try {
+      // Use new Simple Face Registration check
       const { data } = await supabase
-        .from('face_descriptors')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .maybeSingle();
+        .rpc('has_face_enrollment', { p_user_id: user.id });
+
       setFaceDataRegistered(!!data);
     } catch (err) {
       console.error('Error checking face reg:', err);
@@ -758,11 +756,35 @@ export default function ProfilePage() {
             <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] ml-4">Pengaturan Masuk</h3>
             <Card className="border-none shadow-md rounded-3xl overflow-hidden bg-white">
               <CardContent className="p-6 space-y-6">
+                {/* Face Registration Link (NEW) */}
+                <div
+                  className="flex items-center justify-between cursor-pointer hover:bg-slate-50 p-2 -mx-2 rounded-2xl transition-colors"
+                  onClick={() => navigate('/face-registration')}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-2xl bg-blue-100/50 text-blue-600">
+                      <ScanFace className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">Data Wajah (Biometrik)</p>
+                      <p className="text-[10px] text-slate-500 leading-tight max-w-[200px]">
+                        {faceDataRegistered ? 'Wajah sudah terdaftar' : 'Belum mendaftarkan wajah'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {faceDataRegistered && <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none">Aktif</Badge>}
+                    <ChevronRight className="h-5 w-5 text-slate-300" />
+                  </div>
+                </div>
+
+                <div className="h-px bg-slate-100 my-2" />
+
                 {/* Face Login Toggle */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div className="p-3 rounded-2xl bg-indigo-50 text-indigo-600">
-                      <ScanFace className="h-6 w-6" />
+                      <Lock className="h-6 w-6" />
                     </div>
                     <div>
                       <p className="text-sm font-bold text-slate-800">Login Wajah Otomatis</p>

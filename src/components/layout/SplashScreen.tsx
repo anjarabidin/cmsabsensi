@@ -7,8 +7,8 @@ export const SplashScreen = ({ onFinish }: { onFinish: () => void }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsVisible(false);
-      setTimeout(onFinish, 800);
-    }, 3200); // Optimized duration for a snappier feel
+      setTimeout(onFinish, 600);
+    }, 2000); // Optimized: 3.2s → 2s for faster loading
 
     return () => clearTimeout(timer);
   }, [onFinish]);
@@ -16,7 +16,7 @@ export const SplashScreen = ({ onFinish }: { onFinish: () => void }) => {
   return (
     <div
       className={cn(
-        "fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden transition-all duration-700 cubic-bezier(0.23, 1, 0.32, 1)",
+        "fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden transition-all duration-500 cubic-bezier(0.23, 1, 0.32, 1)",
         isVisible ? "opacity-100" : "opacity-0 pointer-events-none scale-105"
       )}
     >

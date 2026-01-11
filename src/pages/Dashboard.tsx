@@ -251,15 +251,6 @@ export default function Dashboard() {
           {/* Custom Background Header for Mobile Feel - More compact while keeping Avatar large */}
           <div className="absolute top-0 left-0 w-full h-[calc(100px+env(safe-area-inset-top))] bg-gradient-to-r from-blue-600 to-cyan-500 rounded-b-[32px] z-0 shadow-lg" />
 
-          {/* Elegant Watermark Logo */}
-          <div className="fixed bottom-20 right-4 z-0 pointer-events-none select-none">
-            <img
-              src="/logo.png"
-              alt="CMS Duta Solusi"
-              className="w-32 h-32 object-contain opacity-[0.08] mix-blend-multiply"
-            />
-          </div>
-
           <div className="relative z-10 space-y-3 max-w-5xl mx-auto pb-24">
             {/* Header Section - Compact but Heroic */}
             <div className="flex items-center justify-between pt-[calc(0.75rem+env(safe-area-inset-top))] pb-2 px-4 text-white">
@@ -583,16 +574,7 @@ export default function Dashboard() {
   // -------------------------------------------------------------------------
   return (
     <DashboardLayout>
-      <div className="max-w-7xl mx-auto space-y-8 relative">
-        {/* Elegant Watermark Logo - Desktop */}
-        <div className="fixed bottom-8 right-8 z-0 pointer-events-none select-none">
-          <img
-            src="/logo.png"
-            alt="CMS Duta Solusi"
-            className="w-40 h-40 object-contain opacity-[0.06] mix-blend-multiply"
-          />
-        </div>
-
+      <div className="max-w-7xl mx-auto space-y-8">
         {/* Desktop Welcome Section */}
         <div className="flex items-center justify-between">
           <div>

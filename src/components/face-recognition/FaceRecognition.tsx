@@ -14,11 +14,11 @@ interface FaceRecognitionProps {
   mode?: 'attendance' | 'registration';
 }
 
-export function FaceRecognition({ 
-  onFaceDetected, 
-  onVerificationComplete, 
-  employeeId, 
-  mode = 'attendance' 
+export function FaceRecognition({
+  onFaceDetected,
+  onVerificationComplete,
+  employeeId,
+  mode = 'attendance'
 }: FaceRecognitionProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -37,18 +37,18 @@ export function FaceRecognition({
       try {
         setIsLoading(true);
         setErrorMessage('');
-        
+
         // Load models from public/models directory
         // In production, you need to download these models and place them in public/models/
         const MODEL_URL = '/models';
-        
+
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
           faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
           faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL)
         ]);
-        
+
         setIsModelLoaded(true);
         setIsLoading(false);
       } catch (error) {
@@ -106,7 +106,7 @@ export function FaceRecognition({
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const displaySize = { width: video.videoWidth, height: video.videoHeight };
-    
+
     faceapi.matchDimensions(canvas, displaySize);
 
     const detections = await faceapi
@@ -124,14 +124,14 @@ export function FaceRecognition({
 
     if (resizedDetections.length > 0) {
       const detection = resizedDetections[0];
-      
+
       // Draw detection box
       const box = detection.detection.box;
       if (ctx) {
         ctx.strokeStyle = '#10b981';
         ctx.lineWidth = 3;
         ctx.strokeRect(box.x, box.y, box.width, box.height);
-        
+
         // Draw landmarks
         faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
       }
@@ -142,14 +142,14 @@ export function FaceRecognition({
 
       if (confidenceScore > 70) {
         setDetectionStatus('detected');
-        
+
         // Get face descriptor
         const descriptor = detection.descriptor;
         onFaceDetected(Array.from(descriptor));
-        
+
         // Stop scanning after successful detection
         setIsScanning(false);
-        
+
         // Simulate verification (in real app, this would compare with stored face data)
         setTimeout(() => {
           if (mode === 'attendance') {
@@ -187,28 +187,28 @@ export function FaceRecognition({
       // 1. Fetch stored face descriptors from database
       // 2. Compare using face distance
       // 3. Return verification result
-      
+
       // For demo purposes, we'll simulate verification
       const isVerified = Math.random() > 0.3; // 70% success rate for demo
-      
+
       if (isVerified) {
         setDetectionStatus('verified');
-        onVerificationComplete(true, { 
+        onVerificationComplete(true, {
           confidence: confidence,
           timestamp: new Date().toISOString(),
-          employeeId 
+          employeeId
         });
       } else {
         setDetectionStatus('failed');
-        onVerificationComplete(false, { 
+        onVerificationComplete(false, {
           reason: 'Face not recognized',
-          confidence: confidence 
+          confidence: confidence
         });
       }
     } catch (error) {
       console.error('Error verifying face:', error);
       setDetectionStatus('failed');
-      onVerificationComplete(false, { 
+      onVerificationComplete(false, {
         reason: 'Verification failed',
         error: error instanceof Error ? error.message : 'Unknown error'
       });
@@ -304,13 +304,15 @@ export function FaceRecognition({
             autoPlay
             muted
             playsInline
+            style={{ transform: 'scaleX(-1)', filter: 'brightness(1.08) contrast(1.05) saturate(1.1)' }}
             className="w-full h-full object-cover"
           />
           <canvas
             ref={canvasRef}
+            style={{ transform: 'scaleX(-1)' }}
             className="absolute top-0 left-0 w-full h-full"
           />
-          
+
           {!isCameraActive && !isLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
               <div className="text-center text-white">
@@ -332,7 +334,7 @@ export function FaceRecognition({
         {/* Controls */}
         <div className="flex gap-2">
           {!isScanning ? (
-            <Button 
+            <Button
               onClick={startScanning}
               disabled={isLoading || !isModelLoaded}
               className="flex-1"
@@ -341,7 +343,7 @@ export function FaceRecognition({
               {mode === 'attendance' ? 'Scan Wajah untuk Absensi' : 'Registrasi Wajah'}
             </Button>
           ) : (
-            <Button 
+            <Button
               onClick={reset}
               variant="outline"
               className="flex-1"
@@ -350,7 +352,7 @@ export function FaceRecognition({
               Stop Scanning
             </Button>
           )}
-          
+
           {isCameraActive && !isScanning && (
             <Button onClick={reset} variant="outline">
               <RefreshCw className="h-4 w-4" />

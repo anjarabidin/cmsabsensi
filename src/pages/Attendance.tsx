@@ -904,7 +904,7 @@ export default function AttendancePage() {
                     autoPlay
                     playsInline
                     muted
-                    style={{ transform: 'scaleX(-1)' }}
+                    style={{ transform: 'scaleX(-1)', filter: 'brightness(1.08) contrast(1.05) saturate(1.1)' }}
                     className="w-full h-full object-cover"
                   />
 

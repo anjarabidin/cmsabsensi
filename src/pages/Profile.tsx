@@ -794,7 +794,7 @@ export default function ProfilePage() {
           <DialogContent className="max-w-md rounded-[40px] border-none p-0 overflow-hidden bg-black">
             {enrollStep === 'camera' ? (
               <div className="relative aspect-[3/4] flex flex-col">
-                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                <video ref={videoRef} autoPlay playsInline muted style={{ transform: 'scaleX(-1)', filter: 'brightness(1.08) contrast(1.05) saturate(1.1)' }} className="w-full h-full object-cover" />
                 <div className="absolute top-10 inset-x-0 flex flex-col items-center">
                   <div className="w-64 h-80 border-2 border-white/50 border-dashed rounded-[60px] relative">
                     <div className="absolute inset-0 bg-blue-500/10 rounded-[60px]" />

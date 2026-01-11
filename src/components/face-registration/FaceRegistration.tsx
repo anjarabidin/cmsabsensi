@@ -27,7 +27,7 @@ export function FaceRegistration({ onComplete, employeeId }: FaceRegistrationPro
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [isModelLoaded, setIsModelLoaded] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -38,7 +38,7 @@ export function FaceRegistration({ onComplete, employeeId }: FaceRegistrationPro
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
-  
+
   const [registrationMode, setRegistrationMode] = useState<'camera' | 'upload'>('camera');
   const requiredCaptures = 3;
 
@@ -48,16 +48,16 @@ export function FaceRegistration({ onComplete, employeeId }: FaceRegistrationPro
       try {
         setIsLoading(true);
         setErrorMessage('');
-        
+
         const MODEL_URL = '/models';
-        
+
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
           faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
           faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL)
         ]);
-        
+
         setIsModelLoaded(true);
         setIsLoading(false);
       } catch (error) {
@@ -113,7 +113,7 @@ export function FaceRegistration({ onComplete, employeeId }: FaceRegistrationPro
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const displaySize = { width: video.videoWidth, height: video.videoHeight };
-    
+
     faceapi.matchDimensions(canvas, displaySize);
 
     const detections = await faceapi
@@ -132,13 +132,13 @@ export function FaceRegistration({ onComplete, employeeId }: FaceRegistrationPro
     }
 
     const detection = detections[0];
-    
+
     // Calculate quality score based on detection confidence and face size
     const faceSize = detection.detection.box.width * detection.detection.box.height;
     const maxFaceSize = displaySize.width * displaySize.height * 0.5; // Max 50% of frame
     const sizeScore = Math.min(1, faceSize / maxFaceSize);
     const qualityScore = Math.min(1, (detection.detection.score + sizeScore) / 2);
-    
+
     setQualityScore(qualityScore);
 
     if (qualityScore < 0.6) {
@@ -146,26 +146,30 @@ export function FaceRegistration({ onComplete, employeeId }: FaceRegistrationPro
       return;
     }
 
-    // Draw detection box
+    // Draw capture
     const ctx = canvas.getContext('2d');
     if (ctx) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
+
+      // Captured image should be natural (not mirrored)
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Draw detection UI on top of the photo
       const box = detection.detection.box;
       ctx.strokeStyle = '#10b981';
       ctx.lineWidth = 3;
       ctx.strokeRect(box.x, box.y, box.width, box.height);
-      
+
       faceapi.draw.drawFaceLandmarks(canvas, [detection]);
     }
 
     // Capture image
     canvas.toBlob(async (blob) => {
       if (!blob) return;
-      
+
       const imageUrl = URL.createObjectURL(blob);
       const descriptor = Array.from(detection.descriptor);
-      
+
       const newFace: CapturedFace = {
         id: `face_${Date.now()}`,
         descriptor: Array.from(descriptor),
@@ -175,7 +179,7 @@ export function FaceRegistration({ onComplete, employeeId }: FaceRegistrationPro
       };
 
       setCapturedFaces(prev => [...prev, newFace]);
-      
+
       // Move to next angle
       if (currentAngle < 270) {
         setCurrentAngle(prev => prev + 90);
@@ -219,10 +223,10 @@ export function FaceRegistration({ onComplete, employeeId }: FaceRegistrationPro
         canvas.width = img.width;
         canvas.height = img.height;
         const ctx = canvas.getContext('2d');
-        
+
         if (ctx) {
           ctx.drawImage(img, 0, 0);
-          
+
           // Detect face
           const detections = await faceapi
             .detectAllFaces(canvas, new faceapi.TinyFaceDetectorOptions())
@@ -243,7 +247,7 @@ export function FaceRegistration({ onComplete, employeeId }: FaceRegistrationPro
 
           const detection = detections[0];
           const qualityScore = Math.min(1, detection.detection.score);
-          
+
           if (qualityScore < 0.6) {
             setErrorMessage('Kualitas wajah dalam gambar terlalu rendah.');
             setIsLoading(false);
@@ -252,7 +256,7 @@ export function FaceRegistration({ onComplete, employeeId }: FaceRegistrationPro
 
           const descriptor = Array.from(detection.descriptor);
           const imageUrl = URL.createObjectURL(file);
-          
+
           const newFace: CapturedFace = {
             id: `face_${Date.now()}`,
             descriptor: Array.from(descriptor),
@@ -292,13 +296,13 @@ export function FaceRegistration({ onComplete, employeeId }: FaceRegistrationPro
 
       // Upload face images to storage
       const uploadedFaces = [];
-      
+
       for (const face of capturedFaces) {
         // Convert blob URL to file
         const response = await fetch(face.imageUrl);
         const blob = await response.blob();
         const file = new File([blob], `face_${face.id}.jpg`, { type: 'image/jpeg' });
-        
+
         // Upload to Supabase Storage
         const filePath = `face-images/${userId}/${face.id}.jpg`;
         const { error: uploadError } = await supabase.storage
@@ -431,13 +435,14 @@ export function FaceRegistration({ onComplete, employeeId }: FaceRegistrationPro
                 autoPlay
                 muted
                 playsInline
-                className="w-full h-full object-cover"
+                style={{ filter: 'brightness(1.08) contrast(1.05) saturate(1.1)' }}
+                className="w-full h-full object-cover transform scale-x-[-1]"
               />
               <canvas
                 ref={canvasRef}
-                className="absolute top-0 left-0 w-full h-full"
+                className="absolute top-0 left-0 w-full h-full transform scale-x-[-1]"
               />
-              
+
               {!isCameraActive && !isLoading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
                   <div className="text-center text-white">
@@ -461,7 +466,7 @@ export function FaceRegistration({ onComplete, employeeId }: FaceRegistrationPro
             {/* Controls */}
             <div className="flex gap-2">
               {!isCapturing ? (
-                <Button 
+                <Button
                   onClick={startCapturing}
                   disabled={isLoading || !isModelLoaded || capturedFaces.length >= requiredCaptures}
                   className="flex-1"
@@ -470,7 +475,7 @@ export function FaceRegistration({ onComplete, employeeId }: FaceRegistrationPro
                   Start Capture
                 </Button>
               ) : (
-                <Button 
+                <Button
                   onClick={reset}
                   variant="outline"
                   className="flex-1"
@@ -479,7 +484,7 @@ export function FaceRegistration({ onComplete, employeeId }: FaceRegistrationPro
                   Stop Capturing
                 </Button>
               )}
-              
+
               {isCameraActive && !isCapturing && (
                 <Button onClick={reset} variant="outline">
                   <RefreshCw className="h-4 w-4" />
@@ -586,7 +591,7 @@ export function FaceRegistration({ onComplete, employeeId }: FaceRegistrationPro
               </>
             )}
           </Button>
-          
+
           <Button variant="outline" onClick={reset}>
             Reset
           </Button>

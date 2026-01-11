@@ -104,9 +104,10 @@ export function useCamera() {
             return;
           }
 
-          // Mirror for selfie
-          ctx.translate(canvas.width, 0);
-          ctx.scale(-1, 1);
+          // Apply beauty filters
+          ctx.filter = 'brightness(1.08) contrast(1.05) saturate(1.1)';
+
+          // Capture as-is (natural orientation)
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
           canvas.toBlob(

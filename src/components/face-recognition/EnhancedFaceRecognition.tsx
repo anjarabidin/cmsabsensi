@@ -25,17 +25,17 @@ interface FaceMatch {
   confidence: number;
 }
 
-export function EnhancedFaceRecognition({ 
-  onVerificationComplete, 
-  employeeId, 
+export function EnhancedFaceRecognition({
+  onVerificationComplete,
+  employeeId,
   mode = 'attendance',
-  requirePinFallback = true 
+  requirePinFallback = true
 }: EnhancedFaceRecognitionProps) {
   const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pinInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [isModelLoaded, setIsModelLoaded] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -58,19 +58,19 @@ export function EnhancedFaceRecognition({
       try {
         setIsLoading(true);
         setErrorMessage('');
-        
+
         const MODEL_URL = '/models';
-        
+
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
           faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
           faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL)
         ]);
-        
+
         setIsModelLoaded(true);
         setIsLoading(false);
-        
+
         // Load user face settings
         await loadFaceSettings();
       } catch (error) {
@@ -173,7 +173,7 @@ export function EnhancedFaceRecognition({
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const displaySize = { width: video.videoWidth, height: video.videoHeight };
-    
+
     faceapi.matchDimensions(canvas, displaySize);
 
     const detections = await faceapi
@@ -191,14 +191,14 @@ export function EnhancedFaceRecognition({
 
     if (resizedDetections.length > 0) {
       const detection = resizedDetections[0];
-      
+
       // Draw detection box
       const box = detection.detection.box;
       if (ctx) {
         ctx.strokeStyle = '#10b981';
         ctx.lineWidth = 3;
         ctx.strokeRect(box.x, box.y, box.width, box.height);
-        
+
         // Draw landmarks
         faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
       }
@@ -209,10 +209,10 @@ export function EnhancedFaceRecognition({
 
       if (confidenceScore > 70) {
         setDetectionStatus('detected');
-        
+
         // Get face descriptor
         const descriptor = Array.from(detection.descriptor);
-        
+
         // Find best match in database
         const userId = employeeId || user?.id;
         if (userId) {
@@ -233,11 +233,11 @@ export function EnhancedFaceRecognition({
                 qualityScore: match.quality_score,
                 confidence: confidenceScore
               });
-              
+
               // Check if similarity is above threshold
               if (match.similarity >= (faceSettings?.confidence_threshold || 0.7)) {
                 setDetectionStatus('verified');
-                
+
                 // Log successful verification
                 await supabase.rpc('log_face_recognition_attempt', {
                   p_user_id: userId,
@@ -311,10 +311,10 @@ export function EnhancedFaceRecognition({
       const lockoutDuration = faceSettings?.lockout_duration_minutes || 5;
       const lockoutTime = new Date(Date.now() + lockoutDuration * 60 * 1000);
       setLockoutUntil(lockoutTime);
-      
+
       setDetectionStatus('failed');
       setErrorMessage(`Too many failed attempts. Try again in ${lockoutDuration} minutes.`);
-      
+
       // Show PIN fallback if enabled
       if (requirePinFallback && faceSettings?.fallback_to_pin) {
         setTimeout(() => {
@@ -336,17 +336,17 @@ export function EnhancedFaceRecognition({
 
     try {
       const userId = employeeId || user?.id;
-      
+
       // For demo purposes, accept any 4-digit PIN
       // In production, verify against user's actual PIN
       const isValidPin = pinCode.length === 4; // Simple validation
-      
+
       if (isValidPin) {
         setDetectionStatus('verified');
         setShowPinInput(false);
         setPinCode('');
         setAttempts(0);
-        
+
         // Log successful PIN verification
         if (userId) {
           await supabase.rpc('log_face_recognition_attempt', {
@@ -375,7 +375,7 @@ export function EnhancedFaceRecognition({
   const startScanning = useCallback(async () => {
     // Check if user has face enrollment
     const hasEnrollment = await hasFaceEnrollment();
-    
+
     if (!hasEnrollment) {
       setErrorMessage('No face enrollment found. Please register your face first.');
       return;
@@ -391,7 +391,7 @@ export function EnhancedFaceRecognition({
     if (!isCameraActive) {
       startCamera();
     }
-    
+
     setIsScanning(true);
     setDetectionStatus('scanning');
     setErrorMessage('');
@@ -482,30 +482,31 @@ export function EnhancedFaceRecognition({
             autoPlay
             muted
             playsInline
-            className="w-full h-full object-cover transform scale-x-[-1]" 
+            style={{ transform: 'scaleX(-1)', filter: 'brightness(1.08) contrast(1.05) saturate(1.1)' }}
+            className="w-full h-full object-cover"
           />
           <canvas
             ref={canvasRef}
             className="absolute top-0 left-0 w-full h-full transform scale-x-[-1]"
           />
-          
+
           {/* Scanner Overlay Frame */}
           {isScanning && (
             <div className="absolute inset-0 border-[3px] border-primary/30 m-8 rounded-xl pointer-events-none">
-                <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-primary rounded-tl-xl" />
-                <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-primary rounded-tr-xl" />
-                <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-primary rounded-bl-xl" />
-                <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-primary rounded-br-xl" />
-                
-                {/* Scan Line Animation */}
-                <div className="absolute top-0 left-0 w-full h-1 bg-primary/50 shadow-[0_0_15px_rgba(59,130,246,0.5)] animate-[scan_2s_ease-in-out_infinite]" />
+              <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-primary rounded-tl-xl" />
+              <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-primary rounded-tr-xl" />
+              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-primary rounded-bl-xl" />
+              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-primary rounded-br-xl" />
+
+              {/* Scan Line Animation */}
+              <div className="absolute top-0 left-0 w-full h-1 bg-primary/50 shadow-[0_0_15px_rgba(59,130,246,0.5)] animate-[scan_2s_ease-in-out_infinite]" />
             </div>
           )}
 
           {!isCameraActive && !isLoading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/90 text-white">
               <div className="h-20 w-20 rounded-full bg-white/10 flex items-center justify-center mb-4">
-                 <CameraOff className="h-10 w-10 opacity-70" />
+                <CameraOff className="h-10 w-10 opacity-70" />
               </div>
               <p className="text-lg font-medium">Kamera Nonaktif</p>
               <p className="text-sm text-white/50">Silahkan mulai pemindaian</p>
@@ -519,12 +520,12 @@ export function EnhancedFaceRecognition({
             <div className="flex items-center gap-4">
               <div className="relative">
                 <img
-                    src={bestMatch.imageUrl}
-                    alt="Matched face"
-                    className="w-16 h-16 rounded-full object-cover border-2 border-success"
+                  src={bestMatch.imageUrl}
+                  alt="Matched face"
+                  className="w-16 h-16 rounded-full object-cover border-2 border-success"
                 />
                 <div className="absolute -bottom-1 -right-1 bg-success text-white rounded-full p-1">
-                    <CheckCircle className="w-3 h-3" />
+                  <CheckCircle className="w-3 h-3" />
                 </div>
               </div>
               <div>
@@ -574,7 +575,7 @@ export function EnhancedFaceRecognition({
         {/* Controls */}
         <div className="flex gap-2">
           {!isScanning && !showPinInput ? (
-            <Button 
+            <Button
               onClick={startScanning}
               disabled={isLoading || !isModelLoaded}
               className="flex-1"
@@ -583,7 +584,7 @@ export function EnhancedFaceRecognition({
               {mode === 'attendance' ? 'Scan Face for Attendance' : 'Verify Face'}
             </Button>
           ) : (
-            <Button 
+            <Button
               onClick={reset}
               variant="outline"
               className="flex-1"
@@ -592,7 +593,7 @@ export function EnhancedFaceRecognition({
               {showPinInput ? 'Cancel' : 'Stop Scanning'}
             </Button>
           )}
-          
+
           {isCameraActive && !isScanning && !showPinInput && (
             <Button onClick={reset} variant="outline">
               <RefreshCw className="h-4 w-4" />

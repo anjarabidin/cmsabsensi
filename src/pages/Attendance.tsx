@@ -112,7 +112,24 @@ export default function AttendancePage() {
 
   useEffect(() => {
     fetchData();
+    return () => {
+      stopCamera();
+    };
   }, [user?.id]);
+
+  useEffect(() => {
+    const attachStream = () => {
+      if (cameraOpen && stream && videoRef.current) {
+        if (videoRef.current.srcObject !== stream) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(e => console.error("Error playing video:", e));
+        }
+      }
+    };
+    attachStream();
+    const timer = setTimeout(attachStream, 150);
+    return () => clearTimeout(timer);
+  }, [cameraOpen, stream]);
 
   // Validate Location Logic
   useEffect(() => {
@@ -302,11 +319,17 @@ export default function AttendancePage() {
         return;
       }
 
-      // Show dialog immediately for better UX
+      if (todaySchedule?.is_day_off) {
+        toast({
+          title: 'Hari Libur',
+          description: 'Hari ini adalah hari libur, Anda tidak perlu melakukan absensi.',
+        });
+      }
+
       setCameraOpen(true);
 
-      // Run checks and initialization in parallel for speed
-      const [faceCheckResult, locationResult, cameraResult] = await Promise.allSettled([
+      // Run checks in parallel
+      const [faceCheckResult, cameraResult] = await Promise.allSettled([
         // Check face registration
         supabase
           .from('face_descriptors')
@@ -314,11 +337,14 @@ export default function AttendancePage() {
           .eq('user_id', user.id)
           .limit(1)
           .maybeSingle(),
-        // Get location
-        getLocation(),
         // Start camera
         startCamera()
       ]);
+
+      // Start location in background if not already available
+      if (!latitude || !longitude) {
+        getLocation();
+      }
 
       // Handle face registration check
       if (faceCheckResult.status === 'rejected' || !faceCheckResult.value.data) {
@@ -343,14 +369,8 @@ export default function AttendancePage() {
         return;
       }
 
-      // Handle Location Error
-      if (locationResult.status === 'rejected') {
-        toast({
-          title: 'Lokasi Gagal',
-          description: 'Gagal mendapatkan lokasi. Pastikan GPS aktif.',
-          variant: 'destructive'
-        });
-      }
+      // Handle Location Error (Non-blocking for camera)
+      // We don't block camera for location anymore for faster UX
 
       // Camera and location are already started/fetched in parallel
 
@@ -777,7 +797,7 @@ export default function AttendancePage() {
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Verifikasi Kamera</label>
                     {!photoPreview ? (
                       <div
-                        onClick={() => setCameraOpen(true)}
+                        onClick={openCamera}
                         className="border-2 border-dashed border-slate-200 rounded-[24px] h-36 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-blue-200 transition-all group"
                       >
                         <div className="h-12 w-12 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform mb-3">

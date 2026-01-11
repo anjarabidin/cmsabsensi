@@ -69,6 +69,9 @@ export default function ProfilePage() {
     setFaceLoginEnabled(localStorage.getItem('face_login_enabled') === 'true');
     setFingerprintEnabled(localStorage.getItem('fingerprint_enabled') === 'true');
     checkFaceRegistration();
+    return () => {
+      stopCamera();
+    };
   }, [user]);
 
   const checkFaceRegistration = async () => {
@@ -198,14 +201,27 @@ export default function ProfilePage() {
   };
 
   useEffect(() => {
-    if (enrollStep === 'camera' && stream && videoRef.current) {
-      videoRef.current.srcObject = stream;
-    }
-  }, [enrollStep, stream, videoRef]);
+    const attachStream = () => {
+      if (enrollStep === 'camera' && stream && videoRef.current) {
+        if (videoRef.current.srcObject !== stream) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(e => console.error("Error playing video:", e));
+        }
+      }
+    };
+
+    attachStream();
+    // Also try a bit later in case of Dialog animation lag
+    const timer = setTimeout(attachStream, 100);
+    return () => clearTimeout(timer);
+  }, [enrollStep, stream]);
 
   // Check permissions on mount
   useEffect(() => {
     checkAllPermissions();
+    return () => {
+      stopCamera();
+    };
   }, []);
 
   const checkAllPermissions = async () => {
@@ -386,7 +402,8 @@ export default function ProfilePage() {
       const blobUrl = URL.createObjectURL(enrollmentBlob);
       try {
         const img = await faceapi.fetchImage(blobUrl);
-        const detection = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+        // Use SSD Mobilenet for static enrollment (more accurate than Tiny)
+        const detection = await faceapi.detectSingleFace(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
           .withFaceLandmarks()
           .withFaceDescriptor();
 

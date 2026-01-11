@@ -7,37 +7,49 @@ interface FaceRecognitionState {
     error: string | null;
 }
 
+let globalModelsPromise: Promise<boolean> | null = null;
+let globalModelsLoaded = false;
+
 export function useFaceRecognition() {
     const [state, setState] = useState<FaceRecognitionState>({
-        modelsLoaded: false,
+        modelsLoaded: globalModelsLoaded,
         loading: false,
         error: null,
     });
 
     // Load face-api.js models
     const loadModels = useCallback(async () => {
-        if (state.modelsLoaded) return true;
-
-        setState(prev => ({ ...prev, loading: true, error: null }));
-
-        try {
-            const MODEL_URL = '/models';
-
-            await Promise.all([
-                faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-                faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-                faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-            ]);
-
-            setState({ modelsLoaded: true, loading: false, error: null });
-            console.log('✅ Face recognition models loaded');
+        if (globalModelsLoaded) {
+            if (!state.modelsLoaded) setState(prev => ({ ...prev, modelsLoaded: true }));
             return true;
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Failed to load models';
-            setState({ modelsLoaded: false, loading: false, error: errorMessage });
-            console.error('❌ Failed to load face recognition models:', error);
-            return false;
         }
+
+        if (globalModelsPromise) return globalModelsPromise;
+
+        globalModelsPromise = (async () => {
+            setState(prev => ({ ...prev, loading: true, error: null }));
+            try {
+                const MODEL_URL = '/models';
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+                    faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+                ]);
+                globalModelsLoaded = true;
+                setState({ modelsLoaded: true, loading: false, error: null });
+                console.log('✅ Face recognition models loaded (Global)');
+                return true;
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : 'Failed to load models';
+                setState({ modelsLoaded: false, loading: false, error: errorMessage });
+                console.error('❌ Failed to load face recognition models:', error);
+                globalModelsPromise = null;
+                return false;
+            }
+        })();
+
+        return globalModelsPromise;
     }, [state.modelsLoaded]);
 
     // Auto-load models on mount
@@ -47,13 +59,13 @@ export function useFaceRecognition() {
 
     // Detect face in video element
     const detectFace = useCallback(async (videoElement: HTMLVideoElement) => {
-        if (!state.modelsLoaded) {
-            throw new Error('Models not loaded yet');
+        if (!globalModelsLoaded) {
+            await loadModels();
         }
 
         try {
             const detection = await faceapi
-                .detectSingleFace(videoElement, new faceapi.TinyFaceDetectorOptions())
+                .detectSingleFace(videoElement, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
                 .withFaceLandmarks()
                 .withFaceDescriptor();
 

@@ -77,37 +77,34 @@ export function useCamera() {
       }
 
       const video = videoRef.current;
+      let retries = 0;
+      const maxRetries = 10; // 10 * 300ms = 3 seconds
 
-      // Wait for video to be ready
-      const waitForVideo = () => {
+      const checkReadiness = () => {
         if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
-          // Video is ready, capture now
           captureNow();
+        } else if (retries < maxRetries) {
+          retries++;
+          setTimeout(checkReadiness, 300);
         } else {
-          // Wait a bit more
-          setTimeout(() => {
-            if (video.videoWidth === 0 || video.videoHeight === 0) {
-              reject(new Error('Kamera belum siap. Tunggu sebentar dan coba lagi.'));
-            } else {
-              captureNow();
-            }
-          }, 500);
+          reject(new Error('Kamera belum siap setelah 3 detik. Pastikan pencahayaan cukup dan coba lagi.'));
         }
       };
 
       const captureNow = () => {
         try {
           const canvas = document.createElement('canvas');
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
+          // Use video dimensions or fallback to ideal
+          canvas.width = video.videoWidth || 480;
+          canvas.height = video.videoHeight || 360;
 
-          const ctx = canvas.getContext('2d');
+          const ctx = canvas.getContext('2d', { willReadFrequently: true });
           if (!ctx) {
             reject(new Error('Gagal membuat canvas context'));
             return;
           }
 
-          // Mirror the image for selfie (like front camera)
+          // Mirror for selfie
           ctx.translate(canvas.width, 0);
           ctx.scale(-1, 1);
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -121,15 +118,14 @@ export function useCamera() {
               }
             },
             'image/jpeg',
-            0.8
+            0.85
           );
         } catch (err: any) {
           reject(new Error('Error saat mengambil foto: ' + err.message));
         }
       };
 
-      // Start waiting for video
-      waitForVideo();
+      checkReadiness();
     });
   }, [state.stream]);
 

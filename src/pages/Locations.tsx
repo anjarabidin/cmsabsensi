@@ -108,23 +108,42 @@ export default function LocationsPage() {
 
     // Helper untuk parse koordinat dari Google Maps paste
     const parseCoordinates = (input: string) => {
+        // Try to find lat/lng in a Google Maps URL or string
+        // Matches typical coordinate patterns: -6.123, 106.123
+        const coordRegex = /(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/;
+        const match = input.match(coordRegex);
+
+        if (match) {
+            const lat = match[1];
+            const lng = match[2];
+
+            setFormData(prev => ({
+                ...prev,
+                latitude: lat,
+                longitude: lng,
+            }));
+
+            toast({
+                title: '✅ Koordinat Terdeteksi',
+                description: `Lat: ${lat}, Lng: ${lng}`
+            });
+            return true;
+        }
+
+        // Fallback for names labels like "Lat: -6.123 Lng: 106.123"
         const cleaned = input.replace(/lat:|lng:|latitude:|longitude:/gi, '').trim();
         const parts = cleaned.split(/[,\s]+/).filter(p => p);
 
         if (parts.length >= 2) {
-            const lat = parseFloat(parts[0]);
-            const lng = parseFloat(parts[1]);
+            const latNum = parseFloat(parts[0]);
+            const lngNum = parseFloat(parts[1]);
 
-            if (!isNaN(lat) && !isNaN(lng)) {
+            if (!isNaN(latNum) && !isNaN(lngNum)) {
                 setFormData(prev => ({
                     ...prev,
-                    latitude: lat.toFixed(6),
-                    longitude: lng.toFixed(6),
+                    latitude: latNum.toFixed(6),
+                    longitude: lngNum.toFixed(6),
                 }));
-                toast({
-                    title: '✅ Koordinat Terdeteksi',
-                    description: `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`
-                });
                 return true;
             }
         }
@@ -365,15 +384,22 @@ export default function LocationsPage() {
                                         <Input
                                             placeholder="Paste koordinat Google Maps (cth: -6.2088, 106.8456)"
                                             className="bg-white text-xs font-mono"
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (parseCoordinates(val)) {
+                                                    // Auto-clear after a delay so they see the result in the Target fields
+                                                    setTimeout(() => { if (e.target) e.target.value = ''; }, 1000);
+                                                }
+                                            }}
                                             onPaste={(e) => {
                                                 const text = e.clipboardData.getData('text');
                                                 if (parseCoordinates(text)) {
-                                                    e.preventDefault(); // Prevent default paste if parsed successfully
+                                                    // Successfully parsed
                                                 }
                                             }}
                                         />
                                         <p className="text-[10px] text-slate-400">
-                                            Tips: Copy koordinat dari Google Maps dan paste di sini untuk auto-fill.
+                                            Tips: Copy koordinat atau URL dari Google Maps dan paste di sini untuk auto-fill Latitude & Longitude otomatis.
                                         </p>
                                     </div>
 

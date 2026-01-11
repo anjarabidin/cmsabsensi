@@ -151,11 +151,8 @@ export function FaceRegistration({ onComplete, employeeId }: FaceRegistrationPro
     if (ctx) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Mirror the captured image to match the preview
-      ctx.save();
-      ctx.scale(-1, 1);
-      ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
-      ctx.restore();
+      // Draw the image directly (without mirroring) so the saved photo is "true life"
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
       // Draw detection UI on top of the photo
       const box = detection.detection.box;

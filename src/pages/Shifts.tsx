@@ -30,6 +30,8 @@ export default function ShiftsPage() {
         code: '',
         start_time: '',
         end_time: '',
+        break_start: '',
+        break_end: '',
         tolerance_minutes: 15,
         clock_in_advance_minutes: 30,
         is_night_shift: false
@@ -40,7 +42,9 @@ export default function ShiftsPage() {
     const [employees, setEmployees] = useState<Profile[]>([]);
     const [schedules, setSchedules] = useState<EmployeeSchedule[]>([]);
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-    const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
+    // Refactor to support multiple schedules
+    // No change needed solely for state variable itself as it is list of all schedules rows
+
 
     useEffect(() => {
         fetchShifts();
@@ -100,79 +104,89 @@ export default function ShiftsPage() {
     // State for individual assignment
     const [clickedEmployeeId, setClickedEmployeeId] = useState<string | null>(null);
     const [clickedDate, setClickedDate] = useState<string | null>(null);
-    const [clickedScheduleId, setClickedScheduleId] = useState<string | null>(null);
-    const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
+    // Removed strict single schedule ID constraint for adding new. 
+    // We will list existing schedules in dialog.
+    const [existingSchedulesForDay, setExistingSchedulesForDay] = useState<EmployeeSchedule[]>([]);
 
-    const handleCellClick = (employeeId: string, date: string, existingSchedule?: EmployeeSchedule) => {
+    const handleCellClick = (employeeId: string, date: string, daySchedules: EmployeeSchedule[]) => {
         setClickedEmployeeId(employeeId);
         setClickedDate(date);
-        setClickedScheduleId(existingSchedule?.id || null);
-        setSelectedShiftId(existingSchedule?.shift_id || existingSchedule?.shift?.id || null);
+        setExistingSchedulesForDay(daySchedules);
         setAssignDialogOpen(true);
     };
 
-    const handleSaveSchedule = async () => {
-        if (!clickedEmployeeId || !clickedDate || !selectedShiftId) return;
-
+    const handleAddSchedule = async (shiftId: string) => {
+        if (!clickedEmployeeId || !clickedDate) return;
         setSaving(true);
         try {
-            // Check if existing schedule
-            if (clickedScheduleId) {
-                if (selectedShiftId === 'OFF') {
-                    await (supabase.from('employee_schedules') as any).update({
-                        shift_id: null,
-                        is_day_off: true
-                    }).eq('id', clickedScheduleId);
-                } else {
-                    await (supabase.from('employee_schedules') as any).update({
-                        shift_id: selectedShiftId,
-                        is_day_off: false
-                    }).eq('id', clickedScheduleId);
-                }
-            } else {
-                // Insert new
-                if (selectedShiftId === 'OFF') {
-                    await (supabase.from('employee_schedules') as any).insert({
-                        user_id: clickedEmployeeId,
-                        date: clickedDate,
-                        shift_id: null,
-                        is_day_off: true
-                    });
-                } else {
-                    await (supabase.from('employee_schedules') as any).insert({
-                        user_id: clickedEmployeeId,
-                        date: clickedDate,
-                        shift_id: selectedShiftId
-                    });
-                }
-            }
-
-            toast({ title: 'Jadwal tersimpan' });
-            setAssignDialogOpen(false);
+            await (supabase.from('employee_schedules') as any).insert({
+                user_id: clickedEmployeeId,
+                date: clickedDate,
+                shift_id: shiftId
+            });
+            toast({ title: 'Shift ditambahkan' });
             fetchSchedules(selectedDate);
+            setAssignDialogOpen(false);
         } catch (error) {
-            toast({ title: 'Gagal menyimpan', variant: 'destructive' });
+            toast({ title: 'Gagal menambah shift', variant: 'destructive' });
         } finally {
             setSaving(false);
         }
     };
 
-    const handleDeleteSchedule = async () => {
-        if (!clickedScheduleId) return;
-        if (!confirm('Hapus jadwal ini?')) return;
-
+    const handleSetDayOff = async () => {
+        if (!clickedEmployeeId || !clickedDate) return;
         setSaving(true);
         try {
-            await (supabase.from('employee_schedules') as any).delete().eq('id', clickedScheduleId);
+            // Delete all existing shifts first to be clean or just add an OFF record?
+            // Usually Day Off means NO shifts. So let's delete existing first.
+            // But wait, existing logic uses is_day_off flag.
+            // Let's Insert a record with null shift and is_day_off = true
+
+            // First clean up day? Optional. Let's just append for now, or clear.
+            // Clearing is safer to avoid conflict.
+            const { error: delError } = await (supabase.from('employee_schedules') as any)
+                .delete()
+                .eq('user_id', clickedEmployeeId)
+                .eq('date', clickedDate);
+
+            if (delError) throw delError;
+
+            await (supabase.from('employee_schedules') as any).insert({
+                user_id: clickedEmployeeId,
+                date: clickedDate,
+                shift_id: null,
+                is_day_off: true
+            });
+
+            toast({ title: 'Set Libur Berhasil' });
+            fetchSchedules(selectedDate);
+            setAssignDialogOpen(false);
+        } catch (error) {
+            toast({ title: 'Gagal set libur', variant: 'destructive' });
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    const handleRemoveSchedule = async (scheduleId: string) => {
+        if (!confirm("Hapus jadwal ini?")) return;
+        setSaving(true);
+        try {
+            await (supabase.from('employee_schedules') as any).delete().eq('id', scheduleId);
             toast({ title: 'Jadwal dihapus' });
-            setAssignDialogOpen(false);
+            // Update local state for dialog
+            setExistingSchedulesForDay(prev => prev.filter(s => s.id !== scheduleId));
             fetchSchedules(selectedDate);
         } catch (error) {
-            toast({ title: 'Gagal menghapus', variant: 'destructive' });
+            toast({ title: 'Gagal', variant: 'destructive' });
         } finally {
             setSaving(false);
         }
-    };
+    }
+
+    // Old handleDeleteSchedule removed in favor of handleRemoveSchedule inside dialog
+
 
     const handleBulkGenerate = async () => {
         if (!selectedShiftId) return;
@@ -224,7 +238,17 @@ export default function ShiftsPage() {
             if (error) throw error;
             toast({ title: 'Shift Berhasil Ditambahkan' });
             setDialogOpen(false);
-            setForm({ name: '', code: '', start_time: '', end_time: '', tolerance_minutes: 15, clock_in_advance_minutes: 30, is_night_shift: false });
+            setForm({
+                name: '',
+                code: '',
+                start_time: '',
+                end_time: '',
+                break_start: '',
+                break_end: '',
+                tolerance_minutes: 15,
+                clock_in_advance_minutes: 30,
+                is_night_shift: false
+            });
             fetchShifts();
         } catch (error) {
             toast({ title: 'Gagal menambah shift', variant: 'destructive' });
@@ -311,6 +335,16 @@ export default function ShiftsPage() {
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div className="grid gap-2">
+                                                        <Label>Mulai Istirahat (Split Shift)</Label>
+                                                        <Input type="time" value={form.break_start || ''} onChange={e => setForm({ ...form, break_start: e.target.value })} />
+                                                    </div>
+                                                    <div className="grid gap-2">
+                                                        <Label>Selesai Istirahat</Label>
+                                                        <Input type="time" value={form.break_end || ''} onChange={e => setForm({ ...form, break_end: e.target.value })} />
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="grid gap-2">
                                                         <Label>Toleransi (Menit)</Label>
                                                         <Input type="number" value={form.tolerance_minutes} onChange={e => setForm({ ...form, tolerance_minutes: parseInt(e.target.value) || 0 })} />
                                                     </div>
@@ -347,6 +381,7 @@ export default function ShiftsPage() {
                                                         <TableHead>Nama</TableHead>
                                                         <TableHead>Kode</TableHead>
                                                         <TableHead>Jam Kerja</TableHead>
+                                                        <TableHead>Istirahat (Split)</TableHead>
                                                         <TableHead>Toleransi</TableHead>
                                                         <TableHead>Batas Awal</TableHead>
                                                         <TableHead>Tipe</TableHead>
@@ -363,6 +398,7 @@ export default function ShiftsPage() {
                                                             <TableCell className="font-medium">{shift.name}</TableCell>
                                                             <TableCell><span className="font-mono text-[10px] bg-slate-100 px-2 py-0.5 rounded border">{shift.code || '-'}</span></TableCell>
                                                             <TableCell className="text-xs">{shift.start_time?.slice(0, 5)} - {shift.end_time?.slice(0, 5)}</TableCell>
+                                                            <TableCell className="text-xs text-slate-500">{shift.break_start ? `${shift.break_start.slice(0, 5)} - ${shift.break_end?.slice(0, 5)}` : '-'}</TableCell>
                                                             <TableCell className="text-xs">{shift.tolerance_minutes}m</TableCell>
                                                             <TableCell className="text-xs">-{shift.clock_in_advance_minutes}m</TableCell>
                                                             <TableCell>
@@ -453,33 +489,40 @@ export default function ShiftsPage() {
                                                         end: endOfMonth(selectedDate)
                                                     }).map(date => {
                                                         const dateStr = format(date, 'yyyy-MM-dd');
-                                                        const schedule = schedules.find(s => s.user_id === employee.id && s.date === dateStr);
+                                                        // Filter ALL schedules for this user & day
+                                                        const daySchedules = schedules.filter(s => s.user_id === employee.id && s.date === dateStr);
                                                         const isWeekend = ["Sat", "Sun"].includes(format(date, 'EEE'));
+                                                        const isOff = daySchedules.some(s => s.is_day_off);
 
                                                         return (
                                                             <TableCell
                                                                 key={dateStr}
                                                                 className={cn(
-                                                                    "p-0 text-center border-l border-slate-200/50 cursor-pointer transition-all h-12 relative group",
-                                                                    isWeekend && !schedule ? "bg-slate-50/20" : "",
+                                                                    "p-0 text-center border-l border-slate-200/50 cursor-pointer transition-all h-12 relative group align-top",
+                                                                    isWeekend && daySchedules.length === 0 ? "bg-slate-50/20" : "",
                                                                     "hover:bg-blue-100/50 hover:z-30"
                                                                 )}
-                                                                onClick={() => handleCellClick(employee.id, dateStr, schedule)}
+                                                                onClick={() => handleCellClick(employee.id, dateStr, daySchedules)}
                                                             >
-                                                                {schedule?.shift ? (
-                                                                    <div className={cn(
-                                                                        "absolute inset-1 rounded-sm flex items-center justify-center text-[9px] font-black border",
-                                                                        schedule.shift.code === 'OFF' || schedule.is_day_off ? "bg-slate-100 text-slate-400 border-slate-200" :
-                                                                            schedule.shift.is_night_shift ? "bg-purple-500 text-white border-purple-600 shadow-sm" :
-                                                                                "bg-blue-600 text-white border-blue-700 shadow-sm"
-                                                                    )}>
-                                                                        {schedule.is_day_off ? 'OFF' : (schedule.shift.code || schedule.shift.name.slice(0, 1))}
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="w-full h-full opacity-0 group-hover:opacity-100 flex items-center justify-center">
-                                                                        <Plus className="h-3 w-3 text-slate-300" />
-                                                                    </div>
-                                                                )}
+                                                                <div className="w-full h-full p-1 flex flex-col gap-1 items-center justify-center min-h-[48px]">
+                                                                    {daySchedules.length > 0 ? (
+                                                                        isOff ? (
+                                                                            <span className="text-[9px] font-black bg-slate-100/80 text-slate-400 border border-slate-200 rounded px-1">OFF</span>
+                                                                        ) : (
+                                                                            daySchedules.map(sch => sch.shift && (
+                                                                                <div key={sch.id} className={cn(
+                                                                                    "rounded-sm flex items-center justify-center text-[9px] font-bold border px-1 w-full max-w-[36px]",
+                                                                                    sch.shift.is_night_shift ? "bg-purple-100/80 text-purple-700 border-purple-200" :
+                                                                                        "bg-blue-50/80 text-blue-700 border-blue-200"
+                                                                                )}>
+                                                                                    {sch.shift.code || sch.shift.name.slice(0, 1)}
+                                                                                </div>
+                                                                            ))
+                                                                        )
+                                                                    ) : (
+                                                                        <Plus className="h-3 w-3 text-slate-200 opacity-0 group-hover:opacity-100" />
+                                                                    )}
+                                                                </div>
                                                             </TableCell>
                                                         );
                                                     })}
@@ -506,43 +549,58 @@ export default function ShiftsPage() {
                                     <CardDescription>Pilih shift kerja untuk {employees.find(e => e.id === clickedEmployeeId)?.full_name}</CardDescription>
                                 </DialogHeader>
                                 <div className="space-y-4 py-4">
-                                    <div className="grid grid-cols-1 gap-2">
-                                        {shifts.map(s => (
-                                            <Button
-                                                key={s.id}
-                                                variant="outline"
-                                                className={cn(
-                                                    "justify-between h-auto py-3 px-4 rounded-xl border-2 transition-all",
-                                                    selectedShiftId === s.id ? "border-blue-500 bg-blue-50" : "border-slate-100 hover:border-slate-300"
-                                                )}
-                                                onClick={() => setSelectedShiftId(s.id)}
-                                            >
-                                                <div className="text-left">
-                                                    <div className="font-bold text-slate-900">{s.name}</div>
-                                                    <div className="text-xs text-slate-500">{s.start_time.slice(0, 5)} - {s.end_time.slice(0, 5)}</div>
-                                                </div>
-                                                {s.is_night_shift ? <Moon className="h-4 w-4 text-purple-600" /> : <Sun className="h-4 w-4 text-orange-500" />}
-                                            </Button>
-                                        ))}
-                                        <Button
-                                            variant="outline"
-                                            className={cn(
-                                                "justify-between h-auto py-3 px-4 rounded-xl border-2 transition-all",
-                                                selectedShiftId === 'OFF' ? "border-red-500 bg-red-50" : "border-slate-100 hover:border-slate-300"
-                                            )}
-                                            onClick={() => setSelectedShiftId('OFF')}
-                                        >
-                                            <div className="text-left font-bold text-red-600">OFF / Libur</div>
-                                            <div className="text-xs text-slate-400 uppercase font-black">Day Off</div>
-                                        </Button>
+                                    <div className="mb-4">
+                                        <h4 className="text-xs font-bold uppercase text-slate-400 mb-2">Jadwal Terdaftar</h4>
+                                        {existingSchedulesForDay.length === 0 ? (
+                                            <p className="text-xs text-slate-500 italic">Belum ada jadwal hari ini.</p>
+                                        ) : (
+                                            <div className="flex flex-col gap-2">
+                                                {existingSchedulesForDay.map(sch => (
+                                                    <div key={sch.id} className="flex items-center justify-between p-2 bg-slate-50 border rounded-lg">
+                                                        {sch.is_day_off ? (
+                                                            <span className="text-xs font-bold text-slate-500">LIBUR / OFF</span>
+                                                        ) : (
+                                                            <div className="flex flex-col">
+                                                                <span className="text-xs font-bold text-slate-700">{sch.shift?.name}</span>
+                                                                <span className="text-[10px] text-slate-500">{sch.shift?.start_time?.slice(0, 5)} - {sch.shift?.end_time?.slice(0, 5)}</span>
+                                                            </div>
+                                                        )}
+                                                        <Button variant="ghost" size="sm" onClick={() => handleRemoveSchedule(sch.id)} className="h-6 w-6 text-red-500 p-0"><Trash2 className="h-4 w-4" /></Button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="flex flex-col gap-2 pt-2">
-                                        <Button onClick={handleSaveSchedule} disabled={saving || !selectedShiftId} className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200">
-                                            Simpan Jadwal
-                                        </Button>
-                                        <Button variant="ghost" onClick={handleDeleteSchedule} disabled={!clickedScheduleId} className="w-full h-10 text-red-500 hover:bg-red-50 hover:text-red-600">
-                                            Hapus Jadwal (Set Kosong)
-                                        </Button>
+
+                                    <div className="space-y-4 pt-2 border-t">
+                                        <h4 className="text-xs font-bold uppercase text-slate-400">Tambah Shift</h4>
+                                        <div className="grid grid-cols-1 gap-2">
+                                            {shifts.map(s => (
+                                                <Button
+                                                    key={s.id}
+                                                    variant="outline"
+                                                    className="justify-between h-auto py-2.5 px-4 rounded-xl border-dashed border-slate-300 hover:border-blue-400 hover:bg-blue-50"
+                                                    onClick={() => handleAddSchedule(s.id)}
+                                                    disabled={saving}
+                                                >
+                                                    <div className="text-left">
+                                                        <div className="font-bold text-slate-900">{s.name}</div>
+                                                        <div className="text-[10px] text-slate-500">{s.start_time.slice(0, 5)} - {s.end_time.slice(0, 5)}</div>
+                                                    </div>
+                                                    {s.is_night_shift ? <Moon className="h-3 w-3 text-purple-600" /> : <Sun className="h-3 w-3 text-orange-500" />}
+                                                </Button>
+                                            ))}
+
+                                            <Button
+                                                variant="outline"
+                                                className="justify-between h-auto py-2.5 px-4 rounded-xl border-dashed border-red-200 hover:border-red-400 hover:bg-red-50"
+                                                onClick={handleSetDayOff}
+                                                disabled={saving}
+                                            >
+                                                <div className="text-left font-bold text-red-600">Set OFF / Libur</div>
+                                                <div className="text-[10px] text-slate-400 uppercase font-black">Hapus semua shift</div>
+                                            </Button>
+                                        </div>
                                     </div>
                                 </div>
                             </DialogContent>

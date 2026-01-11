@@ -127,8 +127,40 @@ export default function LeavePage() {
                 }
             }
 
-            // Calculate total days
-            const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+            // HELPER: Calculate Working Days (Excluding Weekends & Public Holidays)
+            // Fetch public holidays from database
+            const { data: holidaysData } = await supabase
+                .from('public_holidays')
+                .select('date, is_recurring')
+                .gte('date', format(startDate, 'yyyy-MM-dd'))
+                .lte('date', format(endDate, 'yyyy-MM-dd'));
+
+            const holidayDates = new Set<string>();
+
+            if (holidaysData) {
+                holidaysData.forEach((holiday: any) => {
+                    holidayDates.add(holiday.date);
+                });
+            }
+
+            const calculateWorkingDays = (startDate: Date, endDate: Date) => {
+                let count = 0;
+                let curDate = new Date(startDate);
+                while (curDate <= endDate) {
+                    const dayOfWeek = curDate.getDay();
+                    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; // 0=Sun, 6=Sat
+                    const dateStr = format(curDate, 'yyyy-MM-dd');
+                    const isHoliday = holidayDates.has(dateStr);
+
+                    if (!isWeekend && !isHoliday) {
+                        count++;
+                    }
+                    curDate.setDate(curDate.getDate() + 1);
+                }
+                return count;
+            };
+
+            const workingDays = calculateWorkingDays(startDate, endDate);
 
             // Insert leave request
             const { error } = await supabase.from('leave_requests').insert({
@@ -136,7 +168,7 @@ export default function LeavePage() {
                 leave_type: leaveType,
                 start_date: format(startDate, 'yyyy-MM-dd'),
                 end_date: format(endDate, 'yyyy-MM-dd'),
-                total_days: daysDiff,
+                total_days: workingDays, // Use the smart calculation
                 reason: reason.trim(),
                 attachment_url: attachmentUrl,
                 status: 'pending',

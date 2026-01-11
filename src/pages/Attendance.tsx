@@ -165,8 +165,17 @@ export default function AttendancePage() {
         setIsLocationValid(false);
         setLocationErrorMsg("Pilih lokasi kantor terlebih dahulu.");
       }
+    } else if (workMode === 'wfh') {
+      // For WFH, only check if GPS is mocked (allow work from anywhere)
+      if (isMocked) {
+        setIsLocationValid(false);
+        setLocationErrorMsg("Fake GPS Terdeteksi! Mohon gunakan lokasi asli.");
+      } else {
+        setIsLocationValid(true);
+        setLocationErrorMsg(null);
+      }
     } else {
-      // For WFH or Field, just check if GPS is mocked
+      // For Field, just check if GPS is mocked
       if (isMocked) {
         setIsLocationValid(false);
         setLocationErrorMsg("Fake GPS Terdeteksi! Mohon gunakan lokasi asli.");
@@ -175,7 +184,7 @@ export default function AttendancePage() {
         setLocationErrorMsg(null);
       }
     }
-  }, [latitude, longitude, selectedLocationId, workMode, officeLocations, isMocked, locationError, locationLoading]);
+  }, [latitude, longitude, selectedLocationId, workMode, officeLocations, isMocked, locationError, locationLoading, profile]);
 
   const fetchData = async () => {
     try {
@@ -736,15 +745,15 @@ export default function AttendancePage() {
                     <div className="h-44 w-full rounded-[24px] overflow-hidden border border-slate-100 relative z-0 shadow-inner">
                       {(MapContainer as any) && (
                         <MapContainer
-                          center={[latitude, longitude] as any}
+                          center={[latitude, longitude] as [number, number]}
                           zoom={16}
                           style={{ height: '100%', width: '100%' }}
                           dragging={false}
                           scrollWheelZoom={false}
                         >
-                          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OSM' {...{ attribution: '&copy; OSM' } as any} />
+                          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OSM' />
                           <MapController lat={latitude} long={longitude} />
-                          <Marker position={[latitude, longitude] as any}>
+                          <Marker position={[latitude, longitude] as [number, number]}>
                             <Popup>Posisi Anda</Popup>
                           </Marker>
                           {workMode === 'wfo' && selectedLocationId && (() => {
@@ -752,18 +761,30 @@ export default function AttendancePage() {
                             if (office) {
                               return (
                                 <>
-                                  <Marker position={[office.latitude, office.longitude] as any}>
+                                  <Marker position={[office.latitude, office.longitude] as [number, number]}>
                                     <Popup>{office.name}</Popup>
                                   </Marker>
                                   <Circle
-                                    center={[office.latitude, office.longitude] as any}
-                                    radius={MAX_RADIUS_M}
+                                    center={[office.latitude, office.longitude] as [number, number]}
+                                    radius={office.radius_meters || MAX_RADIUS_M}
                                     pathOptions={{ fillColor: isLocationValid ? '#3b82f6' : '#ef4444', color: isLocationValid ? '#3b82f6' : '#ef4444', opacity: 0.1, weight: 1 }}
                                   />
                                 </>
                               )
                             }
                           })()}
+                          {workMode === 'wfh' && profile?.home_latitude && profile?.home_longitude && (
+                            <>
+                              <Marker position={[profile.home_latitude, profile.home_longitude] as [number, number]}>
+                                <Popup>Rumah</Popup>
+                              </Marker>
+                              <Circle
+                                center={[profile.home_latitude, profile.home_longitude] as [number, number]}
+                                radius={100}
+                                pathOptions={{ fillColor: isLocationValid ? '#10b981' : '#ef4444', color: isLocationValid ? '#10b981' : '#ef4444', opacity: 0.1, weight: 1 }}
+                              />
+                            </>
+                          )}
                         </MapContainer>
                       )}
                     </div>

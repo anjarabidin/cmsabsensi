@@ -33,11 +33,15 @@ export default function Auth() {
   const [lastUser, setLastUser] = useState<{ id?: string; email: string; name: string; avatar?: string } | null>(null);
   const [showFaceLogin, setShowFaceLogin] = useState(false);
 
+  const [fingerprintEnabled, setFingerprintEnabled] = useState(false);
+
   useEffect(() => {
     const saved = localStorage.getItem('last_active_user');
+    const fpEnabled = localStorage.getItem('fingerprint_enabled') === 'true';
     if (saved) {
       setLastUser(JSON.parse(saved));
     }
+    setFingerprintEnabled(fpEnabled);
   }, []);
 
   useEffect(() => {
@@ -107,11 +111,23 @@ export default function Auth() {
       return;
     }
 
-    const fingerprintEnabled = localStorage.getItem('fingerprint_enabled') === 'true';
     const isNative = Capacitor.isNativePlatform();
 
-    if (fingerprintEnabled && isNative) {
-      handleNativeBiometric();
+    if (fingerprintEnabled) {
+      if (isNative) {
+        handleNativeBiometric();
+      } else {
+        // Web Simulation for Fingerprint
+        setIsLoading(true);
+        setTimeout(() => {
+          setIsLoading(false);
+          toast({
+            title: 'Simulasi Fingerprint (Web)',
+            description: `Login berhasil! Menggunakan akun: ${lastUser.name}`,
+          });
+          navigate('/dashboard');
+        }, 1000);
+      }
     } else {
       // Fallback to Face ID (Web-ready)
       setShowFaceLogin(true);
@@ -367,7 +383,11 @@ export default function Auth() {
                               </div>
                             )}
                             <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-sm border border-slate-100">
-                              <ScanFace className="h-3.5 w-3.5 text-blue-600" />
+                              {fingerprintEnabled ? (
+                                <Fingerprint className="h-3.5 w-3.5 text-blue-600" />
+                              ) : (
+                                <ScanFace className="h-3.5 w-3.5 text-blue-600" />
+                              )}
                             </div>
                           </div>
                           <div className="text-left">
@@ -375,7 +395,11 @@ export default function Auth() {
                             <p className="text-sm font-black text-slate-800">{lastUser.name}</p>
                           </div>
                           <div className="ml-auto flex items-center gap-2">
-                            <Fingerprint className="h-5 w-5 text-blue-500 group-hover:animate-pulse" />
+                            {fingerprintEnabled ? (
+                              <Fingerprint className="h-5 w-5 text-blue-500 group-hover:animate-pulse" />
+                            ) : (
+                              <ScanFace className="h-5 w-5 text-blue-500 group-hover:animate-pulse" />
+                            )}
                             <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
                           </div>
                         </div>

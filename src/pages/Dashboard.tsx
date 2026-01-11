@@ -32,7 +32,8 @@ import {
   BarChart3,
   DollarSign,
   TrendingUp,
-  StickyNote
+  StickyNote,
+  CalendarDays
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -356,6 +357,7 @@ export default function Dashboard() {
                     <MenuGridItem href="/team-map" icon={Users} label="Pantau" color="text-cyan-600" bg="bg-cyan-50" />
                     <MenuGridItem href="/employees" icon={Users} label="Staff" color="text-indigo-600" bg="bg-indigo-50" roles={['admin_hr']} />
                     <MenuGridItem href="/shifts" icon={Clock} label="Shift" color="text-pink-600" bg="bg-pink-50" roles={['admin_hr']} />
+                    <MenuGridItem href="/holidays" icon={CalendarDays} label="Libur" color="text-red-600" bg="bg-red-50" roles={['admin_hr']} />
                     <MenuGridItem href="/approvals" icon={ClipboardCheck} label="Approval" color="text-amber-600" bg="bg-amber-50" />
                     <MenuGridItem href="/payroll" icon={DollarSign} label="Payroll" color="text-green-600" bg="bg-green-50" roles={['admin_hr']} />
                     <MenuGridItem href="/locations" icon={MapPin} label="Lokasi" color="text-rose-600" bg="bg-rose-50" roles={['admin_hr']} />
@@ -428,11 +430,16 @@ export default function Dashboard() {
             <div className="mx-2 mb-20">
               <div className="flex items-center justify-between mb-3 px-1">
                 <h3 className="text-sm font-bold text-slate-800">Artikel & Berita</h3>
-                {isAdmin && (
-                  <Button variant="ghost" size="sm" className="h-6 text-xs text-blue-600" onClick={() => setAnnouncementOpen(true)}>
-                    <Plus className="h-3 w-3 mr-1" /> Tambah
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm" className="h-6 text-xs text-blue-600 px-2" onClick={() => navigate('/information')}>
+                    Lihat Semua
                   </Button>
-                )}
+                  {isAdmin && (
+                    <Button variant="ghost" size="sm" className="h-6 text-xs text-blue-600 px-2" onClick={() => setAnnouncementOpen(true)}>
+                      <Plus className="h-3 w-3 mr-1" /> Tambah
+                    </Button>
+                  )}
+                </div>
               </div>
 
               <div className="grid gap-3 md:grid-cols-2">
@@ -660,10 +667,15 @@ export default function Dashboard() {
 
           {/* Desktop Announcements */}
           <div className="space-y-4">
-            <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-blue-600" />
-              Berita & Pengumuman
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-blue-600" />
+                Berita & Pengumuman
+              </h3>
+              <Button variant="ghost" className="text-blue-600" onClick={() => navigate('/information')}>
+                Lihat Semua <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
             <div className="space-y-3">
               {announcements.length > 0 ? (
                 announcements.map((ann) => (

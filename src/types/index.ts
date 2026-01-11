@@ -105,6 +105,8 @@ export interface Profile {
   blood_type: string | null;
   address_ktp: string | null;
   address_domicile: string | null;
+  home_latitude: number | null;
+  home_longitude: number | null;
   mother_maiden_name: string | null;
 
   // Bank

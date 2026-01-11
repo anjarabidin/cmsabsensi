@@ -27,10 +27,11 @@ export const usePushNotifications = () => {
                 return;
             }
 
-            await PushNotifications.register();
+            // REGISTER LISTENERS BEFORE CALLING REGISTER()
+            // This prevents race conditions where the event fires before the listener is attached
 
             // On success, we get a token
-            PushNotifications.addListener('registration', async (token) => {
+            await PushNotifications.addListener('registration', async (token) => {
                 console.log('Push registration success, token: ' + token.value);
 
                 // Save token to Supabase
@@ -39,23 +40,39 @@ export const usePushNotifications = () => {
                     .upsert({
                         user_id: user?.id,
                         token: token.value,
-                        device_type: Capacitor.getPlatform()
+                        device_type: Capacitor.getPlatform(),
+                        updated_at: new Date().toISOString()
                     }, { onConflict: 'user_id, token' });
 
                 if (error) console.error('Error saving FCM token:', error);
             });
 
-            PushNotifications.addListener('registrationError', (error: any) => {
+            await PushNotifications.addListener('registrationError', (error: any) => {
                 console.error('Error on registration: ' + JSON.stringify(error));
             });
 
-            PushNotifications.addListener('pushNotificationReceived', (notification) => {
+            await PushNotifications.addListener('pushNotificationReceived', (notification) => {
                 console.log('Push received: ' + JSON.stringify(notification));
             });
 
-            PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+            await PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
                 console.log('Push action performed: ' + JSON.stringify(notification));
             });
+
+            // Create notification channel for Android (High Importance)
+            if (Capacitor.getPlatform() === 'android') {
+                await PushNotifications.createChannel({
+                    id: 'default',
+                    name: 'Default',
+                    description: 'General Notifications',
+                    importance: 5,
+                    visibility: 1,
+                    vibration: true,
+                });
+            }
+
+            // NOW call register
+            await PushNotifications.register();
 
         } catch (error) {
             console.error('Push notification registration failed', error);

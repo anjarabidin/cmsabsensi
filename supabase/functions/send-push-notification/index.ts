@@ -6,33 +6,71 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Helper function to get OAuth2 access token from Service Account
+// Helper function to get OAuth2 access token from Service Account using Web Crypto
 async function getAccessToken(serviceAccount: any): Promise<string> {
-    const jwtHeader = btoa(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
+    const encoder = new TextEncoder();
 
-    const now = Math.floor(Date.now() / 1000)
+    const jwtHeader = { alg: 'RS256', typ: 'JWT' };
+    const now = Math.floor(Date.now() / 1000);
     const jwtClaimSet = {
         iss: serviceAccount.client_email,
         scope: 'https://www.googleapis.com/auth/firebase.messaging',
         aud: 'https://oauth2.googleapis.com/token',
         exp: now + 3600,
         iat: now,
-    }
-    const jwtClaimSetEncoded = btoa(JSON.stringify(jwtClaimSet))
+    };
 
-    // For production, you would properly sign the JWT with the private key
-    // This is a simplified version - in real implementation, use a proper JWT library
-    const jwt = `${jwtHeader}.${jwtClaimSetEncoded}.signature_placeholder`
+    const encodedHeader = btoa(JSON.stringify(jwtHeader)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    const encodedPayload = btoa(JSON.stringify(jwtClaimSet)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+
+    const incompleteToken = `${encodedHeader}.${encodedPayload}`;
+
+    // Import the private key
+    const pemHeader = "-----BEGIN PRIVATE KEY-----";
+    const pemFooter = "-----END PRIVATE KEY-----";
+    const pemContents = serviceAccount.private_key
+        .replace(pemHeader, "")
+        .replace(pemFooter, "")
+        .replace(/\s/g, "");
+
+    const binaryDerString = atob(pemContents);
+    const binaryDer = new Uint8Array(binaryDerString.length);
+    for (let i = 0; i < binaryDerString.length; i++) {
+        binaryDer[i] = binaryDerString.charCodeAt(i);
+    }
+
+    const cryptoKey = await crypto.subtle.importKey(
+        "pkcs8",
+        binaryDer.buffer,
+        { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+        false,
+        ["sign"]
+    );
+
+    const signature = await crypto.subtle.sign(
+        "RSASSA-PKCS1-v1_5",
+        cryptoKey,
+        encoder.encode(incompleteToken)
+    );
+
+    const encodedSignature = btoa(String.fromCharCode(...new Uint8Array(signature)))
+        .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+
+    const jwt = `${incompleteToken}.${encodedSignature}`;
 
     // Exchange JWT for access token
     const response = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
-    })
+    });
 
-    const data = await response.json()
-    return data.access_token
+    const data = await response.json();
+    if (!data.access_token) {
+        console.error('OAuth error response:', data);
+        throw new Error('Failed to obtain access token: ' + (data.error_description || data.error));
+    }
+    return data.access_token;
 }
 
 serve(async (req) => {
@@ -58,11 +96,17 @@ serve(async (req) => {
         const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
         const supabase = createClient(supabaseUrl, supabaseKey)
 
-        // Get user's FCM tokens
-        const { data: tokens, error: tokenError } = await supabase
-            .from('fcm_tokens')
-            .select('token')
-            .eq('user_id', userId)
+        // Get user's FCM tokens or ALL tokens for broadcast
+        let query = supabase.from('fcm_tokens').select('token');
+
+        if (userId === 'all' || userId === 'ALL' || userId === 'broadcast') {
+            console.log('Broadcasting notification to all active users');
+            // No filter = all tokens
+        } else {
+            query = query.eq('user_id', userId);
+        }
+
+        const { data: tokens, error: tokenError } = await query;
 
         if (tokenError) {
             console.error('Error fetching FCM tokens:', tokenError)
@@ -70,7 +114,7 @@ serve(async (req) => {
         }
 
         if (!tokens || tokens.length === 0) {
-            console.log('No FCM tokens found for user:', userId)
+            console.log('No FCM tokens found for target:', userId)
             return new Response(
                 JSON.stringify({ success: false, message: 'No FCM tokens found' }),
                 { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -96,7 +140,7 @@ serve(async (req) => {
                             notification: {
                                 sound: 'default',
                                 channel_id: 'default',
-                                icon: 'ic_launcher'
+                                icon: 'ic_notification'
                             },
                         },
                     },

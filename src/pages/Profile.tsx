@@ -353,22 +353,44 @@ export default function ProfilePage() {
   };
 
   const handleStartEnroll = async () => {
-    // Check consent first, if not consented, save it automatically
+    // Check consent first
     if (!isConsentedState && consentKey) {
       localStorage.setItem(consentKey, 'true');
       setIsConsentedState(true);
     }
 
     try {
-      await startCamera();
-      setEnrollStep('camera');
-    } catch (e) {
+      if (Capacitor.isNativePlatform()) {
+        // Use Native Phone Camera App for better quality and "Native" feel
+        const photo = await CapCamera.getPhoto({
+          quality: 100,
+          allowEditing: false,
+          resultType: 'blob' as any, // resultType blob is actually not standard for getPhoto but we can handle it
+          source: 'CAMERA' as any,
+          width: 1280
+        });
+
+        if (photo.webPath) {
+          const response = await fetch(photo.webPath);
+          const blob = await response.blob();
+          setEnrollmentBlob(blob);
+          setEnrollmentPreviewUrl(photo.webPath);
+          setEnrollStep('preview');
+        }
+      } else {
+        // Web Fallback
+        await startCamera();
+        setEnrollStep('camera');
+      }
+    } catch (e: any) {
       console.error('Camera error:', e);
-      toast({
-        title: 'Gagal membuka kamera',
-        description: e instanceof Error ? e.message : 'Periksa izin kamera Anda',
-        variant: 'destructive'
-      });
+      if (e.message !== 'User cancelled photos app') {
+        toast({
+          title: 'Gagal membuka kamera',
+          description: 'Cek izin kamera Anda atau gunakan menu upload.',
+          variant: 'destructive'
+        });
+      }
     }
   };
 
@@ -402,8 +424,9 @@ export default function ProfilePage() {
       const blobUrl = URL.createObjectURL(enrollmentBlob);
       try {
         const img = await faceapi.fetchImage(blobUrl);
-        // Use SSD Mobilenet for static enrollment (more accurate than Tiny)
-        const detection = await faceapi.detectSingleFace(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
+        // Use TinyFaceDetector with higher input size for speed + accuracy
+        // SSD Mobilenet is too slow on most mobile browsers
+        const detection = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
           .withFaceLandmarks()
           .withFaceDescriptor();
 
@@ -782,7 +805,7 @@ export default function ProfilePage() {
               Keluar Sesi Aplikasi
             </Button>
             <p className="mt-4 text-slate-400 text-[10px] uppercase tracking-widest font-bold text-center">
-              Duta Mruput v2.1.0 • CMS Duta Solusi
+              CMS Duta Solusi v2.1.0 • Corporate Management System
             </p>
           </div>
         </div>
@@ -796,8 +819,8 @@ export default function ProfilePage() {
               <div className="relative aspect-[3/4] flex flex-col">
                 <video ref={videoRef} autoPlay playsInline muted style={{ transform: 'scaleX(-1)', filter: 'brightness(1.08) contrast(1.05) saturate(1.1)' }} className="w-full h-full object-cover" />
                 <div className="absolute top-10 inset-x-0 flex flex-col items-center">
-                  <div className="w-64 h-80 border-2 border-white/50 border-dashed rounded-[60px] relative">
-                    <div className="absolute inset-0 bg-blue-500/10 rounded-[60px]" />
+                  <div className="w-64 h-80 border-2 border-white/30 border-dashed rounded-[60px] relative">
+                    {/* Removed blue-ish background overlay */}
                   </div>
                   <p className="mt-4 text-white text-sm font-bold bg-black/40 backdrop-blur-md px-6 py-2 rounded-full">Posisikan wajah di dalam kotak</p>
                 </div>

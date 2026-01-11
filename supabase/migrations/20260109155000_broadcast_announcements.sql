@@ -4,12 +4,11 @@
 CREATE OR REPLACE FUNCTION public.notify_all_users_on_announcement()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- Insert a notification for every active profile
-    -- Using 'system' type which is already handled in the frontend
+    -- Insert a notification for every active profile (Inbox)
     INSERT INTO public.notifications (user_id, title, message, type, link)
     SELECT 
         id as user_id, 
-        'CMS | 📢 Pengumuman: ' || NEW.title as title, 
+        '📢 ' || NEW.title as title, 
         CASE 
             WHEN length(NEW.content) > 100 THEN substring(NEW.content from 1 for 100) || '...'
             ELSE NEW.content 
@@ -19,6 +18,10 @@ BEGIN
     FROM public.profiles
     WHERE is_active = true;
 
+    -- NOTE: Individual push notifications will be triggered by the row inserts.
+    -- To avoid hammering, ensure send_fcm_push_notification handles this or we call broadcast here.
+    -- For now, relying on the fixed RS256 signing which is much faster.
+    
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

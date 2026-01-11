@@ -76,8 +76,8 @@ export function FaceRegistration({ onComplete, employeeId }: FaceRegistrationPro
       setErrorMessage('');
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: 640,
-          height: 480,
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
           facingMode: 'user'
         }
       });
@@ -117,7 +117,7 @@ export function FaceRegistration({ onComplete, employeeId }: FaceRegistrationPro
     faceapi.matchDimensions(canvas, displaySize);
 
     const detections = await faceapi
-      .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+      .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 256, scoreThreshold: 0.5 }))
       .withFaceLandmarks()
       .withFaceDescriptors();
 

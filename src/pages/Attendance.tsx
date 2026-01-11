@@ -293,6 +293,33 @@ export default function AttendancePage() {
 
   const openCamera = async () => {
     try {
+      // Pre-check: Verify user has registered face
+      if (!user) {
+        toast({
+          title: 'Error',
+          description: 'User tidak ditemukan',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      const { data: faceData, error: faceError } = await supabase
+        .from('face_descriptors')
+        .select('id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (faceError || !faceData) {
+        toast({
+          title: 'Registrasi Wajah Diperlukan',
+          description: 'Anda belum mendaftarkan wajah. Silakan daftar di halaman Profil terlebih dahulu.',
+          variant: 'destructive'
+        });
+        setTimeout(() => navigate('/profile'), 1500);
+        return;
+      }
+
       setCameraOpen(true);
       await getLocation();
       await startCamera();

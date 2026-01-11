@@ -246,11 +246,11 @@ export default function Dashboard() {
       <DashboardLayout>
         <div className="relative">
           {/* Custom Background Header for Mobile Feel - More compact while keeping Avatar large */}
-          <div className="absolute top-0 left-0 w-full h-[95px] bg-gradient-to-r from-blue-600 to-cyan-500 rounded-b-[32px] z-0 shadow-lg" />
+          <div className="absolute top-0 left-0 w-full h-[calc(110px+env(safe-area-inset-top))] bg-gradient-to-r from-blue-600 to-cyan-500 rounded-b-[32px] z-0 shadow-lg" />
 
           <div className="relative z-10 space-y-3 max-w-5xl mx-auto pb-24">
             {/* Header Section - Compact but Heroic */}
-            <div className="flex items-center justify-between pt-[calc(1rem+env(safe-area-inset-top))] pb-2 px-4 text-white">
+            <div className="flex items-center justify-between pt-[calc(2rem+env(safe-area-inset-top))] pb-2 px-4 text-white">
               <div className="flex items-center gap-3">
                 <div className="relative group shrink-0" onClick={() => navigate('/profile')}>
                   <div className="absolute -inset-1.5 bg-white/20 rounded-full blur-md group-active:bg-white/40 transition-all" />

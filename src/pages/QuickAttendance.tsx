@@ -123,7 +123,6 @@ export default function QuickAttendancePage() {
 
     const handleStartCamera = async () => {
         try {
-            // Pre-check: Verify user has registered face
             if (!user) {
                 toast({
                     title: 'Error',
@@ -133,14 +132,28 @@ export default function QuickAttendancePage() {
                 return;
             }
 
-            const { data: faceData, error: faceError } = await supabase
-                .from('face_descriptors')
-                .select('id')
-                .eq('user_id', user.id)
-                .limit(1)
-                .maybeSingle();
+            // Show dialog immediately for better UX
+            setCameraOpen(true);
 
-            if (faceError || !faceData) {
+            // Run checks and initialization in parallel for speed
+            const [faceCheckResult, locationResult, cameraResult] = await Promise.allSettled([
+                // Check face registration
+                supabase
+                    .from('face_descriptors')
+                    .select('id')
+                    .eq('user_id', user.id)
+                    .limit(1)
+                    .maybeSingle(),
+                // Get location
+                getLocation(),
+                // Start camera
+                startCamera()
+            ]);
+
+            // Handle face registration check
+            if (faceCheckResult.status === 'rejected' ||
+                !faceCheckResult.value.data) {
+                setCameraOpen(false);
                 toast({
                     title: 'Registrasi Wajah Diperlukan',
                     description: 'Anda belum mendaftarkan wajah. Silakan daftar di halaman Profil terlebih dahulu.',
@@ -150,9 +163,7 @@ export default function QuickAttendancePage() {
                 return;
             }
 
-            setCameraOpen(true);
-            await getLocation();
-            await startCamera();
+            // Camera and location are already started/fetched in parallel
 
             const interval = setInterval(async () => {
                 if (videoRef.current && modelsLoaded && !checkingFace) {

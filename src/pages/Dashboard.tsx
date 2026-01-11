@@ -73,6 +73,7 @@ export default function Dashboard() {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const [todayAttendance, setTodayAttendance] = useState<Attendance | null>(null);
+  const [todaySchedule, setTodaySchedule] = useState<any>(null);
   const [stats, setStats] = useState({ present: 0, late: 0, leave: 0, overtime: 0 });
   const [loading, setLoading] = useState(true);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -110,13 +111,15 @@ export default function Dashboard() {
         announcementQuery = announcementQuery.eq('is_active', true);
       }
 
-      const [todayRes, monthRes, announcementsRes] = await Promise.all([
+      const [todayRes, scheduleRes, monthRes, announcementsRes] = await Promise.all([
         supabase.from('attendances').select('*').eq('user_id', user.id).eq('date', today).maybeSingle(),
+        (supabase.from('employee_schedules') as any).select('*, shift:shifts(*)').eq('user_id', user.id).eq('date', today).maybeSingle(),
         supabase.from('attendances').select('*').eq('user_id', user.id).gte('date', startOfMonth).lte('date', today),
         announcementQuery
       ]);
 
       setTodayAttendance(todayRes.data as Attendance | null);
+      setTodaySchedule(scheduleRes.data);
 
       if (announcementsRes.data) {
         const filteredAnnouncements = isAdmin ? (announcementsRes.data as Announcement[]) : (announcementsRes.data as Announcement[]).filter(a => {
@@ -370,16 +373,30 @@ export default function Dashboard() {
                   <div className="absolute right-0 top-0 h-20 w-20 bg-white/10 rounded-bl-full -mr-4 -mt-4" />
                   <div>
                     <p className="text-[10px] font-medium text-blue-100 mb-0.5">Status Hari Ini</p>
-                    <h3 className="text-lg font-bold">{todayAttendance ? (todayAttendance.clock_out ? 'Sudah Pulang' : 'Sedang Bekerja') : 'Belum Absen'}</h3>
+                    <h3 className="text-lg font-bold">
+                      {todaySchedule?.is_day_off
+                        ? 'Hari Libur'
+                        : todayAttendance
+                          ? (todayAttendance.clock_out ? 'Sudah Pulang' : 'Sedang Bekerja')
+                          : 'Belum Absen'}
+                    </h3>
                   </div>
                   <div className="flex justify-between items-end">
                     <div>
                       <p className="text-[9px] text-blue-200 uppercase tracking-widest">Waktu</p>
-                      <p className="font-mono text-base font-bold">{todayAttendance ? format(new Date(todayAttendance.clock_in), 'HH:mm') : '--:--'}</p>
+                      <p className="font-mono text-base font-bold">
+                        {todaySchedule?.is_day_off
+                          ? '🏖️'
+                          : todayAttendance
+                            ? format(new Date(todayAttendance.clock_in), 'HH:mm')
+                            : '--:--'}
+                      </p>
                     </div>
-                    <Button size="sm" variant="secondary" className="h-8 text-xs bg-white text-blue-700 hover:bg-blue-50 border-0" asChild>
-                      <Link to="/attendance">{todayAttendance && !todayAttendance.clock_out ? 'Clock Out' : 'Absen'}</Link>
-                    </Button>
+                    {!todaySchedule?.is_day_off && (
+                      <Button size="sm" variant="secondary" className="h-8 text-xs bg-white text-blue-700 hover:bg-blue-50 border-0" asChild>
+                        <Link to="/attendance">{todayAttendance && !todayAttendance.clock_out ? 'Clock Out' : 'Absen'}</Link>
+                      </Button>
+                    )}
                   </div>
                 </div>
 

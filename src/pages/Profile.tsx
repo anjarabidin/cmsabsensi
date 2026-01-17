@@ -655,56 +655,7 @@ export default function ProfilePage() {
             </Card>
           </div>
 
-          {/* 4. Security & Biometrics Section */}
-          <div className="space-y-4 pt-4 text-white">
-            <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] ml-4">Biometrik Absensi</h3>
-            <Card className="border-none shadow-md rounded-3xl overflow-hidden bg-gradient-to-br from-indigo-600 to-blue-800 text-white p-1">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-md shadow-sm border border-white/20">
-                      <ScanFace className="h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-blue-100 mb-1">Status Data Wajah</p>
-                      <h4 className="text-lg font-black">{faceDataRegistered ? 'Terdaftar' : 'Belum Ada Data'}</h4>
-                    </div>
-                  </div>
-                  <Badge className={`border-none ${faceDataRegistered ? 'bg-green-400 text-green-900' : 'bg-white/20 text-white'}`}>
-                    {faceDataRegistered ? 'AKTIF' : 'PENDING'}
-                  </Badge>
-                </div>
-
-                <div className="space-y-4">
-                  <Alert className="bg-white/10 border-white/20 text-white p-3 rounded-2xl">
-                    <Info className="h-4 w-4 text-blue-200" />
-                    <AlertDescription className="text-xs text-blue-50 leading-relaxed ml-2">
-                      Data wajah ini digunakan khusus untuk <b>Absensi Cerdas</b> dan <b>Login Wajah</b>. Berbeda dengan foto profil Anda.
-                    </AlertDescription>
-                  </Alert>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button
-                      className={`h-12 ${faceDataRegistered ? 'bg-white/20 hover:bg-white/30 text-white' : 'bg-white text-blue-600 hover:bg-white/90'} rounded-2xl font-black shadow-xl`}
-                      onClick={handleStartEnroll}
-                    >
-                      {faceDataRegistered ? 'Ubah Data' : 'Daftar Sekarang'}
-                    </Button>
-
-                    {faceDataRegistered && (
-                      <Button
-                        variant="ghost"
-                        className="h-12 bg-red-400/20 hover:bg-red-400/40 text-red-100 rounded-2xl font-black"
-                        onClick={handleDeleteFaceData}
-                      >
-                        Hapus Data
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          {/* Biometrics Banner Removed for Cleaner UI */}
 
           {/* 5. App Permissions Section */}
           <div className="space-y-4 pt-4">

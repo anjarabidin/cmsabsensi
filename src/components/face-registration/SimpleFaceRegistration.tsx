@@ -105,8 +105,8 @@ export function SimpleFaceRegistration({ onComplete, employeeId }: SimpleFaceReg
             isProcessing = true;
 
             try {
-                // Optimize detection options
-                const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
+                // Lower threshold for better detection (0.3 instead of 0.5)
+                const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.3 });
 
                 const detection = await faceapi.detectSingleFace(videoRef.current, options)
                     .withFaceLandmarks()
@@ -114,6 +114,7 @@ export function SimpleFaceRegistration({ onComplete, employeeId }: SimpleFaceReg
                     .withFaceDescriptor();
 
                 if (detection) {
+                    console.log('✅ Face detected at step:', currentStep);
                     const { landmarks, expressions, descriptor } = detection;
                     // Get simple head pose estimation from landmarks
                     // Nose bottom

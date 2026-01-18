@@ -281,9 +281,40 @@ export function SecureFaceRegistration({ onComplete, employeeId }: SecureFaceReg
 
                     {/* Loading Models */}
                     {step === 'loading' && (
-                        <div className="text-center py-12 space-y-4">
-                            <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto" />
-                            <p className="text-sm font-bold text-slate-600">Mempersiapkan sistem biometrik...</p>
+                        <div className="text-center py-12 space-y-6">
+                            <div className="relative mx-auto w-20 h-20">
+                                <Loader2 className="h-20 w-20 animate-spin text-blue-600 opacity-20" />
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className="h-10 w-10 bg-blue-600 rounded-full animate-pulse flex items-center justify-center">
+                                        <CameraIcon className="h-5 w-5 text-white" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <p className="text-lg font-black text-slate-800">Menyiapkan Biometrik...</p>
+                                <p className="text-sm text-slate-500 px-6">
+                                    Sedang mengunduh modul keamanan (~10MB). Proses ini tergantung kecepatan internet Anda.
+                                </p>
+                                <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-50 border-none font-bold">
+                                    Dilakukan hanya sekali saja
+                                </Badge>
+                            </div>
+
+                            {biometricError && (
+                                <div className="mt-4 p-4 bg-red-50 border border-red-100 rounded-2xl text-left">
+                                    <p className="text-xs font-bold text-red-800 text-center">Terdeteksi Masalah:</p>
+                                    <p className="text-[10px] text-red-600 mt-1 break-words">{biometricError}</p>
+                                </div>
+                            )}
+
+                            <Button
+                                onClick={() => { stopCamera(); setStep('intro'); }}
+                                variant="ghost"
+                                className="text-slate-400 hover:text-slate-600"
+                            >
+                                Batalkan & Kembali
+                            </Button>
                         </div>
                     )}
 

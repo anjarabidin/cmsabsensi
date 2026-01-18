@@ -29,25 +29,29 @@ export function useFaceRecognition() {
         globalModelsPromise = (async () => {
             setState(prev => ({ ...prev, loading: true, error: null }));
             try {
-                // Use CDN as fallback because local models seem to be incomplete or corrupt
-                const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
+                // Now using local models because we fixed the files in public/models
+                // This will be bundled with your APK
+                const MODEL_URL = '/models';
 
-                console.log('📡 Loading biometric models from CDN...');
+                console.log('📦 Memuat modul biometrik dari penyimpanan lokal (APK)...');
 
-                await Promise.all([
-                    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-                    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-                    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-                ]);
+                console.log('⏳ Loading: TinyFaceDetector');
+                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+
+                console.log('⏳ Loading: FaceLandmark68Net');
+                await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+
+                console.log('⏳ Loading: FaceRecognitionNet');
+                await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
 
                 globalModelsLoaded = true;
                 setState({ modelsLoaded: true, loading: false, error: null });
-                console.log('✅ Face recognition models loaded successfully from CDN');
+                console.log('✅ Sistem Biometrik Siap (Offline Mode)');
                 return true;
             } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : 'Failed to load models';
+                const errorMessage = error instanceof Error ? error.message : 'Gagal memuat sistem biometrik lokal';
+                console.error('❌ Error Biometrik:', error);
                 setState({ modelsLoaded: false, loading: false, error: errorMessage });
-                console.error('❌ Failed to load face recognition models:', error);
                 globalModelsPromise = null;
                 return false;
             }

@@ -33,7 +33,7 @@ export function SecureFaceRegistration({ onComplete, employeeId }: SecureFaceReg
     const [detectedFace, setDetectedFace] = useState(false);
 
     const targetUserId = employeeId || user?.id;
-    const { loadModels, modelsLoaded } = useFaceRecognition();
+    const { loadModels, modelsLoaded, error: biometricError } = useFaceRecognition();
 
     // Start Camera
     const startCamera = async () => {
@@ -49,7 +49,8 @@ export function SecureFaceRegistration({ onComplete, employeeId }: SecureFaceReg
             const success = await Promise.race([loadPromise, timeoutPromise]) as boolean;
 
             if (!success) {
-                setErrorMessage('Gagal memuat model biometrik. Pastikan file model tersedia di folder public/models.');
+                // Try to get more specific error from state if possible
+                setErrorMessage(biometricError || 'Gagal memuat model biometrik. Pastikan file model tersedia di folder public/models.');
                 setStep('error');
                 return;
             }

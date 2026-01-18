@@ -29,15 +29,20 @@ export function useFaceRecognition() {
         globalModelsPromise = (async () => {
             setState(prev => ({ ...prev, loading: true, error: null }));
             try {
-                const MODEL_URL = '/models';
+                // Use CDN as fallback because local models seem to be incomplete or corrupt
+                const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
+
+                console.log('📡 Loading biometric models from CDN...');
+
                 await Promise.all([
                     faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
                     faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
                     faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
                 ]);
+
                 globalModelsLoaded = true;
                 setState({ modelsLoaded: true, loading: false, error: null });
-                console.log('✅ Face recognition models loaded (Global)');
+                console.log('✅ Face recognition models loaded successfully from CDN');
                 return true;
             } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : 'Failed to load models';

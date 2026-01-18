@@ -96,7 +96,7 @@ export function SecureFaceRegistration({ onComplete, employeeId }: SecureFaceReg
         if (!videoRef.current || !modelsLoaded) return;
 
         try {
-            const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.3 });
+            const options = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 });
             const detection = await faceapi.detectSingleFace(videoRef.current, options)
                 .withFaceLandmarks()
                 .withFaceDescriptor();
@@ -145,7 +145,7 @@ export function SecureFaceRegistration({ onComplete, employeeId }: SecureFaceReg
             }
 
             try {
-                const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.3 });
+                const options = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 });
                 const detection = await faceapi.detectSingleFace(videoRef.current, options)
                     .withFaceLandmarks();
 

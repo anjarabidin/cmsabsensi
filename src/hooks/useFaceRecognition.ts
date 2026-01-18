@@ -35,8 +35,8 @@ export function useFaceRecognition() {
 
                 console.log('📦 Memuat modul biometrik dari penyimpanan lokal (APK)...');
 
-                console.log('⏳ Loading: TinyFaceDetector');
-                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+                console.log('⏳ Loading: SsdMobilenetv1');
+                await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
 
                 console.log('⏳ Loading: FaceLandmark68Net');
                 await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
@@ -73,7 +73,7 @@ export function useFaceRecognition() {
 
         try {
             const detection = await faceapi
-                .detectSingleFace(videoElement, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
+                .detectSingleFace(videoElement, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
                 .withFaceLandmarks()
                 .withFaceDescriptor();
 

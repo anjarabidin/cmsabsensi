@@ -29,11 +29,11 @@ export function useFaceRecognition() {
         globalModelsPromise = (async () => {
             setState(prev => ({ ...prev, loading: true, error: null }));
             try {
-                // Now using local models because we fixed the files in public/models
-                // This will be bundled with your APK
-                const MODEL_URL = '/models';
+                // Switching back to CDN because local files are consistently corrupted/truncated
+                // This is the most reliable way to ensure model integrity
+                const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
 
-                console.log('📦 Memuat modul biometrik dari penyimpanan lokal (APK)...');
+                console.log('📡 Menghubungkan ke CDN Biometrik (Vladmandic)...');
 
                 console.log('⏳ Loading: SsdMobilenetv1');
                 await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
@@ -46,14 +46,31 @@ export function useFaceRecognition() {
 
                 globalModelsLoaded = true;
                 setState({ modelsLoaded: true, loading: false, error: null });
-                console.log('✅ Sistem Biometrik Siap (Offline Mode)');
+                console.log('✅ Sistem Biometrik Siap via CDN');
                 return true;
             } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : 'Gagal memuat sistem biometrik lokal';
-                console.error('❌ Error Biometrik:', error);
-                setState({ modelsLoaded: false, loading: false, error: errorMessage });
-                globalModelsPromise = null;
-                return false;
+                const errorMessage = error instanceof Error ? error.message : 'Gagal memuat model biometrik dari CDN';
+                console.error('❌ Error Biometrik CDN:', error);
+
+                // Fallback to local just in case, but local is likely broken
+                try {
+                    console.log('🔄 Mencoba fallback ke penyimpanan lokal...');
+                    const LOCAL_URL = '/models';
+                    await faceapi.nets.ssdMobilenetv1.loadFromUri(LOCAL_URL);
+                    await faceapi.nets.faceLandmark68Net.loadFromUri(LOCAL_URL);
+                    await faceapi.nets.faceRecognitionNet.loadFromUri(LOCAL_URL);
+
+                    globalModelsLoaded = true;
+                    setState({ modelsLoaded: true, loading: false, error: null });
+                    console.log('✅ Sistem Biometrik Siap (Fallback Lokal)');
+                    return true;
+                } catch (localError) {
+                    const localErrorMessage = localError instanceof Error ? localError.message : 'Gagal memuat model biometrik lokal';
+                    console.error('❌ Error Biometrik Lokal (Fallback):', localError);
+                    setState({ modelsLoaded: false, loading: false, error: errorMessage + ' (Fallback: ' + localErrorMessage + ')' });
+                    globalModelsPromise = null;
+                    return false;
+                }
             }
         })();
 

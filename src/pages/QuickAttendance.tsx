@@ -47,6 +47,9 @@ export default function QuickAttendancePage() {
 
     // State for office validation
     const [officeLocations, setOfficeLocations] = useState<any[]>([]);
+    const [nearestOfficeDist, setNearestOfficeDist] = useState<number | null>(null);
+    const [isLocationValid, setIsLocationValid] = useState(false);
+    const MAX_RADIUS = 100; // 100 meters
 
     // ... existing states ...
 
@@ -76,6 +79,25 @@ export default function QuickAttendancePage() {
         };
         fetchOffices();
     }, []);
+
+    // Real-time Distance Check
+    useEffect(() => {
+        if (latitude && longitude) {
+            if (officeLocations.length > 0) {
+                let minDistance = Infinity;
+                for (const office of officeLocations) {
+                    const dist = getDistanceFromLatLonInM(latitude, longitude, office.latitude, office.longitude);
+                    if (dist < minDistance) minDistance = dist;
+                }
+                setNearestOfficeDist(minDistance);
+                setIsLocationValid(minDistance <= MAX_RADIUS);
+            } else {
+                // No office defined -> Valid by default but warn
+                setNearestOfficeDist(null);
+                setIsLocationValid(true);
+            }
+        }
+    }, [latitude, longitude, officeLocations]);
 
     // Face Recognition States
     const [cameraOpen, setCameraOpen] = useState(false);
@@ -317,26 +339,6 @@ export default function QuickAttendancePage() {
         }
 
         // --- DISTANCE VALIDATION ---
-        const MAX_RADIUS = 100; // 100 meters
-        let isLocationValid = false;
-        let distanceMsg = "";
-
-        if (officeLocations.length > 0) {
-            let minDistance = Infinity;
-            for (const office of officeLocations) {
-                const dist = getDistanceFromLatLonInM(latitude, longitude, office.latitude, office.longitude);
-                if (dist < minDistance) minDistance = dist;
-            }
-
-            if (minDistance <= MAX_RADIUS) {
-                isLocationValid = true;
-            } else {
-                distanceMsg = `Jarak Anda: ${Math.round(minDistance)}m (Max: ${MAX_RADIUS}m)`;
-            }
-        } else {
-            // No office defined -> Skip validation (or strict deny depending on policy)
-            isLocationValid = true;
-        }
 
         if (isMocked) {
             toast({ title: "Lokasi Tidak Valid", description: "Terdeteksi menggunakan Fake GPS.", variant: "destructive" });
@@ -344,9 +346,10 @@ export default function QuickAttendancePage() {
         }
 
         if (!isLocationValid) {
+            const msg = nearestOfficeDist ? `Jarak: ${Math.round(nearestOfficeDist)}m (Max: ${MAX_RADIUS}m)` : "Lokasi kantor tidak valid.";
             toast({
                 title: "Di Luar Jangkauan Kantor",
-                description: `Anda harus berada di kantor. ${distanceMsg}`,
+                description: `Anda harus berada di kantor. ${msg}`,
                 variant: "destructive"
             });
             return;
@@ -510,10 +513,10 @@ export default function QuickAttendancePage() {
 
     const getGPSStrength = (acc: number | null) => {
         if (!acc) return { text: 'Mencari Sinyal...', color: 'text-slate-500', bg: 'bg-slate-100', bar: 1 };
-        if (acc <= 15) return { text: 'Sangat Akurat', color: 'text-green-600', bg: 'bg-green-50', bar: 4 };
-        if (acc <= 30) return { text: 'Akurat', color: 'text-blue-600', bg: 'bg-blue-50', bar: 3 };
-        if (acc <= 100) return { text: 'Cukup', color: 'text-yellow-600', bg: 'bg-yellow-50', bar: 2 };
-        return { text: 'Lemah', color: 'text-red-500', bg: 'bg-red-50', bar: 1 };
+        if (acc <= 15) return { text: 'Sinyal Kuat', color: 'text-green-600', bg: 'bg-green-50', bar: 4 };
+        if (acc <= 30) return { text: 'Sinyal Bagus', color: 'text-blue-600', bg: 'bg-blue-50', bar: 3 };
+        if (acc <= 100) return { text: 'Sinyal Cukup', color: 'text-yellow-600', bg: 'bg-yellow-50', bar: 2 };
+        return { text: 'Sinyal Lemah', color: 'text-red-500', bg: 'bg-red-50', bar: 1 };
     };
 
     const gpsStatus = getGPSStrength(accuracy);
@@ -613,6 +616,32 @@ export default function QuickAttendancePage() {
                                 {latitude && longitude ? (
                                     <div className="relative">
                                         <GoogleMapsEmbed latitude={latitude} longitude={longitude} />
+
+                                        {/* Office Distance Status Overlay */}
+                                        <div className="absolute top-2 left-2 right-2 z-10 flex flex-col gap-2">
+                                            {officeLocations.length === 0 ? (
+                                                <div className="bg-yellow-100/90 backdrop-blur-md p-2 rounded-xl border border-yellow-200 shadow-sm flex items-center gap-2">
+                                                    <AlertCircle className="h-4 w-4 text-yellow-600" />
+                                                    <span className="text-xs font-bold text-yellow-700">Kantor Belum Disetting (Bebas)</span>
+                                                </div>
+                                            ) : (
+                                                <div className={cn(
+                                                    "backdrop-blur-md p-2 rounded-xl border shadow-sm flex items-center justify-between",
+                                                    isLocationValid ? "bg-green-100/90 border-green-200" : "bg-red-100/90 border-red-200"
+                                                )}>
+                                                    <div className="flex items-center gap-2">
+                                                        <MapPin className={cn("h-4 w-4", isLocationValid ? "text-green-600" : "text-red-600")} />
+                                                        <span className={cn("text-xs font-bold", isLocationValid ? "text-green-700" : "text-red-700")}>
+                                                            {isLocationValid ? "Dalam Kawasan Kantor" : "Di Luar Jangkauan"}
+                                                        </span>
+                                                    </div>
+                                                    <Badge variant="outline" className={cn("bg-white/50 border-0 text-[10px]", isLocationValid ? "text-green-700" : "text-red-700")}>
+                                                        {nearestOfficeDist ? Math.round(nearestOfficeDist) : 0}m / 100m
+                                                    </Badge>
+                                                </div>
+                                            )}
+                                        </div>
+
                                         {/* Overlay Status Bar */}
                                         <div className="absolute bottom-2 left-2 right-2 bg-white/90 backdrop-blur-md p-3 rounded-2xl shadow-sm flex items-center justify-between border border-white/50">
                                             <div className="flex items-center gap-3">

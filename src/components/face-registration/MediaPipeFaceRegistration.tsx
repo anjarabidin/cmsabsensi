@@ -215,11 +215,20 @@ export function MediaPipeFaceRegistration({ onComplete, employeeId }: MediaPipeF
     useEffect(() => {
         if (step === 'blink-challenge' && isReady && videoRef.current) {
             const detectBlinks = async () => {
-                if (step !== 'blink-challenge' || !videoRef.current || !isReady) {
+                const video = videoRef.current;
+                if (step !== 'blink-challenge' || !video || !isReady) {
                     return;
                 }
 
-                const result = await detectFace(videoRef.current);
+                // Wait for video to be ready
+                if (video.readyState < 2) {
+                    if (step === 'blink-challenge') {
+                        animationFrameRef.current = requestAnimationFrame(detectBlinks);
+                    }
+                    return;
+                }
+
+                const result = await detectFace(video);
 
                 if (result && result.faceLandmarks && result.faceLandmarks.length > 0) {
                     setDetectedFace(true);

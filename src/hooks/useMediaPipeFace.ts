@@ -54,7 +54,7 @@ export function useMediaPipeFace() {
                 globalFaceLandmarker = await FaceLandmarker.createFromOptions(vision, {
                     baseOptions: {
                         modelAssetPath: faceLandmarkerModel,
-                        delegate: 'GPU'
+                        delegate: 'CPU' // Changed to CPU for better compatibility
                     },
                     runningMode: 'VIDEO',
                     numFaces: 1,

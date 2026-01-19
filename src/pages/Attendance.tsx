@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useCamera } from '@/hooks/useCamera';
-import { useFaceRecognition } from '@/hooks/useFaceRecognition';
 import { Loader2, Camera, MapPin, CheckCircle2, LogIn, LogOut, RefreshCw, Smartphone, ChevronLeft, Map, AlertOctagon, X, Clock, Info, Scan } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
@@ -77,9 +76,6 @@ export default function AttendancePage() {
 
   // Camera hook
   const { stream, videoRef, startCamera, stopCamera, capturePhoto } = useCamera();
-
-  // Face recognition hook
-  const { modelsLoaded, detectFace, getFaceDescriptor, compareFaces } = useFaceRecognition();
 
   // Fix: Attach stream to video element when stream is available
   useEffect(() => {

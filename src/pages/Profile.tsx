@@ -12,8 +12,6 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
 import { useCamera } from '@/hooks/useCamera';
-import { useFaceRecognition } from '@/hooks/useFaceRecognition';
-import * as faceapi from 'face-api.js';
 import { Switch } from '@/components/ui/switch';
 import { ScanFace } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';

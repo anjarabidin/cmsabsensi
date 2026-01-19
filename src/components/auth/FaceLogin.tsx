@@ -136,8 +136,8 @@ export function FaceLogin({ onVerificationComplete, employeeId }: FaceLoginProps
                     const score = compareFaces(currentDescriptor, enrolledDescriptor);
                     setSimilarityScore(score);
 
-                    // Threshold Check (e.g. 0.6)
-                    if (score > 0.6) {
+                    // Threshold Check (e.g. 0.75 for stricter security)
+                    if (score > 0.75) {
                         handleSuccess();
                         return; // Stop checking
                     }
@@ -166,14 +166,14 @@ export function FaceLogin({ onVerificationComplete, employeeId }: FaceLoginProps
             const landmarks = result.faceLandmarks[0];
 
             // Draw simple frame or points
-            ctx.fillStyle = 'rgba(74, 222, 128, 0.5)'; // Green
+            ctx.fillStyle = 'rgba(74, 222, 128, 0.8)'; // Green brighter
             landmarks.forEach((pt, i) => {
-                // Draw only some points to save perf
-                if (i % 5 === 0) {
+                // Draw mesh for visual feedback
+                if (i % 8 === 0) { // Optimize: draw fewer points
                     const x = pt.x * video.videoWidth;
                     const y = pt.y * video.videoHeight;
                     ctx.beginPath();
-                    ctx.arc(x, y, 2, 0, 2 * Math.PI);
+                    ctx.arc(x, y, 1.5, 0, 2 * Math.PI);
                     ctx.fill();
                 }
             });
@@ -266,10 +266,14 @@ export function FaceLogin({ onVerificationComplete, employeeId }: FaceLoginProps
                     <div className="w-full text-center pb-8">
                         {/* Scanning Frame Guide */}
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="w-48 h-64 border-2 border-white/30 rounded-[32px] border-dashed" />
+                            <div className="w-48 h-64 border-2 border-white/30 rounded-[32px] border-dashed relative">
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className="h-64 w-[1px] bg-gradient-to-b from-transparent via-blue-500 to-transparent absolute animate-scan" />
+                                </div>
+                            </div>
                         </div>
-                        <p className="text-sm font-medium text-white/80 drop-shadow-md">
-                            Posisikan wajah Anda di tengah
+                        <p className="text-sm font-medium text-white/80 drop-shadow-md bg-black/40 py-1 px-3 rounded-full inline-block backdrop-blur-sm">
+                            {similarityScore > 0 ? `Match: ${(similarityScore * 100).toFixed(0)}%` : 'Posisikan wajah Anda di tengah'}
                         </p>
                     </div>
                 )}

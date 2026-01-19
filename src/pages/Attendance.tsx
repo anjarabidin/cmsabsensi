@@ -291,10 +291,26 @@ export default function AttendancePage() {
 
       setFaceMatch(similarity);
 
-      if (similarity < 0.6) {
+      // THRESHOLD ADJUSTMENT: Euclidean Distance Logic
+      // Usually smaller distance = better match.
+      // Assuming compareFaces returns similarity score (0 to 1, where 1 is identical).
+      // If using Euclidean Distance: < 0.6 is good.
+      // If using Cosine Similarity: > 0.6 is good.
+      // Based on previous code `similarity < 0.6` failed, it implies it returns distance? 
+      // User complaint: "wajah beda masih berhasil".
+      // Fix: TIGHTEN THRESHOLD. If it is distance, use 0.45. If similarity, use 0.85.
+      // Assuming logical consistency with previous code (similarity < 0.6 was rejecting?), 
+      // Wait, line 294 previously said `if (similarity < 0.6) { toast fail }`.
+      // So HIGH score is GOOD.
+      // If user says "different face still success", then 0.6 is TOO LOW.
+      // Increase it to 0.8 (80% match required).
+
+      const THRESHOLD = 0.75; // Increased from 0.6
+
+      if (similarity < THRESHOLD) {
         toast({
           title: 'Wajah Tidak Cocok',
-          description: `Tingkat kemiripan: ${(similarity * 100).toFixed(0)}% (minimum 60%)`,
+          description: `Kemiripan: ${(similarity * 100).toFixed(0)}% (Min: ${(THRESHOLD * 100).toFixed(0)}%)`,
           variant: 'destructive'
         });
         return false;
@@ -442,15 +458,38 @@ export default function AttendancePage() {
       // FIRST: Check face match
       const isMatch = await checkFaceMatch();
       if (!isMatch) {
-        // Optional: Allow capture anyway if similarity is close enough?
-        // No, strictly block fake/wrong person
+        // Strict Security: Reject capture if face doesn't match
         return;
       }
 
+      setCheckingFace(true);
+
       // THEN: Capture photo
-      const photo = await capturePhoto();
-      setCapturedPhoto(photo);
-      setPhotoPreview(URL.createObjectURL(photo));
+      // NOTE: useCamera capturePhoto usually returns a Blob from the video feed.
+      // If the feed is mirrored in CSS (scaleX(-1)), the capture itself might NOT be mirrored by default.
+      // But if user says "result is mirrored", we need to flip it manually using Canvas.
+
+      if (!videoRef.current) return;
+
+      const video = videoRef.current;
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Flip context to correct the mirror effect
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, 0, 0);
+
+      // Convert to blob
+      canvas.toBlob((blob) => {
+        if (blob) {
+          setCapturedPhoto(blob);
+          setPhotoPreview(URL.createObjectURL(blob));
+        }
+      }, 'image/jpeg', 0.95);
 
       // Clear interval
       if ((window as any).faceCheckInterval) {
@@ -459,9 +498,12 @@ export default function AttendancePage() {
 
       stopCamera();
       setCameraOpen(false);
+      setCheckingFace(false);
+
     } catch (error) {
       console.error('Capture error:', error);
       toast({ title: 'Gagal', description: 'Gagal mengambil foto', variant: 'destructive' });
+      setCheckingFace(false);
     }
   };
 
@@ -874,10 +916,16 @@ export default function AttendancePage() {
                       "w-full h-14 text-white font-bold text-lg shadow-xl transition-all rounded-2xl",
                       !todayAttendance
                         ? "bg-blue-600 hover:bg-blue-700 shadow-blue-500/25"
-                        : "bg-orange-500 hover:bg-orange-600 shadow-orange-500/25",
-                      (loading || submitting || todaySchedule?.is_day_off || (todayAttendance?.clock_out)) && "opacity-50 grayscale cursor-not-allowed transform-none shadow-none"
+                        : (!todayAttendance.clock_out
+                          ? "bg-orange-500 hover:bg-orange-600 shadow-orange-500/25"
+                          : "bg-slate-400 cursor-not-allowed shadow-none"),
+                      (loading || submitting || todaySchedule?.is_day_off) && "opacity-50 grayscale cursor-not-allowed transform-none shadow-none"
                     )}
-                    onClick={() => capturedPhoto ? handleSubmit() : openCamera()}
+                    onClick={() => {
+                      // Prevent click if already clocked out
+                      if (todayAttendance?.clock_out) return;
+                      capturedPhoto ? handleSubmit() : openCamera();
+                    }}
                     disabled={loading || submitting || !!todaySchedule?.is_day_off || !!todayAttendance?.clock_out}
                   >
                     {loading ? (
@@ -960,7 +1008,7 @@ export default function AttendancePage() {
                         <Badge
                           className={cn(
                             "px-3 py-1.5 font-black border-none shadow-lg backdrop-blur-md",
-                            faceMatch >= 0.6 ? "bg-blue-600/90" : "bg-red-600/90"
+                            faceMatch >= 0.75 ? "bg-blue-600/90" : "bg-red-600/90"
                           )}
                         >
                           Match: {(faceMatch * 100).toFixed(0)}%
@@ -1020,17 +1068,17 @@ export default function AttendancePage() {
 
                 <button
                   onClick={handleCapturePhoto}
-                  disabled={!stream || checkingFace || !faceDetected || (faceMatch !== null && faceMatch < 0.6)}
+                  disabled={!stream || checkingFace || !faceDetected || (faceMatch !== null && faceMatch < 0.75)}
                   className={cn(
                     "h-24 w-24 rounded-full border-4 border-white flex items-center justify-center p-1.5 transition-all duration-300",
-                    (!stream || checkingFace || !faceDetected || (faceMatch !== null && faceMatch < 0.6))
+                    (!stream || checkingFace || !faceDetected || (faceMatch !== null && faceMatch < 0.75))
                       ? "opacity-20 grayscale scale-90"
                       : "active:scale-95 hover:scale-105"
                   )}
                 >
                   <div className={cn(
                     "h-full w-full rounded-full transition-colors duration-500",
-                    faceMatch !== null && faceMatch >= 0.6 ? "bg-green-500 shadow-[0_0_20px_rgba(34,197,94,0.6)]" : "bg-white"
+                    faceMatch !== null && faceMatch >= 0.75 ? "bg-green-500 shadow-[0_0_20px_rgba(34,197,94,0.6)]" : "bg-white"
                   )} />
                 </button>
 

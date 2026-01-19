@@ -335,7 +335,7 @@ export function MediaPipeFaceRegistration({ onComplete, employeeId }: MediaPipeF
 
     return (
         <div
-            className="min-h-screen w-full flex items-center justify-center bg-black"
+            className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-blue-50/30"
             style={{
                 paddingTop: 'max(1rem, env(safe-area-inset-top))',
                 paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))',
@@ -344,32 +344,32 @@ export function MediaPipeFaceRegistration({ onComplete, employeeId }: MediaPipeF
             }}
         >
             <div className="w-full max-w-md px-4">
-                <Card className="border border-white/10 shadow-2xl rounded-[32px] overflow-hidden bg-black text-white">
+                <Card className="border-0 shadow-2xl shadow-slate-200/50 bg-white/95 backdrop-blur-xl rounded-[32px] overflow-hidden">
                     <CardContent className="p-0">
 
                         {/* STEP 1: INTRO */}
                         {step === 'intro' && (
                             <div className="text-center space-y-6 p-8">
-                                <div className="mx-auto w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-xl shadow-blue-200">
+                                <div className="mx-auto w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-xl shadow-blue-500/30">
                                     <Sparkles className="h-10 w-10 text-white animate-pulse" />
                                 </div>
                                 <div className="space-y-2">
-                                    <h2 className="text-2xl font-black text-white tracking-tight">Biometric Registration</h2>
-                                    <p className="text-sm text-slate-400 font-medium">Amankan akun Anda dengan teknologi pengenalan wajah terbaru.</p>
+                                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">Biometric Registration</h2>
+                                    <p className="text-sm text-slate-600 font-medium">Amankan akun Anda dengan teknologi pengenalan wajah terbaru.</p>
                                 </div>
 
-                                <div className="bg-white/5 border border-white/10 rounded-2xl p-5 text-left space-y-3">
+                                <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-5 text-left space-y-3">
                                     <div className="flex items-center gap-3">
-                                        <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs ring-1 ring-blue-500/50">1</div>
-                                        <span className="text-xs font-bold text-slate-300">Posisikan wajah di tengah</span>
+                                        <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-600 font-bold text-xs ring-1 ring-blue-500/50">1</div>
+                                        <span className="text-xs font-bold text-slate-700">Posisikan wajah di tengah</span>
                                     </div>
                                     <div className="flex items-center gap-3">
-                                        <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs ring-1 ring-blue-500/50">2</div>
-                                        <span className="text-xs font-bold text-slate-300">Pastikan pencahayaan cukup</span>
+                                        <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-600 font-bold text-xs ring-1 ring-blue-500/50">2</div>
+                                        <span className="text-xs font-bold text-slate-700">Pastikan pencahayaan cukup</span>
                                     </div>
                                     <div className="flex items-center gap-3">
-                                        <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs ring-1 ring-blue-500/50">3</div>
-                                        <span className="text-xs font-bold text-slate-300">Ikuti instruksi kedipan mata</span>
+                                        <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-600 font-bold text-xs ring-1 ring-blue-500/50">3</div>
+                                        <span className="text-xs font-bold text-slate-700">Ikuti instruksi kedipan mata</span>
                                     </div>
                                 </div>
 
@@ -490,32 +490,32 @@ export function MediaPipeFaceRegistration({ onComplete, employeeId }: MediaPipeF
                         {step === 'processing' && (
                             <div className="p-12 pb-16 text-center space-y-8">
                                 <div className="relative mx-auto w-32 h-32">
-                                    <div className="absolute inset-0 rounded-full border-[6px] border-white/10" />
+                                    <div className="absolute inset-0 rounded-full border-[6px] border-slate-100" />
                                     <div className="absolute inset-0 rounded-full border-[6px] border-blue-500 border-t-transparent animate-spin" />
                                     <div className="absolute inset-0 flex items-center justify-center">
                                         <div className="h-16 w-16 bg-blue-500/20 rounded-full flex items-center justify-center animate-pulse">
-                                            <Sparkles className="h-8 w-8 text-blue-400" />
+                                            <Sparkles className="h-8 w-8 text-blue-500" />
                                         </div>
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <h3 className="text-xl font-black text-white">Memproses Data</h3>
-                                    <p className="text-slate-400 text-sm">Mengenkripsi dan menyimpan profil biometrik...</p>
+                                    <h3 className="text-xl font-black text-slate-900">Memproses Data</h3>
+                                    <p className="text-slate-600 text-sm">Mengenkripsi dan menyimpan profil biometrik...</p>
                                 </div>
                             </div>
                         )}
 
                         {/* STEP 5: SUCCESS */}
                         {step === 'success' && (
-                            <div className="p-12 pb-16 text-center space-y-8 bg-gradient-to-b from-green-500/10 to-transparent">
-                                <div className="mx-auto w-24 h-24 rounded-full bg-green-500/20 flex items-center justify-center shadow-xl shadow-green-900/20 ring-4 ring-green-500/10">
-                                    <CheckCircle className="h-12 w-12 text-green-400" />
+                            <div className="p-12 pb-16 text-center space-y-8 bg-gradient-to-b from-green-50 to-transparent">
+                                <div className="mx-auto w-24 h-24 rounded-full bg-green-500/20 flex items-center justify-center shadow-xl shadow-green-500/20 ring-4 ring-green-500/10">
+                                    <CheckCircle className="h-12 w-12 text-green-600" />
                                 </div>
                                 <div className="space-y-2">
-                                    <h2 className="text-2xl font-black text-white tracking-tight">Registrasi Berhasil!</h2>
-                                    <p className="text-slate-400 text-sm max-w-[200px] mx-auto">Wajah Anda kini terdaftar. Anda dapat menggunakan fitur Login & Absensi Wajah.</p>
+                                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">Registrasi Berhasil!</h2>
+                                    <p className="text-slate-600 text-sm max-w-[200px] mx-auto">Wajah Anda kini terdaftar. Anda dapat menggunakan fitur Login & Absensi Wajah.</p>
                                 </div>
-                                <Button onClick={() => window.location.href = '/profile'} className="w-full h-12 rounded-xl bg-white text-black font-bold hover:bg-slate-200">
+                                <Button onClick={() => window.location.href = '/profile'} className="w-full h-12 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700">
                                     Kembali ke Profil
                                 </Button>
                             </div>
@@ -524,23 +524,23 @@ export function MediaPipeFaceRegistration({ onComplete, employeeId }: MediaPipeF
                         {/* STEP 6: ERROR */}
                         {step === 'error' && (
                             <div className="p-10 text-center space-y-6">
-                                <div className="mx-auto w-20 h-20 rounded-full bg-red-500/20 flex items-center justify-center shadow-lg shadow-red-900/20">
-                                    <XCircle className="h-10 w-10 text-red-500" />
+                                <div className="mx-auto w-20 h-20 rounded-full bg-red-500/20 flex items-center justify-center shadow-lg shadow-red-500/20">
+                                    <XCircle className="h-10 w-10 text-red-600" />
                                 </div>
                                 <div>
-                                    <h3 className="text-xl font-black text-white">Terjadi Kesalahan</h3>
-                                    <p className="text-sm text-red-400 mt-2 font-medium bg-red-500/10 p-3 rounded-xl border border-red-500/20">
+                                    <h3 className="text-xl font-black text-slate-900">Terjadi Kesalahan</h3>
+                                    <p className="text-sm text-red-600 mt-2 font-medium bg-red-50 p-3 rounded-xl border border-red-200">
                                         {errorMessage}
                                     </p>
                                 </div>
                                 <div className="grid grid-cols-1 gap-3">
                                     <Button
                                         onClick={() => { setStep('intro'); setErrorMessage(''); }}
-                                        className="h-12 bg-white text-black rounded-xl font-bold hover:bg-slate-200"
+                                        className="h-12 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700"
                                     >
                                         <RefreshCw className="mr-2 h-4 w-4" /> Coba Lagi
                                     </Button>
-                                    <Button onClick={() => window.location.reload()} variant="ghost" className="text-slate-400 hover:text-white hover:bg-white/10">
+                                    <Button onClick={() => window.location.reload()} variant="ghost" className="text-slate-600 hover:text-slate-900 hover:bg-slate-100">
                                         Muat Ulang Halaman
                                     </Button>
                                 </div>
@@ -551,9 +551,9 @@ export function MediaPipeFaceRegistration({ onComplete, employeeId }: MediaPipeF
                 </Card>
 
                 {/* Secure Badge Footer */}
-                <div className="mt-8 flex items-center justify-center gap-2 opacity-50">
-                    <div className="h-3 w-3 bg-slate-300 rounded-full" />
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">End-to-End Encrypted</span>
+                <div className="mt-8 flex items-center justify-center gap-2 opacity-40">
+                    <div className="h-3 w-3 bg-slate-400 rounded-full" />
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">End-to-End Encrypted</span>
                 </div>
             </div>
         </div>

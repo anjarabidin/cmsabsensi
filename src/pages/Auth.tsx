@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { FaceLogin } from '@/components/auth/FaceLogin';
-import { Loader2, Lock, Mail, User, ArrowRight, Sparkles, Fingerprint, ScanFace } from 'lucide-react';
+import { Loader2, Lock, Mail, User, ArrowRight, Sparkles, Fingerprint, ScanFace, Smartphone } from 'lucide-react';
 import { z } from 'zod';
 import { AppLogo } from '@/components/AppLogo';
 import { NativeBiometric } from '@capgo/capacitor-native-biometric';
@@ -18,6 +18,8 @@ import { Capacitor } from '@capacitor/core';
 const emailSchema = z.string().email('Email tidak valid');
 const passwordSchema = z.string().min(6, 'Password minimal 6 karakter');
 const nameSchema = z.string().min(2, 'Nama minimal 2 karakter');
+const phoneSchema = z.string().min(10, 'Nomor WhatsApp minimal 10 digit').regex(/^[0-9]+$/, 'Hanya angka');
+const nikSchema = z.string().min(16, 'NIK harus 16 digit').max(16, 'NIK harus 16 digit').regex(/^[0-9]+$/, 'Hanya angka');
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -30,7 +32,11 @@ export default function Auth() {
   const [registerEmail, setRegisterEmail] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
   const [registerName, setRegisterName] = useState('');
+  const [registerPhone, setRegisterPhone] = useState('');
+  const [registerNik, setRegisterNik] = useState('');
   const [lastUser, setLastUser] = useState<{ id?: string; email: string; name: string; avatar?: string } | null>(null);
+  const [activeTab, setActiveTab] = useState('login');
+  const [justRegistered, setJustRegistered] = useState(false);
   const [showFaceLogin, setShowFaceLogin] = useState(false);
 
   const [fingerprintEnabled, setFingerprintEnabled] = useState(false);
@@ -225,10 +231,21 @@ export default function Auth() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (justRegistered) {
+      toast({
+        title: 'Pendaftaran Sudah Dikirim',
+        description: 'Silakan cek email Anda dan login.',
+        variant: 'default',
+      });
+      return;
+    }
+
     try {
       nameSchema.parse(registerName);
       emailSchema.parse(registerEmail);
       passwordSchema.parse(registerPassword);
+      phoneSchema.parse(registerPhone);
+      nikSchema.parse(registerNik);
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast({
@@ -242,7 +259,18 @@ export default function Auth() {
 
     setIsLoading(true);
 
-    const { error } = await signUp(registerEmail, registerPassword, registerName);
+    // Send phone and NIK as metadata
+    const { error } = await supabase.auth.signUp({
+      email: registerEmail,
+      password: registerPassword,
+      options: {
+        data: {
+          full_name: registerName,
+          phone: registerPhone,
+          nik: registerNik,
+        },
+      },
+    });
 
     if (error) {
       let message = 'Terjadi kesalahan saat registrasi';
@@ -255,15 +283,30 @@ export default function Auth() {
         description: message,
         variant: 'destructive',
       });
+      setIsLoading(false);
     } else {
       toast({
         title: 'Registrasi Berhasil! 📧',
         description: 'Tautan konfirmasi telah dikirim ke email Anda. Silakan cek inbox/spam untuk verifikasi, lalu login.',
         duration: 8000,
+        className: 'bg-green-600 text-white border-none',
       });
-    }
 
-    setIsLoading(false);
+      // Clear form
+      setRegisterName('');
+      setRegisterEmail('');
+      setRegisterPassword('');
+      setRegisterPhone('');
+      setRegisterNik('');
+      setJustRegistered(true);
+      setIsLoading(false);
+
+      // Switch to login tab after 2 seconds
+      setTimeout(() => {
+        setActiveTab('login');
+        setJustRegistered(false);
+      }, 2000);
+    }
   };
 
   if (authLoading) {
@@ -311,7 +354,7 @@ export default function Auth() {
 
         {/* Auth Card */}
         <Card className="border-0 shadow-2xl shadow-slate-200/50 bg-white/80 backdrop-blur-xl rounded-3xl overflow-hidden animate-in zoom-in-95 fade-in duration-500">
-          <Tabs defaultValue="login" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <div className="px-8 pt-8">
               <TabsList className="grid w-full grid-cols-2 h-14 rounded-2xl bg-slate-100/80 p-1.5">
                 <TabsTrigger
@@ -476,7 +519,7 @@ export default function Auth() {
 
             <TabsContent value="register" className="mt-0">
               <form onSubmit={handleRegister}>
-                <CardContent className="space-y-5 pt-8 pb-4 px-8">
+                <CardContent className="space-y-4 pt-8 pb-4 px-8">
                   <div className="space-y-2">
                     <Label htmlFor="register-name" className="text-slate-700 font-semibold text-sm">
                       Nama Lengkap
@@ -489,9 +532,9 @@ export default function Auth() {
                         placeholder="Nama Lengkap"
                         value={registerName}
                         onChange={(e) => setRegisterName(e.target.value)}
-                        disabled={isLoading}
+                        disabled={isLoading || justRegistered}
                         required
-                        className="h-13 pl-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                        className="h-12 pl-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
                       />
                     </div>
                   </div>
@@ -505,12 +548,52 @@ export default function Auth() {
                       <Input
                         id="register-email"
                         type="email"
-                        placeholder="masukan email anda"
+                        placeholder="email@perusahaan.com"
                         value={registerEmail}
                         onChange={(e) => setRegisterEmail(e.target.value)}
-                        disabled={isLoading}
+                        disabled={isLoading || justRegistered}
                         required
-                        className="h-13 pl-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                        className="h-12 pl-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="register-phone" className="text-slate-700 font-semibold text-sm">
+                      No. WhatsApp
+                    </Label>
+                    <div className="relative">
+                      <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                      <Input
+                        id="register-phone"
+                        type="tel"
+                        placeholder="08123456789"
+                        value={registerPhone}
+                        onChange={(e) => setRegisterPhone(e.target.value.replace(/\D/g, ''))}
+                        disabled={isLoading || justRegistered}
+                        required
+                        maxLength={15}
+                        className="h-12 pl-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="register-nik" className="text-slate-700 font-semibold text-sm">
+                      NIK (Identitas KTP)
+                    </Label>
+                    <div className="relative">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                      <Input
+                        id="register-nik"
+                        type="text"
+                        placeholder="16 digit NIK"
+                        value={registerNik}
+                        onChange={(e) => setRegisterNik(e.target.value.replace(/\D/g, ''))}
+                        disabled={isLoading || justRegistered}
+                        required
+                        maxLength={16}
+                        className="h-12 pl-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
                       />
                     </div>
                   </div>
@@ -527,9 +610,9 @@ export default function Auth() {
                         placeholder="••••••••"
                         value={registerPassword}
                         onChange={(e) => setRegisterPassword(e.target.value)}
-                        disabled={isLoading}
+                        disabled={isLoading || justRegistered}
                         required
-                        className="h-13 pl-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                        className="h-12 pl-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
                       />
                     </div>
                   </div>
@@ -538,8 +621,8 @@ export default function Auth() {
                 <CardFooter className="pt-4 pb-8 px-8">
                   <Button
                     type="submit"
-                    className="w-full h-14 bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-900 hover:to-black text-white text-base font-bold rounded-2xl shadow-lg shadow-slate-500/30 transition-all hover:scale-[1.02] hover:shadow-xl hover:shadow-slate-500/40 active:scale-[0.98] group"
-                    disabled={isLoading}
+                    className="w-full h-14 bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-900 hover:to-black text-white text-base font-bold rounded-2xl shadow-lg shadow-slate-500/30 transition-all hover:scale-[1.02] hover:shadow-xl hover:shadow-slate-500/40 active:scale-[0.98] group disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={isLoading || justRegistered}
                   >
                     {isLoading ? (
                       <>

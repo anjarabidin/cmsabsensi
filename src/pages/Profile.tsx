@@ -136,10 +136,7 @@ export default function ProfilePage() {
   const [consentSaving, setConsentSaving] = useState(false);
   const [isConsentedState, setIsConsentedState] = useState(false);
 
-  const [enrollStep, setEnrollStep] = useState<'idle' | 'camera' | 'preview'>('idle');
-  const [enrolling, setEnrolling] = useState(false);
-  const [enrollmentPreviewUrl, setEnrollmentPreviewUrl] = useState<string | null>(null);
-  const [enrollmentBlob, setEnrollmentBlob] = useState<Blob | null>(null);
+
 
   // Permissions state
   const [cameraPermission, setCameraPermission] = useState<PermissionState | 'unknown'>('unknown');
@@ -174,42 +171,9 @@ export default function ProfilePage() {
     return faceDataRegistered;
   }, [faceDataRegistered]);
 
-  const handleDeleteFaceData = async () => {
-    if (!user) return;
-    if (!confirm('Hapus data wajah Anda? Anda tidak akan bisa melakukan absen atau login wajah sampai melakukan pendaftaran ulang.')) return;
 
-    try {
-      setEnrolling(true);
-      const { error } = await supabase
-        .from('face_descriptors')
-        .update({ is_active: false })
-        .eq('user_id', user.id);
 
-      if (error) throw error;
-      setFaceDataRegistered(false);
-      toast({ title: 'Data Wajah Dihapus', description: 'Data biometrik Anda telah dinonaktifkan.' });
-    } catch (err) {
-      toast({ title: 'Gagal menghapus data', variant: 'destructive' });
-    } finally {
-      setEnrolling(false);
-    }
-  };
 
-  useEffect(() => {
-    const attachStream = () => {
-      if (enrollStep === 'camera' && stream && videoRef.current) {
-        if (videoRef.current.srcObject !== stream) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play().catch(e => console.error("Error playing video:", e));
-        }
-      }
-    };
-
-    attachStream();
-    // Also try a bit later in case of Dialog animation lag
-    const timer = setTimeout(attachStream, 100);
-    return () => clearTimeout(timer);
-  }, [enrollStep, stream]);
 
   // Check permissions on mount
   useEffect(() => {
@@ -347,130 +311,7 @@ export default function ProfilePage() {
     }
   };
 
-  const handleStartEnroll = async () => {
-    // Check consent first
-    if (!isConsentedState && consentKey) {
-      localStorage.setItem(consentKey, 'true');
-      setIsConsentedState(true);
-    }
 
-    try {
-      if (Capacitor.isNativePlatform()) {
-        // Use Native Phone Camera App for better quality and "Native" feel
-        const photo = await CapCamera.getPhoto({
-          quality: 100,
-          allowEditing: false,
-          resultType: 'blob' as any, // resultType blob is actually not standard for getPhoto but we can handle it
-          source: 'CAMERA' as any,
-          width: 1280
-        });
-
-        if (photo.webPath) {
-          const response = await fetch(photo.webPath);
-          const blob = await response.blob();
-          setEnrollmentBlob(blob);
-          setEnrollmentPreviewUrl(photo.webPath);
-          setEnrollStep('preview');
-        }
-      } else {
-        // Web Fallback
-        await startCamera();
-        setEnrollStep('camera');
-      }
-    } catch (e: any) {
-      console.error('Camera error:', e);
-      if (e.message !== 'User cancelled photos app') {
-        toast({
-          title: 'Gagal membuka kamera',
-          description: 'Cek izin kamera Anda atau gunakan menu upload.',
-          variant: 'destructive'
-        });
-      }
-    }
-  };
-
-  const handleCaptureEnroll = async () => {
-    try {
-      const blob = await capturePhoto();
-      setEnrollmentBlob(blob);
-      setEnrollmentPreviewUrl(URL.createObjectURL(blob));
-      stopCamera();
-      setEnrollStep('preview');
-    } catch (e) {
-      toast({ title: 'Gagal mengambil foto', variant: 'destructive' });
-    }
-  };
-
-  const handleRetakeEnroll = async () => {
-    setEnrollmentPreviewUrl(null);
-    setEnrollmentBlob(null);
-    await handleStartEnroll();
-  };
-
-  const handleSubmitEnroll = async () => {
-    if (!enrollmentBlob || !user) return;
-    setEnrolling(true);
-    try {
-      // 1. Detect Face and Extract Descriptor
-      if (!modelsLoaded) {
-        await loadModels();
-      }
-
-      const blobUrl = URL.createObjectURL(enrollmentBlob);
-      try {
-        const img = await faceapi.fetchImage(blobUrl);
-        // Use TinyFaceDetector with higher input size for speed + accuracy
-        // SSD Mobilenet is too slow on most mobile browsers
-        const detection = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
-          .withFaceLandmarks()
-          .withFaceDescriptor();
-
-        if (!detection) {
-          throw new Error('Wajah tidak terdeteksi dengan jelas. Pastikan pencahayaan cukup dan wajah terlihat utuh.');
-        }
-
-        // 2. Upload Reference Photo
-        const fileName = `${user.id}/face_${Date.now()}.jpg`;
-        const { error: uploadError } = await supabase.storage.from('face-images').upload(fileName, enrollmentBlob, {
-          contentType: 'image/jpeg',
-          upsert: true
-        });
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage.from('face-images').getPublicUrl(fileName);
-
-        // 3. Update ONLY face_enrollments table
-        const { error: faceError } = await supabase.from('face_enrollments').upsert({
-          user_id: user.id,
-          face_descriptor: Array.from(detection.descriptor),
-          face_image_url: publicUrl,
-          is_active: true,
-          updated_at: new Date().toISOString()
-        });
-
-        if (faceError) throw faceError;
-
-        toast({
-          title: 'Data Wajah Tersimpan',
-          description: 'Data ini akan digunakan untuk absensi & login. Foto profil Anda tetap tidak berubah.'
-        });
-
-        setEnrollStep('idle');
-        await checkFaceRegistration();
-      } finally {
-        URL.revokeObjectURL(blobUrl);
-      }
-    } catch (error) {
-      console.error('Enrollment error:', error);
-      toast({
-        title: 'Gagal Mendaftarkan Wajah',
-        description: error instanceof Error ? error.message : 'Terjadi kesalahan sistem',
-        variant: 'destructive'
-      });
-    } finally {
-      setEnrolling(false);
-    }
-  };
 
   const handleAvatarFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -782,47 +623,7 @@ export default function ProfilePage() {
 
         {/* --- Dialogs --- */}
 
-        {/* Enrollment Camera Modal */}
-        <Dialog open={enrollStep !== 'idle'} onOpenChange={(open) => { if (!open) { stopCamera(); setEnrollStep('idle'); } }}>
-          <DialogContent className="max-w-md rounded-[40px] border-none p-0 overflow-hidden bg-black">
-            {enrollStep === 'camera' ? (
-              <div className="relative aspect-[3/4] flex flex-col">
-                <video ref={videoRef} autoPlay playsInline muted style={{ transform: 'scaleX(-1)', filter: 'brightness(1.08) contrast(1.05) saturate(1.1)' }} className="w-full h-full object-cover" />
-                <div className="absolute top-10 inset-x-0 flex flex-col items-center">
-                  <div className="w-64 h-80 border-2 border-white/30 border-dashed rounded-[60px] relative">
-                    {/* Removed blue-ish background overlay */}
-                  </div>
-                  <p className="mt-4 text-white text-sm font-bold bg-black/40 backdrop-blur-md px-6 py-2 rounded-full">Posisikan wajah di dalam kotak</p>
-                </div>
-                <div className="absolute bottom-10 inset-x-0 flex justify-center items-center gap-8">
-                  <Button variant="ghost" className="text-white hover:bg-white/20 h-14 w-14 rounded-full" onClick={() => { stopCamera(); setEnrollStep('idle'); }}>
-                    <ChevronLeft className="h-6 w-6" />
-                  </Button>
-                  <button onClick={handleCaptureEnroll} className="h-20 w-20 rounded-full border-4 border-white flex items-center justify-center p-1 bg-transparent group">
-                    <div className="h-full w-full rounded-full bg-white group-active:scale-90 transition-transform" />
-                  </button>
-                  <div className="w-14" />
-                </div>
-              </div>
-            ) : (
-              <div className="relative aspect-[3/4] bg-white flex flex-col p-8">
-                <div className="flex-1 rounded-[40px] overflow-hidden shadow-2xl relative mb-8">
-                  {enrollmentPreviewUrl && (
-                    <img src={enrollmentPreviewUrl} alt="Preview" className="w-full h-full object-cover" />
-                  )}
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <Button variant="outline" onClick={handleRetakeEnroll} className="h-14 rounded-2xl font-bold border-2">
-                    Ambil Ulang
-                  </Button>
-                  <Button onClick={handleSubmitEnroll} disabled={enrolling} className="h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black shadow-lg shadow-blue-200">
-                    {enrolling ? <Loader2 className="animate-spin h-5 w-5" /> : 'Selesai & Simpan'}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
+
 
         {/* Logout Confirmation */}
         <Dialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>

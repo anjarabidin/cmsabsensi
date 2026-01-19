@@ -305,13 +305,14 @@ export default function AttendancePage() {
       // If user says "different face still success", then 0.6 is TOO LOW.
       // Increase it to 0.8 (80% match required).
 
-      const THRESHOLD = 0.75; // Increased from 0.6
+      const THRESHOLD = 0.85; // Increased to 0.85 for stricter security with normalized descriptors
 
       if (similarity < THRESHOLD) {
         toast({
-          title: 'Wajah Tidak Cocok',
-          description: `Kemiripan: ${(similarity * 100).toFixed(0)}% (Min: ${(THRESHOLD * 100).toFixed(0)}%)`,
-          variant: 'destructive'
+          title: 'Wajah Tidak Cocok / Format Lama',
+          description: `Kemiripan: ${(similarity * 100).toFixed(0)}% (Min: ${(THRESHOLD * 100).toFixed(0)}%). Jika gagal terus, mohon daftar ulang wajah di menu Profil.`,
+          variant: 'destructive',
+          duration: 5000
         });
         return false;
       }
@@ -602,7 +603,12 @@ export default function AttendancePage() {
           status: 'present', is_late: isLate, late_minutes: lateMinutes, notes: notes.trim() || null
         });
 
-        toast({ title: 'Berhasil Masuk', description: isLate ? `Anda terlambat ${lateMinutes} menit.` : 'Absensi masuk tercatat.', variant: isLate ? 'destructive' : 'default' });
+        toast({
+          title: isLate ? 'Absen Masuk (Terlambat)' : '✅ Absen Masuk Berhasil!',
+          description: isLate ? `Anda terlambat ${lateMinutes} menit.` : 'Absensi masuk tercatat. Data tersimpan dengan aman.',
+          variant: isLate ? 'destructive' : 'default',
+          duration: 3000
+        });
       } else {
         // --- EARLY CLOCK OUT CHECK ---
         let earlyWarningConfirmed = true;
@@ -633,7 +639,12 @@ export default function AttendancePage() {
           work_hours_minutes: workHoursMinutes, notes: notes.trim() || null
         }).eq('id', todayAttendance!.id);
 
-        toast({ title: 'Berhasil Pulang', description: 'Absensi pulang tercatat.', className: "bg-green-50 text-green-800" });
+        toast({
+          title: '✅ Berhasil Pulang',
+          description: 'Absensi pulang tercatat. Terima kasih atas kerja keras Anda hari ini!',
+          className: "bg-green-600 text-white border-none",
+          duration: 3000
+        });
       }
 
       setCapturedPhoto(null);

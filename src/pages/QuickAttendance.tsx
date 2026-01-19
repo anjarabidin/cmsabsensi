@@ -143,11 +143,12 @@ export default function QuickAttendancePage() {
             const similarity = compareFaces(currentDescriptor, registeredDescriptor);
             setFaceMatch(similarity);
 
-            if (similarity < 0.75) {
+            if (similarity < 0.85) {
                 toast({
-                    title: 'Wajah Tidak Cocok',
-                    description: `Kemiripan: ${(similarity * 100).toFixed(0)}% (Min: 75%)`,
-                    variant: 'destructive'
+                    title: 'Wajah Tidak Cocok / Format Lama',
+                    description: `Kemiripan: ${(similarity * 100).toFixed(0)}% (Min: 85%). Jika gagal terus, mohon daftar ulang wajah di menu Profil.`,
+                    variant: 'destructive',
+                    duration: 5000
                 });
                 return false;
             }
@@ -454,9 +455,10 @@ export default function QuickAttendancePage() {
                 });
 
                 toast({
-                    title: isLate ? 'Absen Masuk (Terlambat)' : 'Absen Masuk Berhasil!',
-                    description: isLate ? `Terlambat ${lateMinutes} menit.` : `Tercatat pada ${format(now, 'HH:mm', { locale: id })}`,
-                    className: isLate ? "bg-red-600 text-white border-none" : "bg-green-600 text-white border-none"
+                    title: isLate ? 'Absen Masuk (Terlambat)' : '✅ Absen Masuk Berhasil!',
+                    description: isLate ? `Terlambat ${lateMinutes} menit.` : `Tercatat pada ${format(now, 'HH:mm', { locale: id })}. Mengalihkan ke dashboard...`,
+                    className: isLate ? "bg-red-600 text-white border-none" : "bg-green-600 text-white border-none",
+                    duration: 3000
                 });
             } else {
                 const clockInTime = new Date(existing.clock_in);
@@ -474,13 +476,14 @@ export default function QuickAttendancePage() {
                     .eq('id', existing.id);
 
                 toast({
-                    title: 'Absen Pulang Berhasil!',
-                    description: `Total kerja: ${Math.floor(workMinutes / 60)}j ${workMinutes % 60}m`,
-                    className: "bg-blue-600 text-white border-none"
+                    title: '✅ Absen Pulang Berhasil!',
+                    description: `Total kerja: ${Math.floor(workMinutes / 60)}j ${workMinutes % 60}m. Mengalihkan ke dashboard...`,
+                    className: "bg-blue-600 text-white border-none",
+                    duration: 3000
                 });
             }
 
-            setTimeout(() => navigate('/dashboard'), 1500);
+            setTimeout(() => navigate('/dashboard'), 2500);
         } catch (error: any) {
             console.error(error);
             toast({
@@ -691,16 +694,14 @@ export default function QuickAttendancePage() {
                                             {faceDetected ? 'Wajah Terdeteksi' : 'Mencari Wajah...'}
                                         </Badge>
 
-                                        {faceMatch !== null && (
-                                            <Badge
-                                                className={cn(
-                                                    "px-3 py-1.5 font-black border-none shadow-lg backdrop-blur-md",
-                                                    faceMatch >= 0.75 ? "bg-blue-600/90" : "bg-red-600/90"
-                                                )}
-                                            >
-                                                Match: {(faceMatch * 100).toFixed(0)}%
-                                            </Badge>
-                                        )}
+                                        <Badge
+                                            className={cn(
+                                                "px-3 py-1.5 font-black border-none shadow-lg backdrop-blur-md",
+                                                faceMatch >= 0.85 ? "bg-blue-600/90" : "bg-red-600/90"
+                                            )}
+                                        >
+                                            Match: {(faceMatch * 100).toFixed(0)}%
+                                        </Badge>
                                     </div>
                                 </div>
 
@@ -751,17 +752,17 @@ export default function QuickAttendancePage() {
 
                             <button
                                 onClick={handleCapture}
-                                disabled={!stream || checkingFace || !faceDetected || (faceMatch !== null && faceMatch < 0.75)}
+                                disabled={!stream || checkingFace || !faceDetected || (faceMatch !== null && faceMatch < 0.85)}
                                 className={cn(
                                     "h-24 w-24 rounded-full border-4 border-white flex items-center justify-center p-1.5 transition-all duration-300",
-                                    (!stream || checkingFace || !faceDetected || (faceMatch !== null && faceMatch < 0.75))
+                                    (!stream || checkingFace || !faceDetected || (faceMatch !== null && faceMatch < 0.85))
                                         ? "opacity-20 grayscale scale-90"
                                         : "active:scale-95 hover:scale-105"
                                 )}
                             >
                                 <div className={cn(
                                     "h-full w-full rounded-full transition-colors duration-500",
-                                    faceMatch !== null && faceMatch >= 0.75 ? "bg-green-500 shadow-[0_0_20px_rgba(34,197,94,0.6)]" : "bg-white"
+                                    faceMatch !== null && faceMatch >= 0.85 ? "bg-green-500 shadow-[0_0_20px_rgba(34,197,94,0.6)]" : "bg-white"
                                 )} />
                             </button>
 

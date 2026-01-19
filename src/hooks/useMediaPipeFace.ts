@@ -98,7 +98,7 @@ export function useMediaPipeFace() {
         }
     }, []);
 
-    // Extract face descriptor from landmarks (478 points to 128D vector)
+    // Extract face descriptor from landmarks (Improved: Position & Scale Invariant)
     const getFaceDescriptor = useCallback((result: FaceLandmarkerResult): Float32Array | null => {
         if (!result.faceLandmarks || result.faceLandmarks.length === 0) {
             return null;
@@ -106,39 +106,62 @@ export function useMediaPipeFace() {
 
         const landmarks = result.faceLandmarks[0];
 
-        // Select key facial points for descriptor (similar to FaceNet approach)
-        // We'll use strategic points: eyes, nose, mouth, chin, eyebrows
+        // 1. Calculate Face Centroid (Geometric Center)
+        let cx = 0, cy = 0, cz = 0;
+        for (const point of landmarks) {
+            cx += point.x;
+            cy += point.y;
+            cz += (point.z || 0);
+        }
+        cx /= landmarks.length;
+        cy /= landmarks.length;
+        cz /= landmarks.length;
+
+        // 2. Calculate Scale (Inter-pupillary distance or similar stable metric)
+        // Using distance between iris centers (468: Left, 473: Right) if available, else eye corners
+        let p1 = landmarks[468] || landmarks[33];  // Left Eye
+        let p2 = landmarks[473] || landmarks[263]; // Right Eye
+
+        let scale = Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+        if (scale === 0) scale = 1.0; // Prevent division by zero
+
+        // Select key facial points for descriptor (Geometric Layout)
+        // We'll use strategic points representing the facial structure
         const keyIndices = [
-            // Left eye
+            // Left eye contour
             33, 133, 157, 158, 159, 160, 161, 163, 144, 145, 153, 154,
-            // Right eye  
+            // Right eye contour
             263, 362, 373, 374, 380, 381, 382, 384, 385, 386, 387, 388,
-            // Nose
-            1, 2, 98, 327, 168,
-            // Mouth
-            61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291,
-            // Chin
+            // Nose bridge & tip
+            1, 2, 98, 327, 168, 197, 195, 5, 4,
+            // Lips (Inner & Outer)
+            61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291, // Outer
+            78, 95, 88, 178, 87, 14, 317, 402, 318, 324, 308, // Inner
+            // Chin & Jawline
             152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127,
             // Eyebrows
-            70, 63, 105, 66, 107, 336, 296, 334, 293, 300,
-            // Face oval
-            10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378,
-            // Forehead
-            21, 54, 103, 67, 109, 10, 338, 297, 332, 284
+            70, 63, 105, 66, 107, 336, 296, 334, 293, 300
         ];
 
-        // Extract coordinates for selected points
+        // 3. Extract & Normalize Coordinates
         const descriptor: number[] = [];
         keyIndices.forEach(idx => {
             if (idx < landmarks.length) {
                 const point = landmarks[idx];
-                descriptor.push(point.x, point.y, point.z || 0);
+                // Normalize relative to centroid and scale
+                // This makes the descriptor independent of where the face is in the image (Translation Invariance)
+                // And independent of how close the face is (Scale Invariance)
+                descriptor.push((point.x - cx) / scale);
+                descriptor.push((point.y - cy) / scale);
+                // Z is usually depth relative to head center, but also scale it
+                descriptor.push(((point.z || 0)) / scale);
             }
         });
 
-        // Normalize to unit length (L2 normalization)
+        // 4. L2 Normalization (Unit Vector)
+        // This ensures the vector magnitude is 1, optimal for Cosine Similarity
         const magnitude = Math.sqrt(descriptor.reduce((sum, val) => sum + val * val, 0));
-        const normalized = descriptor.map(val => val / magnitude);
+        const normalized = descriptor.map(val => val / (magnitude || 1));
 
         return new Float32Array(normalized);
     }, []);

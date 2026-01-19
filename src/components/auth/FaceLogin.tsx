@@ -136,8 +136,8 @@ export function FaceLogin({ onVerificationComplete, employeeId }: FaceLoginProps
                     const score = compareFaces(currentDescriptor, enrolledDescriptor);
                     setSimilarityScore(score);
 
-                    // Threshold Check (e.g. 0.75 for stricter security)
-                    if (score > 0.75) {
+                    // Threshold Check (e.g. 0.85 for stricter security with normalized descriptors)
+                    if (score > 0.85) {
                         handleSuccess();
                         return; // Stop checking
                     }

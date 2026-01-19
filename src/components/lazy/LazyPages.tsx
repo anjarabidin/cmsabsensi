@@ -21,7 +21,7 @@ export const LazyPayrollReport = lazy(() => import('@/pages/PayrollReport'));
 export const LazyNotFound = lazy(() => import('@/pages/NotFound'));
 
 // Lazy load feature-specific components
-export const LazyFaceRecognition = lazy(() => import('@/components/face-recognition/FaceRecognition'));
+
 export const LazyAdvancedSearch = lazy(() => import('@/components/search/AdvancedSearch'));
 export const LazyFilterPresets = lazy(() => import('@/components/filters/FilterPresets'));
 export const LazyVirtualTable = lazy(() => import('@/components/table/VirtualTable'));
@@ -39,10 +39,10 @@ export const LazyPdfGenerator = lazy(() => import('@/lib/pdfGenerator'));
 export const preloadCriticalComponents = () => {
   // Preload dashboard (most critical)
   import('@/pages/Dashboard');
-  
+
   // Preload auth (for login flow)
   import('@/pages/Auth');
-  
+
   // Preload attendance (most used feature)
   import('@/pages/Attendance');
 };
@@ -102,12 +102,12 @@ export const createIntersectionObserver = (callback: () => void, options?: Inter
 // Preload on hover
 export const preloadOnHover = (preloadFn: () => Promise<any>) => {
   let timeoutId: NodeJS.Timeout;
-  
+
   return () => {
     timeoutId = setTimeout(() => {
       preloadFn();
     }, 200); // 200ms delay
-    
+
     return () => {
       clearTimeout(timeoutId);
     };
@@ -124,7 +124,7 @@ export const getBundleSizeInfo = () => {
       { name: 'main', size: '1.2MB' },
       { name: 'vendor', size: '800KB' },
       { name: 'charts', size: '300KB' },
-      { name: 'face-api', size: '500KB' },
+
     ]
   };
 };
@@ -134,9 +134,9 @@ export const measurePerformance = (name: string, fn: () => void) => {
   const start = performance.now();
   fn();
   const end = performance.now();
-  
+
   console.log(`${name} took ${end - start} milliseconds`);
-  
+
   return end - start;
 };
 

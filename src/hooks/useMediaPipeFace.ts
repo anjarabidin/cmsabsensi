@@ -46,7 +46,7 @@ export function useMediaPipeFace() {
                 console.log('🚀 Initializing MediaPipe Face Landmarker...');
 
                 const vision = await FilesetResolver.forVisionTasks(
-                    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
+                    '/wasm'
                 );
 
                 console.log('✅ Vision tasks loaded, creating Face Landmarker...');
@@ -198,3 +198,4 @@ export function useMediaPipeFace() {
         faceLandmarker: faceLandmarkerRef.current,
     };
 }
+

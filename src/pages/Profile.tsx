@@ -56,7 +56,6 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { stream, videoRef, startCamera, stopCamera, capturePhoto } = useCamera();
-  const { loadModels, modelsLoaded } = useFaceRecognition();
 
   const [faceLoginEnabled, setFaceLoginEnabled] = useState(false);
   const [fingerprintEnabled, setFingerprintEnabled] = useState(false);

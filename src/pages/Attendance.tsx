@@ -604,6 +604,26 @@ export default function AttendancePage() {
 
         toast({ title: 'Berhasil Masuk', description: isLate ? `Anda terlambat ${lateMinutes} menit.` : 'Absensi masuk tercatat.', variant: isLate ? 'destructive' : 'default' });
       } else {
+        // --- EARLY CLOCK OUT CHECK ---
+        let earlyWarningConfirmed = true;
+        if (todaySchedule?.shift?.end_time) {
+          const [h, m, s] = todaySchedule.shift.end_time.split(':').map(Number);
+          const shiftEndDate = new Date(now);
+          shiftEndDate.setHours(h, m, s, 0);
+
+          // 1 Hour before logic
+          const oneHourBefore = new Date(shiftEndDate.getTime() - (60 * 60000));
+
+          // If now is BEFORE (OneHourBefore), it means way too early
+          if (now < oneHourBefore) {
+            if (!window.confirm("Ini belum jam pulang, apakah anda yakin ingin melakukan absen pulang?")) {
+              setSubmitting(false);
+              return;
+            }
+          }
+        }
+        // -----------------------------
+
         const clockInTime = new Date(todayAttendance!.clock_in);
         const workHoursMinutes = Math.floor((now.getTime() - clockInTime.getTime()) / 60000);
 
@@ -705,7 +725,7 @@ export default function AttendancePage() {
                   <CheckCircle2 className="h-10 w-10" />
                 </div>
                 <h3 className="text-xl font-black text-slate-900 mb-1">Tugas Selesai!</h3>
-                <p className="text-slate-500 text-sm font-medium">Sampai jumpa di hari kerja berikutnya.</p>
+                <p className="text-slate-500 text-sm font-medium">Anda sudah absen pulang hari ini.</p>
               </CardContent>
             </Card>
           ) : (

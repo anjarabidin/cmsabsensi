@@ -143,10 +143,10 @@ export default function QuickAttendancePage() {
             const similarity = compareFaces(currentDescriptor, registeredDescriptor);
             setFaceMatch(similarity);
 
-            if (similarity < 0.6) {
+            if (similarity < 0.75) {
                 toast({
                     title: 'Wajah Tidak Cocok',
-                    description: `Kemiripan: ${(similarity * 100).toFixed(0)}%`,
+                    description: `Kemiripan: ${(similarity * 100).toFixed(0)}% (Min: 75%)`,
                     variant: 'destructive'
                 });
                 return false;
@@ -256,10 +256,28 @@ export default function QuickAttendancePage() {
         if (!isMatch) return;
 
         try {
-            const photo = await capturePhoto();
-            setCapturedPhoto(photo);
-            setPhotoPreview(URL.createObjectURL(photo));
-            setStep('processing');
+            // Manual Canvas Capture with Mirror Fix
+            if (!videoRef.current) return;
+
+            const video = videoRef.current;
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            // Flip / Mirror
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0);
+
+            canvas.toBlob((blob) => {
+                if (blob) {
+                    setCapturedPhoto(blob);
+                    setPhotoPreview(URL.createObjectURL(blob));
+                    setStep('processing');
+                }
+            }, 'image/jpeg', 0.95);
 
             if ((window as any).quickFaceInterval) {
                 clearInterval((window as any).quickFaceInterval);
@@ -360,6 +378,18 @@ export default function QuickAttendancePage() {
                 .eq('user_id', user.id)
                 .eq('date', today)
                 .maybeSingle();
+
+            // PREVENT DOUBLE ATTENDANCE / RE-ABSENT
+            if (existing && existing.clock_out) {
+                toast({
+                    title: 'Tugas Selesai!',
+                    description: 'Anda sudah melakukan absen pulang hari ini. Tidak perlu absen lagi.',
+                    className: "bg-green-600 text-white border-none"
+                });
+                setSubmitting(false);
+                setTimeout(() => navigate('/dashboard'), 2000);
+                return;
+            }
 
             const type = !existing ? 'clock_in' : 'clock_out';
             const fileName = `${user.id}/${today}_${type}_${Date.now()}.jpg`;
@@ -665,7 +695,7 @@ export default function QuickAttendancePage() {
                                             <Badge
                                                 className={cn(
                                                     "px-3 py-1.5 font-black border-none shadow-lg backdrop-blur-md",
-                                                    faceMatch >= 0.6 ? "bg-blue-600/90" : "bg-red-600/90"
+                                                    faceMatch >= 0.75 ? "bg-blue-600/90" : "bg-red-600/90"
                                                 )}
                                             >
                                                 Match: {(faceMatch * 100).toFixed(0)}%
@@ -721,17 +751,17 @@ export default function QuickAttendancePage() {
 
                             <button
                                 onClick={handleCapture}
-                                disabled={!stream || checkingFace || !faceDetected || (faceMatch !== null && faceMatch < 0.6)}
+                                disabled={!stream || checkingFace || !faceDetected || (faceMatch !== null && faceMatch < 0.75)}
                                 className={cn(
                                     "h-24 w-24 rounded-full border-4 border-white flex items-center justify-center p-1.5 transition-all duration-300",
-                                    (!stream || checkingFace || !faceDetected || (faceMatch !== null && faceMatch < 0.6))
+                                    (!stream || checkingFace || !faceDetected || (faceMatch !== null && faceMatch < 0.75))
                                         ? "opacity-20 grayscale scale-90"
                                         : "active:scale-95 hover:scale-105"
                                 )}
                             >
                                 <div className={cn(
                                     "h-full w-full rounded-full transition-colors duration-500",
-                                    faceMatch !== null && faceMatch >= 0.6 ? "bg-green-500 shadow-[0_0_20px_rgba(34,197,94,0.6)]" : "bg-white"
+                                    faceMatch !== null && faceMatch >= 0.75 ? "bg-green-500 shadow-[0_0_20px_rgba(34,197,94,0.6)]" : "bg-white"
                                 )} />
                             </button>
 

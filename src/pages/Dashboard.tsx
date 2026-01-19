@@ -389,7 +389,17 @@ export default function Dashboard() {
             <div className="mx-3 md:mx-0">
               <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide md:grid md:grid-cols-3 md:overflow-visible md:pb-0">
                 {/* Attendance Summary Slide */}
-                <div data-tour="attendance-card" className="w-[85vw] md:w-full h-[120px] rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 p-3 text-white shadow-lg shadow-blue-900/10 flex flex-col justify-between shrink-0 relative overflow-hidden transition-all active:scale-95">
+                <div
+                  data-tour="attendance-card"
+                  className={cn(
+                    "w-[85vw] md:w-full h-[120px] rounded-xl p-3 text-white shadow-lg flex flex-col justify-between shrink-0 relative overflow-hidden transition-all active:scale-95",
+                    todayAttendance && !todayAttendance.clock_out
+                      ? "bg-gradient-to-br from-amber-500 to-orange-600 shadow-orange-900/20" // Status: Working
+                      : todayAttendance?.clock_out
+                        ? "bg-gradient-to-br from-emerald-500 to-teal-600 shadow-teal-900/20" // Status: Done
+                        : "bg-gradient-to-br from-blue-600 to-blue-700 shadow-blue-900/10" // Status: Default
+                  )}
+                >
                   <div className="absolute right-0 top-0 h-20 w-20 bg-white/10 rounded-bl-full -mr-4 -mt-4" />
                   <div>
                     <p className="text-[10px] font-medium text-blue-100 mb-0.5">Status Hari Ini</p>

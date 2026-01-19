@@ -177,24 +177,37 @@ export default function QuickAttendancePage() {
             // Camera and location are already started/fetched in parallel
 
             const interval = setInterval(async () => {
-                if (videoRef.current && isReady && !checkingFace) {
-                    const descriptor = await getFaceDescriptor(videoRef.current);
-                    setFaceDetected(descriptor !== null);
+                const video = videoRef.current;
+                if (video && isReady && !checkingFace && video.readyState >= 2) {
+                    try {
+                        // Detect First
+                        const result = await detectFace(video);
 
-                    if (descriptor && user) {
-                        const { data: faceData } = await supabase
-                            .from('face_enrollments')
-                            .select('face_descriptor')
-                            .eq('user_id', user.id)
-                            .eq('is_active', true)
-                            .maybeSingle();
-                        if (faceData) {
-                            const similarity = compareFaces(descriptor, new Float32Array(faceData.face_descriptor as any));
-                            setFaceMatch(similarity);
+                        if (result && result.faceLandmarks && result.faceLandmarks.length > 0) {
+                            setFaceDetected(true);
+                            const descriptor = getFaceDescriptor(result);
+
+                            if (descriptor && user) {
+                                const { data: faceData } = await supabase
+                                    .from('face_enrollments')
+                                    .select('face_descriptor')
+                                    .eq('user_id', user.id)
+                                    .eq('is_active', true)
+                                    .maybeSingle();
+
+                                if (faceData) {
+                                    const similarity = compareFaces(descriptor, new Float32Array(faceData.face_descriptor as any));
+                                    setFaceMatch(similarity);
+                                }
+                            }
+                        } else {
+                            setFaceDetected(false);
                         }
+                    } catch (err) {
+                        console.error("QuickFace auto check error", err);
                     }
                 }
-            }, 2000);
+            }, 1000);
             (window as any).quickFaceInterval = interval;
         } catch (error: any) {
             setCameraOpen(false);

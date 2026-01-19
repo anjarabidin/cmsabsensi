@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useCamera } from '@/hooks/useCamera';
+import { useMediaPipeFace } from '@/hooks/useMediaPipeFace'; // Added Import
 import { Loader2, Camera, MapPin, CheckCircle2, LogIn, LogOut, RefreshCw, Smartphone, ChevronLeft, Map, AlertOctagon, X, Clock, Info, Scan } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
@@ -76,6 +77,8 @@ export default function AttendancePage() {
 
   // Camera hook
   const { stream, videoRef, startCamera, stopCamera, capturePhoto } = useCamera();
+  // MediaPipe Hook
+  const { isReady, initialize, detectFace, getFaceDescriptor, compareFaces } = useMediaPipeFace();
 
   // Fix: Attach stream to video element when stream is available
   useEffect(() => {
@@ -230,10 +233,10 @@ export default function AttendancePage() {
 
   // Check face match before allowing attendance
   const checkFaceMatch = async (): Promise<boolean> => {
-    if (!videoRef.current || !modelsLoaded) {
+    if (!videoRef.current || !isReady) {
       toast({
         title: 'Sistem Belum Siap',
-        description: 'Model face recognition sedang dimuat',
+        description: 'Model biometrik sedang dimuat',
         variant: 'destructive'
       });
       return false;
@@ -242,10 +245,10 @@ export default function AttendancePage() {
     setCheckingFace(true);
 
     try {
-      // Get current face descriptor from video
-      const currentDescriptor = await getFaceDescriptor(videoRef.current);
+      // 1. Detect Face using MediaPipe
+      const detectionResult = await detectFace(videoRef.current);
 
-      if (!currentDescriptor) {
+      if (!detectionResult || !detectionResult.faceLandmarks || detectionResult.faceLandmarks.length === 0) {
         setFaceDetected(false);
         toast({
           title: 'Wajah Tidak Terdeteksi',
@@ -257,7 +260,14 @@ export default function AttendancePage() {
 
       setFaceDetected(true);
 
-      // Get registered face from database
+      // 2. Get Descriptor
+      const currentDescriptor = getFaceDescriptor(detectionResult);
+      if (!currentDescriptor) {
+        toast({ title: 'Gagal memproses wajah', variant: 'destructive' });
+        return false;
+      }
+
+      // 3. Get registered face from database
       const { data: faceData, error } = await supabase
         .from('face_enrollments')
         .select('face_descriptor')
@@ -275,15 +285,12 @@ export default function AttendancePage() {
         return false;
       }
 
-      // Compare faces
+      // 4. Compare faces
       const registeredDescriptor = new Float32Array(faceData.face_descriptor as any);
       const similarity = compareFaces(currentDescriptor, registeredDescriptor);
 
       setFaceMatch(similarity);
 
-      // Threshold: 0.6 = 60% match (Lower distance is better, so similarity logic in hook needs check)
-      // Hook compareFaces returns similarity (1 - distance), so HIGHER is better.
-      // If logic in hook is `1 - distance`, then 0.6 means distance 0.4.
       if (similarity < 0.6) {
         toast({
           title: 'Wajah Tidak Cocok',
@@ -336,7 +343,7 @@ export default function AttendancePage() {
       setCameraOpen(true);
 
       // Run checks in parallel
-      const [faceCheckResult, cameraResult] = await Promise.allSettled([
+      const [faceCheckResult, cameraResult, initResult] = await Promise.allSettled([
         // Check face registration
         supabase
           .from('face_enrollments')
@@ -346,7 +353,9 @@ export default function AttendancePage() {
           .limit(1)
           .maybeSingle(),
         // Start camera
-        startCamera()
+        startCamera(),
+        // Init MediaPipe
+        initialize()
       ]);
 
       // Start location in background if not already available
@@ -377,39 +386,42 @@ export default function AttendancePage() {
         return;
       }
 
-      // Handle Location Error (Non-blocking for camera)
-      // We don't block camera for location anymore for faster UX
-
-      // Camera and location are already started/fetched in parallel
-
       // Auto-check face every 2 seconds
       const interval = setInterval(async () => {
-        if (videoRef.current && modelsLoaded && !checkingFace) {
+        const video = videoRef.current;
+        if (video && isReady && !checkingFace && video.readyState >= 2) {
           try {
-            const descriptor = await getFaceDescriptor(videoRef.current);
-            setFaceDetected(descriptor !== null);
+            // Detect First
+            const result = await detectFace(video);
 
-            // Auto-match if face detected
-            if (descriptor && user) {
-              const { data: faceData } = await supabase
-                .from('face_enrollments')
-                .select('face_descriptor')
-                .eq('user_id', user.id)
-                .eq('is_active', true)
-                .limit(1)
-                .maybeSingle();
+            if (result && result.faceLandmarks && result.faceLandmarks.length > 0) {
+              setFaceDetected(true);
+              const descriptor = getFaceDescriptor(result);
 
-              if (faceData) {
-                const registeredDescriptor = new Float32Array(faceData.face_descriptor as any);
-                const similarity = compareFaces(descriptor, registeredDescriptor);
-                setFaceMatch(similarity);
+              // Auto-match if face detected
+              if (descriptor && user) {
+                const { data: faceData } = await supabase
+                  .from('face_enrollments')
+                  .select('face_descriptor')
+                  .eq('user_id', user.id)
+                  .eq('is_active', true)
+                  .limit(1)
+                  .maybeSingle();
+
+                if (faceData) {
+                  const registeredDescriptor = new Float32Array(faceData.face_descriptor as any);
+                  const similarity = compareFaces(descriptor, registeredDescriptor);
+                  setFaceMatch(similarity);
+                }
               }
+            } else {
+              setFaceDetected(false);
             }
           } catch (error) {
             console.error('Auto face check error:', error);
           }
         }
-      }, 2000);
+      }, 1000); // Faster check 1s
 
       // Store interval ID to clear later
       (window as any).faceCheckInterval = interval;
@@ -430,7 +442,9 @@ export default function AttendancePage() {
       // FIRST: Check face match
       const isMatch = await checkFaceMatch();
       if (!isMatch) {
-        return; // Block if no match
+        // Optional: Allow capture anyway if similarity is close enough?
+        // No, strictly block fake/wrong person
+        return;
       }
 
       // THEN: Capture photo

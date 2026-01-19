@@ -429,7 +429,7 @@ export default function Auth() {
                   )}
                 </CardContent>
 
-                <CardFooter className="pt-4 pb-8 px-8">
+                <CardFooter className="pt-4 pb-8 px-8 flex flex-col gap-4">
                   <Button
                     type="submit"
                     className="w-full h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-base font-bold rounded-2xl shadow-lg shadow-blue-500/30 transition-all hover:scale-[1.02] hover:shadow-xl hover:shadow-blue-500/40 active:scale-[0.98] group"
@@ -447,6 +447,29 @@ export default function Auth() {
                       </>
                     )}
                   </Button>
+
+                  <div className="flex justify-center w-full animate-in fade-in slide-in-from-bottom-2 duration-700 delay-100">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-slate-400 hover:text-blue-600 gap-2 text-xs font-semibold tracking-wide w-full hover:bg-slate-50"
+                      onClick={() => {
+                        if (!lastUser) {
+                          toast({
+                            title: 'Aktivasi Diperlukan 🔒',
+                            description: 'Mohon Login Manual satu kali untuk memverifikasi perangkat ini.',
+                            duration: 5000,
+                          });
+                        } else {
+                          handleBiometricLogin();
+                        }
+                      }}
+                    >
+                      {hasBiometricHardware ? <Fingerprint className="h-4 w-4" /> : <ScanFace className="h-4 w-4" />}
+                      Login Alternatif (Biometrik)
+                    </Button>
+                  </div>
                 </CardFooter>
               </form>
             </TabsContent>

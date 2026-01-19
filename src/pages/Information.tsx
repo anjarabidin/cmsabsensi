@@ -112,25 +112,10 @@ export default function InformationPage() {
 
             if (error) throw error;
 
+            if (error) throw error;
+
             // 2. Refresh list
             await fetchAnnouncements();
-
-            // 3. Trigger Notification (if checked)
-            if (sendNotification) {
-                try {
-                    const { error: notifError } = await supabase.functions.invoke('send-push-notification', {
-                        body: {
-                            title: newTitle,
-                            body: newContent,
-                            topic: 'all_employees'
-                        }
-                    });
-
-                    if (notifError) console.warn('Push notification invoke failed:', notifError);
-                } catch (e) {
-                    console.warn('Failed to invoke notification function:', e);
-                }
-            }
 
             toast({ title: "Berhasil", description: "Pengumuman berhasil dipublikasikan." });
 

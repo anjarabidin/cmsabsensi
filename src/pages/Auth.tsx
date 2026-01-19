@@ -257,8 +257,9 @@ export default function Auth() {
       });
     } else {
       toast({
-        title: 'Registrasi Berhasil',
-        description: 'Akun Anda telah dibuat. Silakan login.',
+        title: 'Registrasi Berhasil! 📧',
+        description: 'Tautan konfirmasi telah dikirim ke email Anda. Silakan cek inbox/spam untuk verifikasi, lalu login.',
+        duration: 8000,
       });
     }
 

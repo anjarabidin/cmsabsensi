@@ -64,7 +64,49 @@ interface OvertimeRequest {
     } | null;
 }
 
-type RequestType = 'leave' | 'overtime' | 'correction';
+interface CorrectionRequest {
+    id: string;
+    user_id: string;
+    date: string;
+    original_clock_in: string;
+    original_clock_out: string;
+    corrected_clock_in: string;
+    corrected_clock_out: string;
+    reason: string;
+    proof_url?: string;
+    status: string;
+    rejection_reason?: string;
+    created_at: string;
+    profiles: {
+        full_name: string;
+        email: string;
+        position: string;
+        avatar_url: string;
+        departments: { name: string } | null;
+    } | null;
+}
+
+interface ReimbursementRequest {
+    id: string;
+    user_id: string;
+    claim_date: string;
+    type: string;
+    amount: number;
+    description: string;
+    attachment_url?: string;
+    status: string;
+    rejection_reason?: string;
+    created_at: string;
+    profiles: {
+        full_name: string;
+        email: string;
+        position: string;
+        avatar_url: string;
+        departments: { name: string } | null;
+    } | null;
+}
+
+type RequestType = 'leave' | 'overtime' | 'correction' | 'reimbursement';
 
 export default function ApprovalsPage() {
     const { user, role } = useAuth();
@@ -74,6 +116,8 @@ export default function ApprovalsPage() {
     const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
     const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
     const [overtimeRequests, setOvertimeRequests] = useState<OvertimeRequest[]>([]);
+    const [correctionRequests, setCorrectionRequests] = useState<CorrectionRequest[]>([]);
+    const [reimbursementRequests, setReimbursementRequests] = useState<ReimbursementRequest[]>([]);
     const [loading, setLoading] = useState(true);
 
     const [actionDialog, setActionDialog] = useState<{
@@ -120,8 +164,28 @@ export default function ApprovalsPage() {
 
             if (overtimeError) throw overtimeError;
 
+            // Fetch correction requests
+            const { data: correctionData, error: correctionError } = await supabase
+                .from('attendance_corrections')
+                .select('*, profiles:user_id(full_name, email, position, avatar_url, departments(name))')
+                .in('status', Array.isArray(statusFilter) ? statusFilter : [statusFilter])
+                .order('created_at', { ascending: false });
+
+            if (correctionError) throw correctionError;
+
+            // Fetch reimbursement requests
+            const { data: reimbursementData, error: reimbursementError } = await supabase
+                .from('reimbursements')
+                .select('*, profiles:user_id(full_name, email, position, avatar_url, departments(name))')
+                .in('status', Array.isArray(statusFilter) ? statusFilter : [statusFilter])
+                .order('created_at', { ascending: false });
+
+            if (reimbursementError) throw reimbursementError;
+
             setLeaveRequests((leaveData as unknown) as LeaveRequest[] || []);
             setOvertimeRequests((overtimeData as unknown) as OvertimeRequest[] || []);
+            setCorrectionRequests((correctionData as unknown) as CorrectionRequest[] || []);
+            setReimbursementRequests((reimbursementData as unknown) as ReimbursementRequest[] || []);
         } catch (error) {
             console.error('Error fetching requests:', error);
             toast({
@@ -153,7 +217,12 @@ export default function ApprovalsPage() {
 
         setProcessing(true);
         try {
-            const tableName = actionDialog.requestType === 'leave' ? 'leave_requests' : 'overtime_requests';
+            let tableName = '';
+            if (actionDialog.requestType === 'leave') tableName = 'leave_requests';
+            else if (actionDialog.requestType === 'overtime') tableName = 'overtime_requests';
+            else if (actionDialog.requestType === 'correction') tableName = 'attendance_corrections';
+            else if (actionDialog.requestType === 'reimbursement') tableName = 'reimbursements';
+
             const newStatus = actionDialog.type === 'approve' ? 'approved' : 'rejected';
 
             const updateData: any = { status: newStatus };
@@ -167,6 +236,54 @@ export default function ApprovalsPage() {
                 .eq('id', actionDialog.requestId);
 
             if (error) throw error;
+
+            // Send notification to user
+            try {
+                let request: any;
+                let notifType = '';
+                let notifLink = '';
+                let typeLabel = '';
+
+                if (actionDialog.requestType === 'leave') {
+                    request = leaveRequests.find(r => r.id === actionDialog.requestId);
+                    notifType = 'leave_status';
+                    notifLink = '/leave';
+                    typeLabel = 'cuti';
+                } else if (actionDialog.requestType === 'overtime') {
+                    request = overtimeRequests.find(r => r.id === actionDialog.requestId);
+                    notifType = 'overtime_status';
+                    notifLink = '/overtime';
+                    typeLabel = 'lembur';
+                } else if (actionDialog.requestType === 'correction') {
+                    request = correctionRequests.find(r => r.id === actionDialog.requestId);
+                    notifType = 'correction_status';
+                    notifLink = '/corrections';
+                    typeLabel = 'koreksi absensi';
+                } else if (actionDialog.requestType === 'reimbursement') {
+                    request = reimbursementRequests.find(r => r.id === actionDialog.requestId);
+                    notifType = 'reimbursement_status';
+                    notifLink = '/reimbursement';
+                    typeLabel = 'reimbursement';
+                }
+
+                if (request) {
+                    const title = actionDialog.type === 'approve' ? 'Permohonan Disetujui' : 'Permohonan Ditolak';
+                    const message = actionDialog.type === 'approve'
+                        ? `Permohonan ${typeLabel} Anda telah disetujui.`
+                        : `Permohonan ${typeLabel} Anda ditolak. Alasan: ${rejectionReason}`;
+
+                    await supabase.from('notifications').insert({
+                        user_id: request.user_id,
+                        title: title,
+                        message: message,
+                        type: notifType,
+                        link: notifLink,
+                        is_read: false
+                    });
+                }
+            } catch (notifError) {
+                console.error('Failed to send notification:', notifError);
+            }
 
             toast({
                 title: actionDialog.type === 'approve' ? 'Disetujui!' : 'Ditolak',
@@ -188,7 +305,9 @@ export default function ApprovalsPage() {
     };
 
     const pendingCount = leaveRequests.filter(r => r.status === 'pending').length +
-        overtimeRequests.filter(r => r.status === 'pending').length;
+        overtimeRequests.filter(r => r.status === 'pending').length +
+        correctionRequests.filter(r => r.status === 'pending').length +
+        reimbursementRequests.filter(r => r.status === 'pending').length;
 
     return (
         <DashboardLayout>
@@ -247,7 +366,9 @@ export default function ApprovalsPage() {
                             ) : (
                                 <>
                                     {leaveRequests.filter(r => r.status === 'pending').length === 0 &&
-                                        overtimeRequests.filter(r => r.status === 'pending').length === 0 ? (
+                                        overtimeRequests.filter(r => r.status === 'pending').length === 0 &&
+                                        correctionRequests.filter(r => r.status === 'pending').length === 0 &&
+                                        reimbursementRequests.filter(r => r.status === 'pending').length === 0 ? (
                                         <Card className="border-none shadow-md">
                                             <CardContent className="py-12 text-center">
                                                 <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4" />
@@ -280,6 +401,32 @@ export default function ApprovalsPage() {
                                                         onApprove={() => handleAction('approve', 'overtime', req.id)}
                                                         onReject={() => handleAction('reject', 'overtime', req.id)}
                                                         onViewAttachment={(url) => setAttachmentDialog({ open: true, url })}
+                                                    />
+                                                ))}
+
+                                            {correctionRequests
+                                                .filter(r => r.status === 'pending')
+                                                .map(req => (
+                                                    <RequestCard
+                                                        key={req.id}
+                                                        type="correction"
+                                                        request={req}
+                                                        onApprove={() => handleAction('approve', 'correction', req.id)}
+                                                        onReject={() => handleAction('reject', 'correction', req.id)}
+                                                        onViewAttachment={req.proof_url ? (url) => setAttachmentDialog({ open: true, url }) : undefined}
+                                                    />
+                                                ))}
+
+                                            {reimbursementRequests
+                                                .filter(r => r.status === 'pending')
+                                                .map(req => (
+                                                    <RequestCard
+                                                        key={req.id}
+                                                        type="reimbursement"
+                                                        request={req}
+                                                        onApprove={() => handleAction('approve', 'reimbursement', req.id)}
+                                                        onReject={() => handleAction('reject', 'reimbursement', req.id)}
+                                                        onViewAttachment={req.attachment_url ? (url) => setAttachmentDialog({ open: true, url }) : undefined}
                                                     />
                                                 ))}
                                         </div>
@@ -320,8 +467,34 @@ export default function ApprovalsPage() {
                                             />
                                         ))}
 
+                                    {correctionRequests
+                                        .filter(r => r.status !== 'pending')
+                                        .map(req => (
+                                            <RequestCard
+                                                key={req.id}
+                                                type="correction"
+                                                request={req}
+                                                historyMode
+                                                onViewAttachment={req.proof_url ? (url) => setAttachmentDialog({ open: true, url }) : undefined}
+                                            />
+                                        ))}
+
+                                    {reimbursementRequests
+                                        .filter(r => r.status !== 'pending')
+                                        .map(req => (
+                                            <RequestCard
+                                                key={req.id}
+                                                type="reimbursement"
+                                                request={req}
+                                                historyMode
+                                                onViewAttachment={req.attachment_url ? (url) => setAttachmentDialog({ open: true, url }) : undefined}
+                                            />
+                                        ))}
+
                                     {leaveRequests.filter(r => r.status !== 'pending').length === 0 &&
-                                        overtimeRequests.filter(r => r.status !== 'pending').length === 0 && (
+                                        overtimeRequests.filter(r => r.status !== 'pending').length === 0 &&
+                                        correctionRequests.filter(r => r.status !== 'pending').length === 0 &&
+                                        reimbursementRequests.filter(r => r.status !== 'pending').length === 0 && (
                                             <Card className="border-none shadow-md">
                                                 <CardContent className="py-12 text-center">
                                                     <FileText className="h-12 w-12 text-slate-300 mx-auto mb-4" />
@@ -453,7 +626,7 @@ function RequestCard({
     onViewAttachment,
     historyMode = false,
 }: {
-    type: 'leave' | 'overtime';
+    type: 'leave' | 'overtime' | 'correction' | 'reimbursement';
     request: any;
     onApprove?: () => void;
     onReject?: () => void;
@@ -465,7 +638,9 @@ function RequestCard({
     const getTypeLabel = () => {
         if (type === 'leave') return 'Cuti';
         if (type === 'overtime') return 'Lembur';
-        return 'Koreksi';
+        if (type === 'correction') return 'Koreksi';
+        if (type === 'reimbursement') return 'Reimbursement';
+        return type;
     };
 
     const getLeaveTypeLabel = (type: string) => {
@@ -516,13 +691,15 @@ function RequestCard({
                         </div>
                         <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
                             <span className="truncate font-medium text-slate-700">
-                                {type === 'leave' ? getLeaveTypeLabel(request.leave_type) : 'Lembur'}
+                                {type === 'leave' ? getLeaveTypeLabel(request.leave_type) : getTypeLabel()}
                             </span>
                             <span className="w-1 h-1 rounded-full bg-slate-300"></span>
                             <span className="truncate">
                                 {type === 'leave'
                                     ? format(new Date(request.start_date), 'd MMM', { locale: id })
-                                    : format(new Date(request.date), 'd MMM', { locale: id })
+                                    : type === 'reimbursement'
+                                        ? format(new Date(request.claim_date), 'd MMM', { locale: id })
+                                        : format(new Date(request.date), 'd MMM', { locale: id })
                                 }
                             </span>
                         </div>
@@ -557,11 +734,17 @@ function RequestCard({
                                 <p className="text-xs text-slate-700 font-medium">{format(new Date(request.created_at), 'd MMM yyy, HH:mm', { locale: id })}</p>
                             </div>
                             <div>
-                                <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold mb-0.5">Durasi</p>
+                                <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold mb-0.5">Info Tambahan</p>
                                 <p className="text-xs text-slate-700 font-medium">
                                     {type === 'leave'
                                         ? `${request.total_days || 1} Hari`
-                                        : request.duration_minutes ? `${Math.floor(request.duration_minutes / 60)}j ${request.duration_minutes % 60}m` : `${request.hours || 0} Jam`
+                                        : type === 'overtime'
+                                            ? request.duration_minutes ? `${Math.floor(request.duration_minutes / 60)}j ${request.duration_minutes % 60}m` : `${request.hours || 0} Jam`
+                                            : type === 'reimbursement'
+                                                ? `Rp ${(request.amount || 0).toLocaleString('id-ID')}`
+                                                : type === 'correction'
+                                                    ? `${request.corrected_clock_in ? format(new Date(request.corrected_clock_in), 'HH:mm') : '-'} s/d ${request.corrected_clock_out ? format(new Date(request.corrected_clock_out), 'HH:mm') : '-'}`
+                                                    : '-'
                                     }
                                 </p>
                             </div>
@@ -576,12 +759,12 @@ function RequestCard({
                             </div>
                         </div>
 
-                        {/* Attachment Link */}
-                        {request.attachment_url && (
+                        {/* Common Logic for Attachment URL */}
+                        {(request.attachment_url || request.proof_url) && (
                             <div>
                                 <p className="text-[11px] text-slate-500 font-medium mb-1.5 ml-1">Lampiran Bukti:</p>
                                 <div
-                                    onClick={() => onViewAttachment?.(request.attachment_url!)}
+                                    onClick={() => onViewAttachment?.(request.attachment_url || request.proof_url)}
                                     className="flex items-center gap-3 p-2 bg-blue-50 border border-blue-100 rounded-lg hover:bg-blue-100 transition-colors group cursor-pointer"
                                 >
                                     <div className="h-8 w-8 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-white text-blue-600 transition-colors">

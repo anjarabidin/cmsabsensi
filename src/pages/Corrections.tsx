@@ -131,6 +131,29 @@ export default function CorrectionsPage() {
 
       if (error) throw error;
 
+      // Notify HR
+      try {
+        const { data: hrUsers } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('role', 'admin_hr');
+
+        if (hrUsers && hrUsers.length > 0) {
+          const notifications = hrUsers.map(hr => ({
+            user_id: hr.id,
+            title: 'Pengajuan Koreksi Absensi',
+            message: `Karyawan ${user.email} mengajukan koreksi untuk tgl ${format(new Date(form.date), 'd MMM yyyy', { locale: id })}`,
+            type: 'correction',
+            link: '/approvals',
+            is_read: false
+          }));
+
+          await supabase.from('notifications').insert(notifications);
+        }
+      } catch (notifError) {
+        console.error('Failed to send notification to HR:', notifError);
+      }
+
       toast({ title: 'Pengajuan Berhasil', description: 'Permintaan koreksi absensi telah dikirim ke atasan.' });
       setDialogOpen(false);
       setForm({

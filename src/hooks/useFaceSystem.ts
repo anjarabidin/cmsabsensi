@@ -3,7 +3,7 @@ import { useState, useCallback, useEffect } from 'react';
 import * as faceapi from 'face-api.js';
 
 // Configuration
-const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+const MODEL_URL = `${import.meta.env.BASE_URL}models/`;
 const SCORE_THRESHOLD = 0.4; // For Detection (Lowered for better sensitivity)
 
 interface FaceRecognitionSystem {

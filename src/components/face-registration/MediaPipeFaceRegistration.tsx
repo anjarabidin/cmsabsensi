@@ -182,16 +182,47 @@ export function MediaPipeFaceRegistration({ onComplete, employeeId }: MediaPipeF
         }
     };
 
+    const clearCanvas = () => {
+        if (!canvasRef.current) return;
+        const ctx = canvasRef.current.getContext('2d');
+        if (!ctx) return;
+        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    };
+
     // Render loop for capture step
     useEffect(() => {
-        if (step === 'capture' && showMesh && isReady) {
+        if (step === 'capture' && isReady) {
             const renderLoop = async () => {
-                if (!videoRef.current) return;
+                const video = videoRef.current;
+                if (!video) return;
 
-                const result = await detectFace(videoRef.current);
-                if (result) {
-                    drawFaceMesh(result);
-                    setDetectedFace(result.faceLandmarks && result.faceLandmarks.length > 0);
+                if (step !== 'capture' || !isReady) return;
+
+                // Wait until the video has dimensions; detectForVideo can silently fail otherwise.
+                if (video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) {
+                    animationFrameRef.current = requestAnimationFrame(renderLoop);
+                    return;
+                }
+
+                try {
+                    const result = await detectFace(video);
+
+                    if (result && result.faceLandmarks && result.faceLandmarks.length > 0) {
+                        if (showMesh) {
+                            drawFaceMesh(result);
+                        }
+                        setDetectedFace(true);
+                    } else {
+                        if (showMesh) {
+                            clearCanvas();
+                        }
+                        setDetectedFace(false);
+                    }
+                } catch (e) {
+                    if (showMesh) {
+                        clearCanvas();
+                    }
+                    setDetectedFace(false);
                 }
 
                 if (step === 'capture') {

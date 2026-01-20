@@ -45,9 +45,8 @@ export function useMediaPipeFace() {
             try {
                 console.log('🚀 Initializing MediaPipe Face Landmarker...');
 
-                const vision = await FilesetResolver.forVisionTasks(
-                    '/wasm'
-                );
+                const wasmBase = `${import.meta.env.BASE_URL}wasm`;
+                const vision = await FilesetResolver.forVisionTasks(wasmBase);
 
                 console.log('✅ Vision tasks loaded, creating Face Landmarker...');
 

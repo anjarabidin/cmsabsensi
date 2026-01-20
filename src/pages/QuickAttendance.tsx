@@ -19,7 +19,6 @@ import {
     AlertCircle,
     X,
     Navigation,
-    Signal,
     RefreshCw,
     Scan
 } from 'lucide-react';
@@ -35,23 +34,43 @@ export default function QuickAttendancePage() {
     const navigate = useNavigate();
     const { toast } = useToast();
 
+    // 1. Hooks - Call all hooks first at the top
+    const { stream, videoRef, startCamera, stopCamera, capturePhoto } = useCamera();
+    const { isReady, initialize, detectFace } = useMediaPipeFace();
+    const { getDeepDescriptor, computeMatch } = useFaceSystem();
+    const { latitude, longitude, accuracy, isMocked, loading: locationChecking, getLocation } = useGeolocation();
+
+    // 2. States
     const [step, setStep] = useState<'idle' | 'processing'>('idle');
     const [capturedPhoto, setCapturedPhoto] = useState<Blob | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
 
-    // Camera hooks
-    const { stream, videoRef, startCamera, stopCamera, capturePhoto } = useCamera();
-    const { isReady, initialize, detectFace } = useMediaPipeFace();
-    const { getDeepDescriptor, computeMatch } = useFaceSystem();
-
-    // State for office validation
+    // Office validation states
     const [officeLocations, setOfficeLocations] = useState<any[]>([]);
     const [nearestOfficeDist, setNearestOfficeDist] = useState<number | null>(null);
     const [isLocationValid, setIsLocationValid] = useState(false);
     const MAX_RADIUS = 100; // 100 meters
 
-    // ... existing states ...
+    // Face Recognition States
+    const [cameraOpen, setCameraOpen] = useState(false);
+    const [faceMatch, setFaceMatch] = useState<number | null>(null);
+    const [faceDetected, setFaceDetected] = useState(false);
+    const [checkingFace, setCheckingFace] = useState(false);
+
+    // Initial location fetch
+    useEffect(() => {
+        getLocation();
+    }, [getLocation]);
+
+    // Fetch Office Locations
+    useEffect(() => {
+        const fetchOffices = async () => {
+            const { data } = await supabase.from('office_locations').select('*').eq('is_active', true);
+            setOfficeLocations(data || []);
+        };
+        fetchOffices();
+    }, []);
 
     // Helper functions for distance
     function getDistanceFromLatLonInM(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -71,18 +90,9 @@ export default function QuickAttendancePage() {
         return deg * (Math.PI / 180);
     }
 
-    // Fetch Office Locations
-    useEffect(() => {
-        const fetchOffices = async () => {
-            const { data } = await supabase.from('office_locations').select('*').eq('is_active', true);
-            setOfficeLocations(data || []);
-        };
-        fetchOffices();
-    }, []);
-
     // Real-time Distance Check
     useEffect(() => {
-        if (latitude && longitude) {
+        if (latitude !== null && longitude !== null) {
             if (officeLocations.length > 0) {
                 let minDistance = Infinity;
                 for (const office of officeLocations) {
@@ -92,26 +102,11 @@ export default function QuickAttendancePage() {
                 setNearestOfficeDist(minDistance);
                 setIsLocationValid(minDistance <= MAX_RADIUS);
             } else {
-                // No office defined -> Valid by default but warn
                 setNearestOfficeDist(null);
                 setIsLocationValid(true);
             }
         }
     }, [latitude, longitude, officeLocations]);
-
-    // Face Recognition States
-    const [cameraOpen, setCameraOpen] = useState(false);
-    const [faceMatch, setFaceMatch] = useState<number | null>(null);
-    const [faceDetected, setFaceDetected] = useState(false);
-    const [checkingFace, setCheckingFace] = useState(false);
-
-    // Location Hook
-    const { latitude, longitude, accuracy, isMocked, loading: locationChecking, getLocation } = useGeolocation();
-
-    // Initial location fetch
-    useEffect(() => {
-        getLocation();
-    }, [getLocation]);
 
     // Fix: Attach stream to video element when stream is available
     useEffect(() => {
@@ -202,7 +197,7 @@ export default function QuickAttendancePage() {
             setCameraOpen(true);
 
             // Run checks and initialization in parallel for speed
-            const [faceCheckResult, locationResult, cameraResult, initResult] = await Promise.allSettled([
+            const [faceCheckResult, cameraResult, initResult] = await Promise.allSettled([
                 // Check face registration
                 supabase
                     .from('face_enrollments')
@@ -211,17 +206,18 @@ export default function QuickAttendancePage() {
                     .eq('is_active', true)
                     .limit(1)
                     .maybeSingle(),
-                // Get location
-                getLocation(),
                 // Start camera
                 startCamera(),
                 // Initialize MediaPipe
                 initialize()
             ]);
 
+            // Start location in background
+            getLocation();
+
             // Handle face registration check
-            if (faceCheckResult.status === 'rejected' ||
-                !faceCheckResult.value.data) {
+            const faceRegFulfilled = faceCheckResult.status === 'fulfilled' && faceCheckResult.value && faceCheckResult.value.data;
+            if (!faceRegFulfilled) {
                 setCameraOpen(false);
                 toast({
                     title: 'Registrasi Wajah Diperlukan',
@@ -232,53 +228,82 @@ export default function QuickAttendancePage() {
                 return;
             }
 
-            // Camera and location are already started/fetched in parallel
+            // Handle Camera Error
+            if (cameraResult.status === 'rejected') {
+                setCameraOpen(false);
+                toast({
+                    title: 'Gagal Membuka Kamera',
+                    description: 'Mohon berikan izin kamera untuk melanjutkan.',
+                    variant: 'destructive',
+                });
+                return;
+            }
 
-            const interval = setInterval(async () => {
-                const video = videoRef.current;
-                if (video && isReady && !checkingFace && video.readyState >= 2) {
-                    try {
-                        // Detect First
-                        const result = await detectFace(video);
-
-                        if (result && result.faceLandmarks && result.faceLandmarks.length > 0) {
-                            setFaceDetected(true);
-                            // Only run deep check occasionally or if we need instant feedback
-                            // Optimization: Check deep descriptor
-                            const descriptor = await getDeepDescriptor(video);
-
-                            if (descriptor && user) {
-                                const { data: faceData } = await (supabase
-                                    .from('face_enrollments') as any)
-                                    .select('face_descriptor')
-                                    .eq('user_id', user.id)
-                                    .eq('is_active', true)
-                                    .maybeSingle();
-
-                                if (faceData) {
-                                    const similarity = computeMatch(descriptor, new Float32Array(faceData.face_descriptor as any));
-                                    setFaceMatch(similarity);
-                                }
-                            }
-                        } else {
-                            setFaceDetected(false);
-                            setFaceMatch(0);
-                        }
-                    } catch (err) {
-                        console.error("QuickFace auto check error", err);
-                    }
-                }
-            }, 1000);
-            (window as any).quickFaceInterval = interval;
+            // Real-time detection loop is now handled by useEffect below
         } catch (error: any) {
             setCameraOpen(false);
             toast({
-                title: 'Gagal Membuka Kamera',
-                description: error.message || 'Cek izin kamera.',
+                title: 'Error',
+                description: error.message || 'Terjadi kesalahan sistem.',
                 variant: 'destructive',
             });
         }
     };
+
+    // Robust Detection Loop using useEffect + requestAnimationFrame
+    const animationFrameRef = useRef<number>();
+    useEffect(() => {
+        if (!cameraOpen || !stream || !isReady || step !== 'idle') {
+            if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+            return;
+        }
+
+        const runDetection = async () => {
+            if (!videoRef.current || !cameraOpen || checkingFace) {
+                animationFrameRef.current = requestAnimationFrame(runDetection);
+                return;
+            }
+
+            const video = videoRef.current;
+            if (video.readyState >= 2) {
+                try {
+                    const result = await detectFace(video);
+                    if (result && result.faceLandmarks?.length > 0) {
+                        setFaceDetected(true);
+
+                        // Deep check descriptor
+                        const descriptor = await getDeepDescriptor(video);
+                        if (descriptor && user) {
+                            const { data: faceData } = await (supabase
+                                .from('face_enrollments') as any)
+                                .select('face_descriptor')
+                                .eq('user_id', user.id)
+                                .eq('is_active', true)
+                                .maybeSingle();
+
+                            if (faceData) {
+                                const similarity = computeMatch(descriptor, new Float32Array(faceData.face_descriptor as any));
+                                setFaceMatch(similarity);
+                            }
+                        }
+                    } else {
+                        setFaceDetected(false);
+                        setFaceMatch(0);
+                    }
+                } catch (err) {
+                    console.error("Auto detection error", err);
+                }
+            }
+
+            animationFrameRef.current = requestAnimationFrame(runDetection);
+        };
+
+        animationFrameRef.current = requestAnimationFrame(runDetection);
+
+        return () => {
+            if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+        };
+    }, [cameraOpen, stream, isReady, step, user, checkingFace]);
 
     const handleCapture = async () => {
         const isMatch = await checkFaceMatch();
@@ -308,8 +333,8 @@ export default function QuickAttendancePage() {
                 }
             }, 'image/jpeg', 0.95);
 
-            if ((window as any).quickFaceInterval) {
-                clearInterval((window as any).quickFaceInterval);
+            if (animationFrameRef.current) {
+                cancelAnimationFrame(animationFrameRef.current);
             }
             stopCamera();
             setCameraOpen(false);
@@ -318,11 +343,10 @@ export default function QuickAttendancePage() {
         }
     };
 
-    // Cleanup
     useEffect(() => {
         return () => {
-            if ((window as any).quickFaceInterval) {
-                clearInterval((window as any).quickFaceInterval);
+            if (animationFrameRef.current) {
+                cancelAnimationFrame(animationFrameRef.current);
             }
         };
     }, []);
@@ -685,8 +709,8 @@ export default function QuickAttendancePage() {
             {/* Quick Attendance Camera Modal */}
             <Dialog open={cameraOpen} onOpenChange={(open) => {
                 if (!open) {
-                    if ((window as any).quickFaceInterval) {
-                        clearInterval((window as any).quickFaceInterval);
+                    if (animationFrameRef.current) {
+                        cancelAnimationFrame(animationFrameRef.current);
                     }
                     stopCamera();
                     setCameraOpen(false);
@@ -775,8 +799,8 @@ export default function QuickAttendancePage() {
                                 variant="ghost"
                                 className="h-16 w-16 rounded-full text-white hover:bg-white/20 active:scale-90 transition-transform"
                                 onClick={() => {
-                                    if ((window as any).quickFaceInterval) {
-                                        clearInterval((window as any).quickFaceInterval);
+                                    if (animationFrameRef.current) {
+                                        cancelAnimationFrame(animationFrameRef.current);
                                     }
                                     stopCamera();
                                     setCameraOpen(false);

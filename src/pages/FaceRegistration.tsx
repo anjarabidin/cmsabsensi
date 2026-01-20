@@ -62,24 +62,30 @@ export default function FaceRegistrationPage() {
 
   return (
     <DashboardLayout>
-      <div className="relative min-h-screen bg-slate-50/50 pb-20">
-        {/* Header Curve Theme */}
-        <div className="absolute top-0 left-0 w-full h-[180px] bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 rounded-b-[40px] z-0 shadow-lg" />
+      <div className="relative min-h-screen bg-slate-50/50 pb-20 overflow-x-hidden">
+        {/* Modern Header Curve Theme - Safe Area Aware */}
+        <div
+          className="absolute top-0 left-0 w-full bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 rounded-b-[48px] z-0 shadow-lg transition-all"
+          style={{ height: 'calc(180px + env(safe-area-inset-top))' }}
+        />
 
-        <div className="relative z-10 max-w-md mx-auto px-4 pt-6 space-y-6">
-          {/* Top Bar */}
-          <div className="flex items-center gap-3 text-white mb-6">
+        <div
+          className="relative z-10 max-w-md mx-auto px-6 space-y-6"
+          style={{ paddingTop: 'calc(2.5rem + env(safe-area-inset-top) + 0.5rem)' }}
+        >
+          {/* Top Bar with Enhanced Safe Area Spacing */}
+          <div className="flex items-center gap-4 text-white mb-8">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => navigate('/profile')}
-              className="text-white hover:bg-white/20 hover:text-white shrink-0 -ml-2 h-10 w-10 rounded-full"
+              className="text-white hover:bg-white/20 hover:text-white shrink-0 -ml-2 h-11 w-11 rounded-full backdrop-blur-sm"
             >
               <ArrowLeft className="h-6 w-6" />
             </Button>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight">Registrasi Wajah</h1>
-              <p className="text-blue-100 text-xs opacity-90">Keamanan Biometrik</p>
+            <div className="space-y-0.5">
+              <h1 className="text-2xl font-black tracking-tight leading-none">Registrasi Wajah</h1>
+              <p className="text-blue-100 text-[11px] font-bold uppercase tracking-widest opacity-80">Security Biometric</p>
             </div>
           </div>
 

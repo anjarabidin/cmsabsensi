@@ -372,7 +372,8 @@ export default function AttendancePage() {
       }
 
       // Handle face registration check
-      if (faceCheckResult.status === 'rejected' || !faceCheckResult.value.data) {
+      const faceRegFulfilled = faceCheckResult.status === 'fulfilled' && faceCheckResult.value && faceCheckResult.value.data;
+      if (!faceRegFulfilled) {
         setCameraOpen(false);
         toast({
           title: 'Registrasi Wajah Diperlukan',
@@ -394,46 +395,7 @@ export default function AttendancePage() {
         return;
       }
 
-      // Auto-check face every 2 seconds
-      const interval = setInterval(async () => {
-        const video = videoRef.current;
-        if (video && isReady && !checkingFace && video.readyState >= 2) {
-          try {
-            // Detect First
-            const result = await detectFace(video);
-
-            if (result && result.faceLandmarks && result.faceLandmarks.length > 0) {
-              setFaceDetected(true);
-              const descriptor = getFaceDescriptor(result);
-
-              // Auto-match if face detected
-              if (descriptor && user) {
-                const { data: faceData } = await supabase
-                  .from('face_enrollments')
-                  .select('face_descriptor')
-                  .eq('user_id', user.id)
-                  .eq('is_active', true)
-                  .limit(1)
-                  .maybeSingle();
-
-                if (faceData) {
-                  const registeredDescriptor = new Float32Array(faceData.face_descriptor as any);
-                  const similarity = compareFaces(descriptor, registeredDescriptor);
-                  setFaceMatch(similarity);
-                }
-              }
-            } else {
-              setFaceDetected(false);
-            }
-          } catch (error) {
-            console.error('Auto face check error:', error);
-          }
-        }
-      }, 1000); // Faster check 1s
-
-      // Store interval ID to clear later
-      (window as any).faceCheckInterval = interval;
-
+      // Loop is now handled by useEffect below
     } catch (error) {
       setCameraOpen(false);
       const errorMessage = error instanceof Error ? error.message : 'Gagal mengakses kamera';
@@ -444,6 +406,62 @@ export default function AttendancePage() {
       });
     }
   };
+
+  // Robust Detection Loop for Attendance Page
+  const animationFrameRef = useRef<number>();
+  useEffect(() => {
+    if (!cameraOpen || !stream || !isReady) {
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      return;
+    }
+
+    const runDetection = async () => {
+      if (!videoRef.current || !cameraOpen || checkingFace) {
+        animationFrameRef.current = requestAnimationFrame(runDetection);
+        return;
+      }
+
+      const video = videoRef.current;
+      if (video.readyState >= 2) {
+        try {
+          const result = await detectFace(video);
+          if (result && result.faceLandmarks?.length > 0) {
+            setFaceDetected(true);
+
+            // Only occasional descriptor check or just use simple detection for UI
+            // To keep it simple like QuickAttendance:
+            const descriptor = await getDeepDescriptor(video);
+            if (descriptor && user) {
+              const { data: faceData } = await supabase
+                .from('face_enrollments')
+                .select('face_descriptor')
+                .eq('user_id', user.id)
+                .eq('is_active', true)
+                .maybeSingle();
+
+              if (faceData) {
+                const similarity = computeMatch(descriptor, new Float32Array(faceData.face_descriptor as any));
+                setFaceMatch(similarity);
+              }
+            }
+          } else {
+            setFaceDetected(false);
+            setFaceMatch(0);
+          }
+        } catch (err) {
+          console.error("Attendance auto detection error", err);
+        }
+      }
+
+      animationFrameRef.current = requestAnimationFrame(runDetection);
+    };
+
+    animationFrameRef.current = requestAnimationFrame(runDetection);
+
+    return () => {
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    };
+  }, [cameraOpen, stream, isReady, user, checkingFace]);
 
   const handleCapturePhoto = async () => {
     try {
@@ -484,8 +502,8 @@ export default function AttendancePage() {
       }, 'image/jpeg', 0.95);
 
       // Clear interval
-      if ((window as any).faceCheckInterval) {
-        clearInterval((window as any).faceCheckInterval);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
       }
 
       stopCamera();
@@ -502,8 +520,8 @@ export default function AttendancePage() {
   // Cleanup for face check interval
   useEffect(() => {
     return () => {
-      if ((window as any).faceCheckInterval) {
-        clearInterval((window as any).faceCheckInterval);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
       }
     };
   }, []);

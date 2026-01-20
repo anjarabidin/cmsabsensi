@@ -98,7 +98,6 @@ export function FaceLogin({ onVerificationComplete, employeeId }: FaceLoginProps
                 videoRef.current.srcObject = stream;
                 videoRef.current.onloadedmetadata = () => {
                     videoRef.current?.play();
-                    startScanningLoop();
                 };
             }
         } catch (err) {
@@ -118,41 +117,59 @@ export function FaceLogin({ onVerificationComplete, employeeId }: FaceLoginProps
         }
     };
 
-    // 3. Scanning Loop
-    const startScanningLoop = () => {
+    // 3. Scanning Loop - Robust Implementation
+    useEffect(() => {
+        if (status !== 'scanning' || !isReady || !enrolledDescriptor || !streamRef.current) {
+            if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+            return;
+        }
+
         const loop = async () => {
-            if (!videoRef.current || !enrolledDescriptor || status !== 'scanning') return;
+            if (!videoRef.current || status !== 'scanning') {
+                animationFrameRef.current = requestAnimationFrame(loop);
+                return;
+            }
 
-            // Stop if user closed or status changed
-            if (videoRef.current.paused || videoRef.current.ended) return;
+            // Stop if video is not ready
+            if (videoRef.current.readyState < 2) {
+                animationFrameRef.current = requestAnimationFrame(loop);
+                return;
+            }
 
-            const result = await detectFace(videoRef.current);
+            try {
+                const result = await detectFace(videoRef.current);
 
-            // Draw Mesh
-            drawMesh(result);
+                // Draw Mesh
+                drawMesh(result);
 
-            if (result && result.faceLandmarks && result.faceLandmarks.length > 0) {
-                // 1. Get Deep Descriptor (ResNet-34)
-                const currentDescriptor = await getDeepDescriptor(videoRef.current);
+                if (result && result.faceLandmarks && result.faceLandmarks.length > 0) {
+                    // 1. Get Deep Descriptor (ResNet-34)
+                    const currentDescriptor = await getDeepDescriptor(videoRef.current);
 
-                if (currentDescriptor) {
-                    const score = computeMatch(currentDescriptor, enrolledDescriptor);
-                    setSimilarityScore(score);
+                    if (currentDescriptor) {
+                        const score = computeMatch(currentDescriptor, enrolledDescriptor);
+                        setSimilarityScore(score);
 
-                    // Threshold: > 0.55 (Equivalent to < 0.45 Euclidean Distance)
-                    if (score > 0.55) {
-                        handleSuccess();
-                        return; // Stop checking
+                        // Threshold: > 0.55 (Equivalent to < 0.45 Euclidean Distance)
+                        if (score > 0.55) {
+                            handleSuccess();
+                            return; // Stop checking
+                        }
                     }
                 }
+            } catch (err) {
+                console.error("Scanning loop error:", err);
             }
 
             animationFrameRef.current = requestAnimationFrame(loop);
         };
 
-        // Start loop
-        loop();
-    };
+        animationFrameRef.current = requestAnimationFrame(loop);
+
+        return () => {
+            if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+        };
+    }, [status, isReady, enrolledDescriptor, detectFace, getDeepDescriptor, computeMatch]);
 
     const drawMesh = (result: FaceLandmarkerResult | null) => {
         if (!canvasRef.current || !videoRef.current) return;

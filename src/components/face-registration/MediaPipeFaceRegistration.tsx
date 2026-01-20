@@ -340,16 +340,8 @@ export function MediaPipeFaceRegistration({ onComplete, employeeId }: MediaPipeF
     }, []);
 
     return (
-        <div
-            className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-blue-50/30"
-            style={{
-                paddingTop: 'max(1rem, env(safe-area-inset-top))',
-                paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))',
-                paddingLeft: 'max(1rem, env(safe-area-inset-left))',
-                paddingRight: 'max(1rem, env(safe-area-inset-right))',
-            }}
-        >
-            <div className="w-full max-w-md px-4">
+        <div className="w-full">
+            <div className="w-full max-w-md mx-auto">
                 <Card className="border-0 shadow-2xl shadow-slate-200/50 bg-white/95 backdrop-blur-xl rounded-[32px] overflow-hidden">
                     <CardContent className="p-0">
 
@@ -409,8 +401,8 @@ export function MediaPipeFaceRegistration({ onComplete, employeeId }: MediaPipeF
                                     />
                                 )}
 
-                                {/* Top Status Bar */}
-                                <div className="absolute top-0 left-0 right-0 p-4 pt-[calc(env(safe-area-inset-top)+1.5rem)] bg-gradient-to-b from-black/80 to-transparent flex justify-between items-start z-10">
+                                {/* Top Status Bar - Safe Area Aware */}
+                                <div className="absolute top-0 left-0 right-0 p-4 pt-[calc(env(safe-area-inset-top)+2rem)] bg-gradient-to-b from-black/80 via-black/40 to-transparent flex justify-between items-start z-20">
                                     <div className="flex flex-col">
                                         <Badge className="bg-white/20 backdrop-blur-md text-white border-0 font-bold px-3 py-1.5 self-start">
                                             {loadingStatus || (step === 'blink-challenge' ? 'Liveness Check' : 'Face Detection')}

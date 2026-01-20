@@ -81,7 +81,7 @@ export default function AttendancePage() {
   // MediaPipe Hook
   // MediaPipe for UI/Liveness, FaceSystem for Secure Recognition
   const { isReady, initialize, detectFace } = useMediaPipeFace();
-  const { getDeepDescriptor, computeMatch } = useFaceSystem();
+  const { getDeepDescriptor, computeMatch, isLoaded: faceSystemLoaded } = useFaceSystem();
 
   // Fix: Attach stream to video element when stream is available
   useEffect(() => {
@@ -357,7 +357,7 @@ export default function AttendancePage() {
         // Check face registration
         supabase
           .from('face_enrollments')
-          .select('id')
+          .select('id, face_descriptor')
           .eq('user_id', user.id)
           .eq('is_active', true)
           .limit(1)

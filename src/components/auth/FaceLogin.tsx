@@ -27,7 +27,7 @@ export function FaceLogin({ onVerificationComplete, employeeId }: FaceLoginProps
     const [similarityScore, setSimilarityScore] = useState(0);
 
     const { initialize, isReady, detectFace } = useMediaPipeFace();
-    const { getDeepDescriptor, computeMatch } = useFaceSystem();
+    const { getDeepDescriptor, computeMatch, isLoaded: faceSystemLoaded } = useFaceSystem();
 
     // 1. Fetch Enrolled Face Data
     useEffect(() => {
@@ -246,12 +246,19 @@ export function FaceLogin({ onVerificationComplete, employeeId }: FaceLoginProps
 
                 {/* Header */}
                 <div className="flex justify-between items-start">
-                    <Badge variant="outline" className="text-white border-white/20 bg-black/40 backdrop-blur-md">
-                        {status === 'loading' && 'Memuat Data...'}
-                        {status === 'scanning' && 'Mencocokkan Wajah'}
-                        {status === 'success' && 'Terverifikasi'}
-                        {status === 'error' && 'Error'}
-                    </Badge>
+                    <div className="flex flex-col gap-2">
+                        <Badge variant="outline" className="text-white border-white/20 bg-black/40 backdrop-blur-md self-start">
+                            {status === 'loading' && 'Memuat Data...'}
+                            {status === 'scanning' && (!faceSystemLoaded ? 'Menyiapkan AI...' : 'Mencocokkan Wajah')}
+                            {status === 'success' && 'Terverifikasi'}
+                            {status === 'error' && 'Error'}
+                        </Badge>
+                        {status === 'scanning' && faceSystemLoaded && similarityScore > 0 && (
+                            <Badge className={similarityScore > 0.4 ? "bg-green-500/80 border-0" : "bg-blue-500/40 border-0"}>
+                                Match: {(similarityScore * 100).toFixed(0)}%
+                            </Badge>
+                        )}
+                    </div>
                     <Button size="icon" variant="ghost" className="text-white hover:bg-white/20 rounded-full h-8 w-8" onClick={handleCancel}>
                         <XCircle className="h-5 w-5" />
                     </Button>

@@ -4,7 +4,7 @@ import * as faceapi from 'face-api.js';
 
 // Configuration
 const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
-const SCORE_THRESHOLD = 0.5; // For Detection
+const SCORE_THRESHOLD = 0.4; // For Detection (Lowered for better sensitivity)
 
 interface FaceRecognitionSystem {
     isLoaded: boolean;

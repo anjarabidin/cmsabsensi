@@ -16,6 +16,7 @@ import { id } from 'date-fns/locale';
 import { formatCurrency } from '@/lib/overtime';
 import { generateSlipGaji, downloadSlipGaji } from '@/lib/pdfGenerator';
 import { cn } from '@/lib/utils';
+import { downloadFormalCSV } from '@/utils/csvExport';
 
 export default function PayrollDetailPage() {
   const { id: payrollRunId } = useParams();
@@ -202,15 +203,44 @@ export default function PayrollDetailPage() {
 
             <div className="flex gap-4 flex-wrap">
               <Button variant="outline" className="h-12 rounded-2xl bg-white/10 border-white/20 text-white hover:bg-white/20 px-6 font-bold backdrop-blur-md shadow-xl transition-all hover:translate-y-[-2px]" onClick={() => {
-                const headers = ['ID', 'Nama', 'Hari Kerja', 'Hadir', 'Lembur', 'Gaji Pokok', 'Tunjangan', 'Gaji Kotor', 'Potongan', 'PPh21', 'Net'];
-                const rows = payrollDetails.map(d => [d.profiles?.employee_id, d.profiles?.full_name, d.working_days, d.present_days, d.overtime_hours, d.base_salary, d.total_allowances, d.gross_salary, d.total_deductions, d.pph21, d.net_salary]);
-                const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-                const blob = new Blob([csv], { type: 'text/csv' });
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `payroll_${payrollRun.month}_${payrollRun.year}.csv`;
-                a.click();
+                const headers = [
+                  'ID Karyawan',
+                  'Nama Karyawan',
+                  'Hari Kerja',
+                  'Hadir',
+                  'Lembur (Jam)',
+                  'Gaji Pokok',
+                  'Total Tunjangan',
+                  'Lembur (IDR)',
+                  'Gaji Kotor',
+                  'Total Potongan',
+                  'PPh21',
+                  'Gaji Bersih (Net)'
+                ];
+
+                const rows = payrollDetails.map(d => [
+                  d.profiles?.employee_id || '-',
+                  d.profiles?.full_name || 'N/A',
+                  d.working_days,
+                  d.present_days,
+                  d.overtime_hours,
+                  d.base_salary,
+                  d.total_allowances,
+                  d.overtime_pay,
+                  d.gross_salary,
+                  d.total_deductions,
+                  d.pph21,
+                  d.net_salary
+                ]);
+
+                downloadFormalCSV(headers, rows, {
+                  filename: `Payroll_Ledger_${months[payrollRun.month - 1]}_${payrollRun.year}`,
+                  title: 'Buku Ledger Payroll (Rincian Gaji)',
+                  period: `${months[payrollRun.month - 1]} ${payrollRun.year}`,
+                  generatedBy: user?.email || 'Admin'
+                });
+
+                toast({ title: 'Berhasil', description: 'Ledger CSV berhasil diunduh.' });
               }}>
                 <Download className="mr-2 h-5 w-5" /> Export Ledger
               </Button>

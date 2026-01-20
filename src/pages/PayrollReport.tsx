@@ -9,7 +9,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Download, RefreshCw, FileSpreadsheet } from 'lucide-react';
 import { MonthlyAttendanceSummary } from '@/types';
-import { generateMonthlySummary, saveMonthlySummary, exportToPayrollCSV } from '@/lib/payroll';
+import { generateMonthlySummary, saveMonthlySummary } from '@/lib/payroll';
+import { downloadFormalCSV } from '@/utils/csvExport';
+import { cn } from '@/lib/utils';
 
 export default function PayrollReportPage() {
   const { user } = useAuth();
@@ -131,31 +133,51 @@ export default function PayrollReportPage() {
   };
 
   const handleExportCSV = () => {
-    try {
-      const csv = exportToPayrollCSV(summaries);
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
+    const headers = [
+      'ID Karyawan',
+      'Nama Karyawan',
+      'Bulan',
+      'Tahun',
+      'Total Hari Kerja',
+      'Hadir',
+      'Terlambat (Kali)',
+      'Total Menit Terlambat',
+      'Alpha/Tanpa Keterangan',
+      'Cuti',
+      'Jam Lembur',
+      'Upah Lembur (IDR)',
+      'Potongan (IDR)',
+      'Net Overtime (IDR)'
+    ];
 
-      link.setAttribute('href', url);
-      link.setAttribute('download', `payroll_${selectedYear}_${selectedMonth.toString().padStart(2, '0')}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    const rows = summaries.map((s: any) => [
+      s.profiles?.employee_id || '-',
+      s.profiles?.full_name || 'N/A',
+      months.find(m => m.value === s.month)?.label || s.month,
+      s.year,
+      s.total_working_days,
+      s.total_present,
+      s.total_late,
+      s.total_late_minutes,
+      s.total_absent,
+      s.total_leave_days,
+      s.total_overtime_hours,
+      s.total_overtime_pay,
+      s.deductions,
+      s.total_overtime_pay - s.deductions
+    ]);
 
-      toast({
-        title: 'Berhasil',
-        description: 'File CSV berhasil didownload',
-      });
-    } catch (error) {
-      console.error('Error exporting CSV:', error);
-      toast({
-        title: 'Error',
-        description: 'Gagal export CSV',
-        variant: 'destructive',
-      });
-    }
+    downloadFormalCSV(headers, rows, {
+      filename: `Payroll_Rekap_${selectedYear}_${selectedMonth}`,
+      title: 'Rekapitulasi Absensi & Payroll',
+      period: `${months.find(m => m.value === selectedMonth)?.label} ${selectedYear}`,
+      generatedBy: user?.email || 'Admin'
+    });
+
+    toast({
+      title: 'Berhasil',
+      description: 'Laporan Payroll CSV berhasil di-generate',
+    });
   };
 
   const formatCurrency = (amount: number) => {
@@ -180,17 +202,28 @@ export default function PayrollReportPage() {
             <p className="text-xs text-blue-50 font-medium opacity-90">Generate dan export rekap absensi untuk payroll</p>
           </div>
 
-          {/* Filters & Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Filter & Generate</CardTitle>
-              <CardDescription>Pilih periode dan generate summary untuk payroll</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1">
+          {/* Filters & Actions Area - Compact */}
+          <Card className="border-none shadow-xl bg-white/95 backdrop-blur-md overflow-hidden rounded-[24px]">
+            <div className="bg-slate-50/50 border-b border-slate-100 px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <RefreshCw className="h-4 w-4 text-blue-600" />
+                <span className="text-sm font-bold text-slate-700">Manajemen Payroll</span>
+              </div>
+              <Button
+                onClick={handleExportCSV}
+                disabled={summaries.length === 0}
+                variant="secondary"
+                className="h-8 text-[11px] font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-md"
+              >
+                <FileSpreadsheet className="mr-2 h-3.5 w-3.5" /> Export Rekap
+              </Button>
+            </div>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Pilih Bulan</Label>
                   <Select value={selectedMonth.toString()} onValueChange={(v) => setSelectedMonth(Number(v))}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-9 transition-all focus:ring-2 focus:ring-blue-500/20">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -203,9 +236,10 @@ export default function PayrollReportPage() {
                   </Select>
                 </div>
 
-                <div className="flex-1">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Pilih Tahun</Label>
                   <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(Number(v))}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-9 transition-all focus:ring-2 focus:ring-blue-500/20">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -218,28 +252,25 @@ export default function PayrollReportPage() {
                   </Select>
                 </div>
 
-                <Button onClick={handleGenerateSummary} disabled={generating}>
-                  {generating ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      Generate Summary
-                    </>
-                  )}
-                </Button>
-
-                <Button
-                  onClick={handleExportCSV}
-                  disabled={summaries.length === 0}
-                  variant="outline"
-                >
-                  <FileSpreadsheet className="mr-2 h-4 w-4" />
-                  Export CSV
-                </Button>
+                <div className="sm:col-span-2 flex gap-3">
+                  <Button
+                    onClick={handleGenerateSummary}
+                    disabled={generating}
+                    className="flex-1 bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 h-9 font-bold text-xs"
+                  >
+                    {generating ? (
+                      <>
+                        <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                        Calculating...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                        Hitung Ulang Summary
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

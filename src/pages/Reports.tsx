@@ -15,6 +15,8 @@ import { id } from 'date-fns/locale';
 import { TableSkeleton } from '@/components/LoadingSkeletons';
 import { EmptyState } from '@/components/EmptyState';
 import { Badge } from '@/components/ui/badge';
+import { downloadFormalCSV } from '@/utils/csvExport';
+import { cn } from '@/lib/utils';
 
 type AttendanceRow = {
   id: string;
@@ -160,11 +162,13 @@ export default function ReportsPage() {
   };
 
   const exportCsv = () => {
-    const headers = ['Tanggal', 'Nama', 'Departemen', 'Jabatan', 'Clock In', 'Clock Out', 'Mode', 'Terlambat', 'Menit Terlambat', 'Status'];
+    const headers = ['Tanggal', 'ID Karyawan', 'Nama', 'Departemen', 'Jabatan', 'Clock In', 'Clock Out', 'Mode', 'Terlambat', 'Menit Terlambat', 'Status', 'Durasi Kerja (Menit)'];
+
     const rows = filteredAttendances.map((a) => {
       const p = profileMap.get(a.user_id);
       return [
         a.date,
+        p?.employee_id || '-',
         p?.full_name || '-',
         p?.department || '-',
         p?.role || '-',
@@ -174,15 +178,18 @@ export default function ReportsPage() {
         a.is_late ? 'YA' : 'TIDAK',
         String(a.late_minutes ?? 0),
         a.status.toUpperCase(),
+        String(a.work_hours_minutes ?? 0)
       ];
     });
 
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `Report_Absensi_${startDate}_${endDate}.csv`;
-    link.click();
+    downloadFormalCSV(headers, rows, {
+      filename: `Report_Absensi_${startDate}_${endDate}`,
+      title: 'Laporan Kehadiran Karyawan',
+      period: `${startDate} s/d ${endDate}`,
+      generatedBy: profile?.full_name || 'Administrator'
+    });
+
+    toast({ title: 'Berhasil', description: 'Laporan CSV berhasil di-generate.' });
   };
 
   if (profile?.role !== 'admin_hr' && profile?.role !== 'super_admin' && profile?.role !== 'manager') {
@@ -225,107 +232,119 @@ export default function ReportsPage() {
             </Button>
           </div>
 
-          {/* Quick Filters */}
-          <Card className="border-none shadow-xl bg-white/95 backdrop-blur-md">
+          {/* Filters Area - More Compact */}
+          <Card className="border-none shadow-xl bg-white/95 backdrop-blur-md overflow-hidden rounded-[24px]">
+            <div className="bg-slate-50/50 border-b border-slate-100 px-6 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-blue-600" />
+                <span className="text-sm font-bold text-slate-700">Filter Laporan</span>
+              </div>
+              <div className="flex bg-slate-200/50 p-1 rounded-lg">
+                <Button variant="ghost" size="sm" onClick={() => quickFilter('this_month')} className="text-[10px] h-7 px-3 hover:bg-white text-slate-600">Bulan Ini</Button>
+                <Button variant="ghost" size="sm" onClick={() => quickFilter('last_month')} className="text-[10px] h-7 px-3 hover:bg-white text-slate-600">Bulan Lalu</Button>
+              </div>
+            </div>
             <CardContent className="p-4 md:p-6">
-              <div className="flex flex-col gap-4">
-                {/* Row 1: Date & Presets */}
-                <div className="flex flex-wrap items-end gap-4">
-                  <div className="space-y-2 w-full md:w-auto">
-                    <Label className="text-xs font-bold uppercase text-slate-500">Mulai</Label>
-                    <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="h-10" />
-                  </div>
-                  <div className="space-y-2 w-full md:w-auto">
-                    <Label className="text-xs font-bold uppercase text-slate-500">Selesai</Label>
-                    <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="h-10" />
-                  </div>
-                  <div className="flex gap-2 flex-1 md:flex-none">
-                    <div className="flex bg-slate-100 p-1 rounded-lg">
-                      <Button variant="ghost" size="sm" onClick={() => quickFilter('this_month')} className="text-[10px] h-8 px-3">Bulan Ini</Button>
-                      <Button variant="ghost" size="sm" onClick={() => quickFilter('last_month')} className="text-[10px] h-8 px-3">Bulan Lalu</Button>
-                    </div>
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4 items-end">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Periode Mulai</Label>
+                  <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="h-9 transition-all focus:ring-2 focus:ring-blue-500/20" />
                 </div>
-
-                {/* Row 2: Advanced Filters (Dept, Role, Search) */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold uppercase text-slate-500">Departemen</Label>
-                    <select
-                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                      value={selectedDept}
-                      onChange={(e) => setSelectedDept(e.target.value)}
-                    >
-                      <option value="all">Semua Departemen</option>
-                      {uniqueDepts.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold uppercase text-slate-500">Role / Jabatan</Label>
-                    <select
-                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                      value={selectedRole}
-                      onChange={(e) => setSelectedRole(e.target.value)}
-                    >
-                      <option value="all">Semua Role</option>
-                      <option value="staff">Staff</option>
-                      <option value="manager">Manager</option>
-                      <option value="admin_hr">Admin HR</option>
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold uppercase text-slate-500">Cari Nama</Label>
-                    <Input
-                      placeholder="Ketik nama karyawan..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="h-10"
-                    />
-                  </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Periode Selesai</Label>
+                  <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="h-9 transition-all focus:ring-2 focus:ring-blue-500/20" />
                 </div>
-
-                <div className="flex justify-end pt-2">
-                  <Button onClick={fetchReport} className="bg-blue-600 hover:bg-blue-700 h-10 px-8 w-full md:w-auto shadow-lg shadow-blue-200">
-                    <Filter className="mr-2 h-4 w-4" /> Terapkan Filter
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Departemen</Label>
+                  <select
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm transition-all focus:ring-2 focus:ring-blue-500/20"
+                    value={selectedDept}
+                    onChange={(e) => setSelectedDept(e.target.value)}
+                  >
+                    <option value="all">Semua Dept</option>
+                    {uniqueDepts.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Role</Label>
+                  <select
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm transition-all focus:ring-2 focus:ring-blue-500/20"
+                    value={selectedRole}
+                    onChange={(e) => setSelectedRole(e.target.value)}
+                  >
+                    <option value="all">Semua Role</option>
+                    <option value="staff">Staff</option>
+                    <option value="manager">Manager</option>
+                    <option value="admin_hr">Admin HR</option>
+                  </select>
+                </div>
+                <div className="md:col-span-4 lg:col-span-1 flex gap-2 pt-2 lg:pt-0">
+                  <Button onClick={fetchReport} className="flex-1 bg-blue-600 hover:bg-blue-700 h-9 text-xs font-bold shadow-md shadow-blue-200">
+                    <RefreshCw className={cn("mr-2 h-3.5 w-3.5", loading && "animate-spin")} /> Tampilkan
                   </Button>
+                </div>
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-slate-100">
+                <div className="relative max-w-sm">
+                  <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                  <Input
+                    placeholder="Cari nama karyawan..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="h-9 pl-9 text-xs transition-all focus:ring-2 focus:ring-blue-500/20 border-slate-200"
+                  />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Stats Summary */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-                <TrendingUp className="h-4 w-4 text-blue-500 mb-2" />
-                <p className="text-[10px] font-bold text-slate-400 uppercase">Total Data</p>
-                <p className="text-2xl font-bold">{stats?.total || 0}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-                <AlertCircle className="h-4 w-4 text-red-500 mb-2" />
-                <p className="text-[10px] font-bold text-slate-400 uppercase">Keterlambatan</p>
-                <div className="flex items-baseline gap-1">
-                  <p className="text-2xl font-bold">{stats?.late || 0}</p>
-                  <span className="text-xs text-red-500">({stats?.latePercent || 0}%)</span>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-                <Clock className="h-4 w-4 text-green-500 mb-2" />
-                <p className="text-[10px] font-bold text-slate-400 uppercase">Rata-rata Jam Kerja</p>
-                <p className="text-2xl font-bold">{stats?.avgHours || 0} <span className="text-xs font-normal">h/day</span></p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-                <TrendingUp className="h-4 w-4 text-purple-500 mb-2" />
-                <p className="text-[10px] font-bold text-slate-400 uppercase">Efisiensi Tim</p>
-                <p className="text-2xl font-bold">{stats ? 100 - (stats.latePercent || 0) : 0}%</p>
-              </CardContent>
-            </Card>
+          {/* Stats Summary - More Aesthetic */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { label: 'Total Kehadiran', value: stats?.total || 0, icon: BarChart3, color: 'blue' },
+              { label: 'Terlambat', value: `${stats?.late || 0}`, sub: `${stats?.latePercent || 0}%`, icon: Clock, color: 'red' },
+              { label: 'Rata-rata Kerja', value: `${stats?.avgHours || 0}`, sub: 'jam/hari', icon: TrendingUp, color: 'green' },
+              { label: 'Efisiensi', value: `${stats ? 100 - (stats.latePercent || 0) : 0}%`, icon: FileText, color: 'purple' }
+            ].map((item, i) => (
+              <Card key={i} className="border-none shadow-sm overflow-hidden group hover:shadow-md transition-all duration-300">
+                <CardContent className="p-0">
+                  <div className="flex items-center p-4">
+                    <div className={cn(
+                      "h-10 w-10 rounded-xl flex items-center justify-center mr-3 transition-transform group-hover:scale-110",
+                      item.color === 'blue' && "bg-blue-50 text-blue-600",
+                      item.color === 'red' && "bg-red-50 text-red-600",
+                      item.color === 'green' && "bg-green-50 text-green-600",
+                      item.color === 'purple' && "bg-purple-50 text-purple-600",
+                    )}>
+                      <item.icon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{item.label}</p>
+                      <div className="flex items-baseline gap-1.5">
+                        <p className="text-xl font-black text-slate-800">{item.value}</p>
+                        {item.sub && <span className="text-[10px] font-bold text-slate-500">{item.sub}</span>}
+                      </div>
+                    </div>
+                  </div>
+                  <div className={cn(
+                    "h-1 w-full",
+                    item.color === 'blue' && "bg-blue-500/10",
+                    item.color === 'red' && "bg-red-500/10",
+                    item.color === 'green' && "bg-green-500/10",
+                    item.color === 'purple' && "bg-purple-500/10",
+                  )}>
+                    <div className={cn(
+                      "h-full w-2/3",
+                      item.color === 'blue' && "bg-blue-500",
+                      item.color === 'red' && "bg-red-500",
+                      item.color === 'green' && "bg-green-500",
+                      item.color === 'purple' && "bg-purple-500",
+                    )} />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
 
           {/* Main Table Content */}

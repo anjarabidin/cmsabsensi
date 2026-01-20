@@ -39,7 +39,7 @@ export function MediaPipeFaceRegistration({ onComplete, employeeId }: MediaPipeF
 
     const targetUserId = employeeId || user?.id;
     const { initialize, isReady, isLoading, error: mpError, detectFace } = useMediaPipeFace();
-    const { getDeepDescriptor, loadModels: loadDeepModels } = useFaceSystem();
+    const { getDeepDescriptor, loadModels: loadDeepModels, isLoaded: faceSystemLoaded } = useFaceSystem();
 
     // Start Camera
     const startCamera = async () => {
@@ -303,7 +303,8 @@ export function MediaPipeFaceRegistration({ onComplete, employeeId }: MediaPipeF
                     face_descriptor: Array.from(faceDescriptor),
                     face_image_url: publicUrl,
                     is_active: true,
-                    enrolled_at: new Date().toISOString()
+                    enrolled_at: new Date().toISOString(),
+                    enrollment_date: new Date().toISOString()
                 }, {
                     onConflict: 'user_id'
                 });
@@ -409,10 +410,16 @@ export function MediaPipeFaceRegistration({ onComplete, employeeId }: MediaPipeF
                                         <Badge className="bg-white/20 backdrop-blur-md text-white border-0 font-bold px-3 py-1.5 self-start">
                                             {loadingStatus || (step === 'blink-challenge' ? 'Liveness Check' : 'Face Detection')}
                                         </Badge>
-                                        {!isReady ? (
-                                            <p className="text-[10px] text-white/70 mt-1 pl-1"><Loader2 className="inline h-3 w-3 animate-spin" /> Memuat Model AI...</p>
+                                        {!isReady || !faceSystemLoaded ? (
+                                            <p className="text-[10px] text-white/70 mt-1 pl-1 flex items-center gap-1.5 animate-pulse">
+                                                <Loader2 className="h-3 w-3 animate-spin text-blue-400" />
+                                                Mengaktifkan AI Face System...
+                                                {!faceSystemLoaded ? '(Model Deep Learning)' : '(Landmarker)'}
+                                            </p>
                                         ) : (
-                                            <p className="text-[10px] text-green-400 mt-1 pl-1 font-bold">● AI Active</p>
+                                            <p className="text-[10px] text-green-400 mt-1 pl-1 font-bold flex items-center gap-1.5">
+                                                <span className="h-2 w-2 bg-green-500 rounded-full" /> AI Active & Secure
+                                            </p>
                                         )}
                                     </div>
                                     <Button
@@ -448,12 +455,16 @@ export function MediaPipeFaceRegistration({ onComplete, employeeId }: MediaPipeF
                                             <div className="flex justify-center">
                                                 <button
                                                     onClick={captureFace}
-                                                    disabled={!isReady || !detectedFace}
-                                                    className={`h-20 w-20 rounded-full border-4 p-1.5 transition-all duration-300 ${detectedFace ? 'border-white cursor-pointer active:scale-90 hover:scale-105' : 'border-white/30 cursor-not-allowed opacity-50'
+                                                    disabled={!isReady || !detectedFace || !faceSystemLoaded}
+                                                    className={`h-20 w-20 rounded-full border-4 p-1.5 transition-all duration-300 ${detectedFace && faceSystemLoaded
+                                                        ? 'border-white cursor-pointer active:scale-95 hover:scale-105 shadow-[0_0_20px_rgba(255,255,255,0.4)]'
+                                                        : 'border-white/20 cursor-not-allowed opacity-50'
                                                         }`}
                                                 >
-                                                    <div className={`w-full h-full rounded-full transition-colors duration-300 ${detectedFace ? 'bg-white' : 'bg-white/30'
-                                                        }`} />
+                                                    <div className={`w-full h-full rounded-full flex items-center justify-center transition-colors duration-300 ${detectedFace && faceSystemLoaded ? 'bg-white' : 'bg-white/20'
+                                                        }`}>
+                                                        {!faceSystemLoaded ? <Loader2 className="h-6 w-6 text-blue-500 animate-spin" /> : <CameraIcon className={detectedFace ? 'text-blue-600' : 'text-white/40'} />}
+                                                    </div>
                                                 </button>
                                             </div>
                                         </div>

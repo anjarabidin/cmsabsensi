@@ -203,7 +203,7 @@ export default function QuickAttendancePage() {
                 // Check face registration
                 supabase
                     .from('face_enrollments')
-                    .select('id')
+                    .select('id, face_descriptor')
                     .eq('user_id', user.id)
                     .eq('is_active', true)
                     .limit(1)

@@ -15,7 +15,11 @@ import { AppLogo } from '@/components/AppLogo';
 import { NativeBiometric } from '@capgo/capacitor-native-biometric';
 import { Capacitor } from '@capacitor/core';
 
-const emailSchema = z.string().email('Email tidak valid');
+const emailSchema = z.string()
+  .email('Email tidak valid')
+  .refine((email) => email.endsWith('@cmsdutasolusi.co.id'), {
+    message: 'Hanya email perusahaan yang diperbolehkan'
+  });
 const passwordSchema = z.string().min(6, 'Password minimal 6 karakter');
 const nameSchema = z.string().min(2, 'Nama minimal 2 karakter');
 const phoneSchema = z.string().min(10, 'Nomor WhatsApp minimal 10 digit').regex(/^[0-9]+$/, 'Hanya angka');
@@ -548,7 +552,7 @@ export default function Auth() {
                       <Input
                         id="register-email"
                         type="email"
-                        placeholder="email@perusahaan.com"
+                        placeholder="username@cmsdutasolusi.co.id"
                         value={registerEmail}
                         onChange={(e) => setRegisterEmail(e.target.value)}
                         disabled={isLoading || justRegistered}

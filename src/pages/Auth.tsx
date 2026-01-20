@@ -15,7 +15,8 @@ import { AppLogo } from '@/components/AppLogo';
 import { NativeBiometric } from '@capgo/capacitor-native-biometric';
 import { Capacitor } from '@capacitor/core';
 
-const emailSchema = z.string()
+const loginEmailSchema = z.string().email('Email tidak valid');
+const registerEmailSchema = z.string()
   .email('Email tidak valid')
   .refine((email) => email.endsWith('@cmsdutasolusi.co.id'), {
     message: 'Hanya email perusahaan yang diperbolehkan'
@@ -23,7 +24,6 @@ const emailSchema = z.string()
 const passwordSchema = z.string().min(6, 'Password minimal 6 karakter');
 const nameSchema = z.string().min(2, 'Nama minimal 2 karakter');
 const phoneSchema = z.string().min(10, 'Nomor WhatsApp minimal 10 digit').regex(/^[0-9]+$/, 'Hanya angka');
-const nikSchema = z.string().min(16, 'NIK harus 16 digit').max(16, 'NIK harus 16 digit').regex(/^[0-9]+$/, 'Hanya angka');
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -33,11 +33,11 @@ export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [loginErrorMessage, setLoginErrorMessage] = useState('');
   const [registerEmail, setRegisterEmail] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
   const [registerName, setRegisterName] = useState('');
   const [registerPhone, setRegisterPhone] = useState('');
-  const [registerNik, setRegisterNik] = useState('');
   const [lastUser, setLastUser] = useState<{ id?: string; email: string; name: string; avatar?: string } | null>(null);
   const [activeTab, setActiveTab] = useState('login');
   const [justRegistered, setJustRegistered] = useState(false);
@@ -71,16 +71,20 @@ export default function Auth() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    setLoginErrorMessage('');
+
     try {
-      emailSchema.parse(loginEmail);
+      loginEmailSchema.parse(loginEmail);
       passwordSchema.parse(loginPassword);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        const message = error.errors[0].message;
         toast({
           title: 'Validasi Gagal',
-          description: error.errors[0].message,
+          description: message,
           variant: 'destructive',
         });
+        setLoginErrorMessage(message);
         return;
       }
     }
@@ -92,7 +96,7 @@ export default function Auth() {
     if (error) {
       let message = 'Terjadi kesalahan saat login';
       if (error.message.includes('Invalid login credentials')) {
-        message = 'Email atau password salah';
+        message = 'Email atau kata sandi salah';
       } else if (error.message.includes('Email not confirmed')) {
         message = 'Email belum dikonfirmasi. Silakan cek inbox Anda';
       }
@@ -102,6 +106,7 @@ export default function Auth() {
         description: message,
         variant: 'destructive',
       });
+      setLoginErrorMessage(message);
     } else {
       // Save user for quick access
       if (authData?.user) {
@@ -246,10 +251,9 @@ export default function Auth() {
 
     try {
       nameSchema.parse(registerName);
-      emailSchema.parse(registerEmail);
+      registerEmailSchema.parse(registerEmail);
       passwordSchema.parse(registerPassword);
       phoneSchema.parse(registerPhone);
-      nikSchema.parse(registerNik);
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast({
@@ -271,7 +275,6 @@ export default function Auth() {
         data: {
           full_name: registerName,
           phone: registerPhone,
-          nik: registerNik,
         },
       },
     });
@@ -301,7 +304,6 @@ export default function Auth() {
       setRegisterEmail('');
       setRegisterPassword('');
       setRegisterPhone('');
-      setRegisterNik('');
       setJustRegistered(true);
       setIsLoading(false);
 
@@ -388,7 +390,7 @@ export default function Auth() {
                       <Input
                         id="login-email"
                         type="email"
-                        placeholder="masukan email anda"
+                        placeholder="wajib email perusahaan"
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
                         disabled={isLoading}
@@ -421,6 +423,13 @@ export default function Auth() {
                       />
                     </div>
                   </div>
+
+                  {loginErrorMessage && (
+                    <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-2xl text-sm font-semibold flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+                      <div className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+                      {loginErrorMessage}
+                    </div>
+                  )}
 
                   {lastUser && (
                     <div className="pt-2 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -552,7 +561,7 @@ export default function Auth() {
                       <Input
                         id="register-email"
                         type="email"
-                        placeholder="username@cmsdutasolusi.co.id"
+                        placeholder="wajib email perusahaan"
                         value={registerEmail}
                         onChange={(e) => setRegisterEmail(e.target.value)}
                         disabled={isLoading || justRegistered}
@@ -582,25 +591,6 @@ export default function Auth() {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="register-nik" className="text-slate-700 font-semibold text-sm">
-                      NIK (Identitas KTP)
-                    </Label>
-                    <div className="relative">
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                      <Input
-                        id="register-nik"
-                        type="text"
-                        placeholder="16 digit NIK"
-                        value={registerNik}
-                        onChange={(e) => setRegisterNik(e.target.value.replace(/\D/g, ''))}
-                        disabled={isLoading || justRegistered}
-                        required
-                        maxLength={16}
-                        className="h-12 pl-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
-                      />
-                    </div>
-                  </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="register-password" className="text-slate-700 font-semibold text-sm">

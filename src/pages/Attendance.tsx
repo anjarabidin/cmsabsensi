@@ -80,6 +80,11 @@ export default function AttendancePage() {
   // NEW: Face Verification Setting
   const [isFaceRequired, setIsFaceRequired] = useState(true);
 
+  // Debug: Monitor isFaceRequired changes
+  useEffect(() => {
+    console.log('Attendance - isFaceRequired changed to:', isFaceRequired);
+  }, [isFaceRequired]);
+
   // GPS validation - Use database radius instead of hardcoded
   const MIN_GPS_ACCURACY = 50; // Require accuracy better than 50 meters (more realistic)
 
@@ -203,6 +208,7 @@ export default function AttendancePage() {
         console.log('App settings raw value:', settingData.value, 'type:', typeof settingData.value);
         console.log('App settings parsed to boolean:', Boolean(settingData.value));
         setIsFaceRequired(Boolean(settingData.value));
+        console.log('Attendance - isFaceRequired set to:', Boolean(settingData.value));
       }
 
       // Fetch Attendance

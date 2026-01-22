@@ -318,14 +318,11 @@ export default function AttendanceMobileView({
                                         />
                                     </div>
 
-                                    {/* Debug Indicator - Hanya untuk troubleshooting */}
-                                    <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 mb-4">
-                                        <p className="text-xs font-bold text-yellow-800">🔍 DEBUG INFO:</p>
-                                        <div className="text-[10px] text-yellow-700 space-y-1">
-                                            <p>Face Required: {isFaceRequired ? '✅ YA' : '❌ TIDAK'}</p>
-                                            <p>Captured Photo: {capturedPhoto ? '✅ ADA' : '❌ BELUM'}</p>
-                                            <p>Work Mode: {workMode}</p>
-                                        </div>
+                                    {/* Simple Status Indicator */}
+                                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-2 mb-2">
+                                        <p className="text-xs font-bold text-blue-800">
+                                            Status Verifikasi: {isFaceRequired ? 'WAJIB Foto' : 'TIDAK WAJIB Foto'}
+                                        </p>
                                     </div>
 
                                     {/* Photo Trigger - Only if Face Required */}
@@ -361,15 +358,12 @@ export default function AttendanceMobileView({
                                         size="lg"
                                         className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg rounded-2xl h-14 shadow-lg shadow-blue-600/20 mt-6"
                                         onClick={() => {
-                                            // Visual debugging untuk HP
-                                            alert(`DEBUG INFO:\nFace Required: ${isFaceRequired ? 'YA' : 'TIDAK'}\nCaptured Photo: ${capturedPhoto ? 'ADA' : 'BELUM'}\nWork Mode: ${workMode}`);
+                                            console.log('Button clicked - isFaceRequired:', isFaceRequired);
                                             
                                             if (todayAttendance?.clock_out) return;
                                             if (isFaceRequired) {
-                                                console.log('Face required - checking captured photo...');
                                                 capturedPhoto ? handleSubmit() : openCameraForPhoto();
                                             } else {
-                                                console.log('Face NOT required - submitting directly...');
                                                 handleSubmit();
                                             }
                                         }}

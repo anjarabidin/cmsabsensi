@@ -137,8 +137,10 @@ export default function AttendanceMobileView({
     photoPreview,
     setPhotoPreview,
     capturedPhoto,
-    isFaceRequired = true // Default true
+    isFaceRequired,
 }: AttendanceMobileViewProps) {
+    console.log('MobileView - isFaceRequired:', isFaceRequired, 'type:', typeof isFaceRequired);
+
     return (
         <DashboardLayout>
             <div className="relative min-h-screen bg-slate-50/50">
@@ -349,6 +351,7 @@ export default function AttendanceMobileView({
                                         size="lg"
                                         className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg rounded-2xl h-14 shadow-lg shadow-blue-600/20 mt-6"
                                         onClick={() => {
+                                            console.log('Button clicked - isFaceRequired:', isFaceRequired, 'capturedPhoto:', !!capturedPhoto);
                                             if (todayAttendance?.clock_out) return;
                                             if (isFaceRequired) {
                                                 capturedPhoto ? handleSubmit() : openCameraForPhoto();

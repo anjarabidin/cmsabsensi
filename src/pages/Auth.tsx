@@ -14,6 +14,8 @@ import { z } from 'zod';
 import { AppLogo } from '@/components/AppLogo';
 import { NativeBiometric } from '@capgo/capacitor-native-biometric';
 import { Capacitor } from '@capacitor/core';
+import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 const loginEmailSchema = z.string().email('Email tidak valid');
 const registerEmailSchema = z.string()
@@ -159,11 +161,10 @@ export default function Auth() {
         navigate('/dashboard');
       }, 1000);
     } else {
-      // Fallback ke Kamera Wajah (App-based Face Recognition) - DISABLED (Coming Soon)
-      toast({
-        title: "Segera Hadir",
-        description: "Login menggunakan pengenalan wajah akan segera tersedia.",
-      });
+      // Fallback ke Kamera Wajah (App-based Face Recognition)
+      // Ini akan membuka dialog FaceLogin yang menggunakan kamera & MediaPipe
+      // Cocok untuk PWA di iOS/Android yang tidak bisa akses native biometric
+      setShowFaceLogin(true);
     }
   };
 
@@ -215,14 +216,15 @@ export default function Auth() {
   // Auto-trigger biometric login if enabled
   useEffect(() => {
     const faceLoginEnabled = localStorage.getItem('face_login_enabled') === 'true';
-    if (faceLoginEnabled && lastUser && !isLoading && !showFaceLogin) {
-      // Small delay to ensure smooth UX
+    // Only auto-trigger once on mount, not on every state change
+    if (faceLoginEnabled && lastUser && !isLoading && !showFaceLogin && !authLoading) {
       const timer = setTimeout(() => {
         handleBiometricLogin();
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [lastUser]); // Only run when lastUser loads
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount
 
   const onFaceVerified = (success: boolean, data?: any) => {
     if (success) {
@@ -330,8 +332,8 @@ export default function Auth() {
     );
   }
 
-  // Common Form Content Component
-  const AuthFormContent = () => (
+  // Render form content directly to avoid re-creation on every render
+  const renderAuthForm = () => (
     <Card className={cn("border-0 shadow-2xl shadow-slate-200/50 bg-white/80 backdrop-blur-xl rounded-3xl overflow-hidden animate-in zoom-in-95 fade-in duration-500", !isMobile && "shadow-none bg-transparent rounded-none")}>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="px-8 pt-8">
@@ -607,45 +609,24 @@ export default function Auth() {
   // -------------------------------------------------------------------------
   if (isMobile) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-blue-50/30 p-4 overflow-x-hidden relative">
-        {/* Decorative Background Elements & Dynamic Animations */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {/* Animated Gradient Orbs */}
-          <div className="absolute -top-40 -right-40 w-[450px] h-[450px] bg-blue-200/30 rounded-full blur-[100px] animate-pulse duration-7000"></div>
-          <div className="absolute -bottom-40 -left-40 w-[450px] h-[450px] bg-indigo-200/30 rounded-full blur-[100px] animate-pulse duration-5000"></div>
-          <div className="absolute top-1/4 left-1/3 w-64 h-64 bg-cyan-100/20 rounded-full blur-[80px] animate-bounce duration-[10s]"></div>
-
-          {/* Animated Grid Pattern */}
-          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] brightness-100 contrast-150"></div>
-
-          {/* Floating Particles */}
-          <div className="absolute top-20 left-10 w-2 h-2 bg-blue-400 rounded-full opacity-20 animate-ping"></div>
-          <div className="absolute bottom-40 right-20 w-3 h-3 bg-indigo-400 rounded-full opacity-20 animate-ping duration-1500"></div>
-        </div>
-
+      <div className="min-h-screen flex items-center justify-center bg-white p-6 overflow-x-hidden relative">
         <div className="w-full max-w-[480px] relative z-10">
-          {/* Logo & Brand Header */}
-          <div className="flex flex-col items-center gap-6 mb-10 mt-8 animate-in fade-in slide-in-from-top-8 duration-700">
-            <div className="relative group">
-              <div className="absolute -inset-2 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full blur-xl opacity-20 group-hover:opacity-30 transition-opacity"></div>
-              <div className="relative p-5 bg-white rounded-3xl shadow-lg ring-1 ring-slate-200/50">
-                <AppLogo className="h-16 w-auto" />
-              </div>
-            </div>
-
-            <div className="text-center">
-              <h1 className="font-black tracking-tighter flex items-baseline justify-center gap-2.5">
-                <span className="text-4xl md:text-5xl text-blue-950 drop-shadow-sm">CMS</span>
-                <span className="text-2xl md:text-2xl text-emerald-900 opacity-90 tracking-tight">Duta Solusi</span>
-              </h1>
+          {/* Logo */}
+          <div className="flex flex-col items-center gap-4 mb-6 mt-2 animate-in fade-in slide-in-from-top-8 duration-700">
+            <div className="w-full px-4">
+              <img
+                src="/logo.png"
+                alt="CMS Duta Solusi"
+                className="w-full h-auto object-contain max-w-xs mx-auto"
+              />
             </div>
           </div>
 
           {/* Wrapper for Auth Form Content */}
-          <AuthFormContent />
+          {renderAuthForm()}
 
           {/* Footer */}
-          <p className="mt-10 text-xs text-slate-400 font-medium text-center">
+          <p className="mt-8 text-xs text-slate-400 font-medium text-center">
             © 2026 CMS Duta Solusi. All rights reserved.
           </p>
         </div>
@@ -668,47 +649,20 @@ export default function Auth() {
   // -------------------------------------------------------------------------
   return (
     <div className="min-h-screen grid lg:grid-cols-2 overflow-hidden bg-white">
-      {/* Left Column: Brand & Visuals */}
-      <div className="hidden lg:flex relative bg-slate-900 flex-col justify-between p-12 overflow-hidden">
-        {/* Animated Background */}
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-indigo-700 to-slate-900 opacity-90" />
-          <div className="absolute -top-[20%] -left-[20%] w-[70%] h-[70%] bg-blue-500 rounded-full blur-[150px] animate-pulse mix-blend-screen opacity-30" />
-          <div className="absolute bottom-[10%] right-[10%] w-[50%] h-[50%] bg-emerald-500 rounded-full blur-[120px] mix-blend-screen opacity-20" />
-          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.1]" />
-        </div>
-
-        {/* Content */}
-        <div className="relative z-10">
-          <div className="bg-white/10 backdrop-blur-md inline-flex items-center gap-3 px-4 py-2 rounded-2xl border border-white/10 mb-8">
-            <AppLogo className="h-6 w-auto invert" />
-            <span className="text-white font-bold tracking-tight">CMS Duta Solusi</span>
-          </div>
-          <h1 className="text-6xl font-black text-white tracking-tighter leading-tight mb-6">
-            Platform Manajemen <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-emerald-200">SDM Modern</span>
-          </h1>
-          <p className="text-lg text-blue-100 max-w-md leading-relaxed">
-            Solusi terpadu untuk absensi, payroll, dan manajemen karyawan dengan teknologi biometrik terdepan.
-          </p>
-        </div>
-
-        <div className="relative z-10 grid grid-cols-2 gap-4">
-          <div className="bg-white/5 backdrop-blur-sm p-6 rounded-3xl border border-white/10">
-            <Fingerprint className="h-8 w-8 text-blue-300 mb-4" />
-            <h3 className="text-white font-bold mb-1">Absensi Biometrik</h3>
-            <p className="text-blue-200 text-sm">Verifikasi wajah & lokasi presisi</p>
-          </div>
-          <div className="bg-white/5 backdrop-blur-sm p-6 rounded-3xl border border-white/10">
-            <Smartphone className="h-8 w-8 text-emerald-300 mb-4" />
-            <h3 className="text-white font-bold mb-1">Akses Mobile</h3>
-            <p className="text-blue-200 text-sm">Kelola tim dari mana saja</p>
-          </div>
+      {/* Left Column: Brand & Logo */}
+      <div className="hidden lg:flex relative bg-slate-50 flex-col justify-center items-center p-12 overflow-hidden">
+        {/* Logo Besar */}
+        <div className="relative z-10 w-full max-w-lg">
+          <img
+            src="/logo.png"
+            alt="CMS Duta Solusi"
+            className="w-full h-auto object-contain"
+          />
         </div>
       </div>
 
       {/* Right Column: Login Form */}
-      <div className="flex flex-col items-center justify-center p-8 bg-slate-50 relative">
+      <div className="flex flex-col items-center justify-center p-8 bg-white relative">
         <div className="w-full max-w-md space-y-8 relative z-10">
           <div className="text-center lg:text-left">
             <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-2">Selamat Datang</h2>
@@ -716,7 +670,7 @@ export default function Auth() {
           </div>
 
           <div className="bg-white shadow-xl shadow-slate-200/50 rounded-[32px] overflow-hidden border border-slate-100 p-2">
-            <AuthFormContent />
+            {renderAuthForm()}
           </div>
 
           <div className="flex items-center justify-center gap-2 text-sm text-slate-400 font-medium">

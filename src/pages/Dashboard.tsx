@@ -37,7 +37,8 @@ import {
   CheckCircle2,
   Fingerprint,
   UserX,
-  Image
+  Image,
+  UserCheck
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -381,10 +382,11 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Main Features Grid - Compact Style */}
+            {/* Main Features Grid - Grouped by Category */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-3 -mt-1 mx-3 relative z-20">
+              {/* CATEGORY 1: ABSENSI */}
               <h3 className="text-xs font-bold text-slate-700 mb-3 flex items-center gap-2">
-                <div className="h-1 w-3 bg-blue-500 rounded-full" /> Menu Karyawan
+                <div className="h-1 w-3 bg-blue-500 rounded-full" /> Absensi & Kehadiran
               </h3>
 
               {/* Mobile Only: Today's Agenda Highlight */}
@@ -432,16 +434,41 @@ export default function Dashboard() {
               <div className="grid grid-cols-4 md:grid-cols-8 gap-y-4 gap-x-2 text-center">
                 <div data-tour="quick-action"><MenuGridItem href="/attendance" icon={Clock} label="Absen" color="text-blue-600" bg="bg-blue-50" /></div>
                 <div data-tour="nav-history"><MenuGridItem href="/history" icon={Calendar} label="Riwayat" color="text-purple-600" bg="bg-purple-50" /></div>
-                <MenuGridItem href="/leave" icon={FileText} label="Cuti" color="text-orange-600" bg="bg-orange-50" />
+                <MenuGridItem href="/corrections" icon={ClipboardCheck} label="Koreksi" color="text-cyan-600" bg="bg-cyan-50" />
                 <MenuGridItem href="/overtime" icon={Clock} label="Lembur" color="text-red-500" bg="bg-red-50" />
-                <div data-tour="nav-schedule"><MenuGridItem href="/agenda" icon={Calendar} label="Agenda" color="text-indigo-600" bg="bg-indigo-50" /></div>
-                <MenuGridItem href="/notes" icon={StickyNote} label="Catatan" color="text-yellow-600" bg="bg-yellow-100/50" />
-                <MenuGridItem href="/albums" icon={Image} label="Album" color="text-pink-600" bg="bg-pink-50" />
+              </div>
 
+              {/* CATEGORY 2: HRIS */}
+              <div className="my-4 border-t border-slate-100" />
+              <h3 className="text-xs font-bold text-slate-700 mb-3 flex items-center gap-2">
+                <div className="h-1 w-3 bg-orange-500 rounded-full" /> HRIS & Pengajuan
+              </h3>
+              <div className="grid grid-cols-4 md:grid-cols-8 gap-y-4 gap-x-2 text-center">
+                <MenuGridItem href="/leave" icon={FileText} label="Cuti" color="text-orange-600" bg="bg-orange-50" />
                 <MenuGridItem href="/reimbursement" icon={Receipt} label="Klaim" color="text-emerald-600" bg="bg-emerald-50" isComingSoon />
                 <MenuGridItem href="/salary-slips" icon={Wallet} label="Gaji" color="text-teal-600" bg="bg-teal-50" isComingSoon />
+              </div>
+
+              {/* CATEGORY 3: PRODUKTIVITAS */}
+              <div className="my-4 border-t border-slate-100" />
+              <h3 className="text-xs font-bold text-slate-700 mb-3 flex items-center gap-2">
+                <div className="h-1 w-3 bg-indigo-500 rounded-full" /> Produktivitas
+              </h3>
+              <div className="grid grid-cols-4 md:grid-cols-8 gap-y-4 gap-x-2 text-center">
+                <div data-tour="nav-schedule"><MenuGridItem href="/agenda" icon={Calendar} label="Agenda" color="text-indigo-600" bg="bg-indigo-50" /></div>
+                <MenuGridItem href="/notes" icon={StickyNote} label="Catatan" color="text-yellow-600" bg="bg-yellow-100/50" />
+              </div>
+
+              {/* CATEGORY 4: LAINNYA */}
+              <div className="my-4 border-t border-slate-100" />
+              <h3 className="text-xs font-bold text-slate-700 mb-3 flex items-center gap-2">
+                <div className="h-1 w-3 bg-pink-500 rounded-full" /> Lainnya
+              </h3>
+              <div className="grid grid-cols-4 md:grid-cols-8 gap-y-4 gap-x-2 text-center">
+                <MenuGridItem href="/albums" icon={Image} label="Album" color="text-pink-600" bg="bg-pink-50" />
                 <div data-tour="nav-profile"><MenuGridItem href="/profile" icon={SettingsIcon} label="Profil" color="text-slate-600" bg="bg-slate-50" /></div>
               </div>
+
 
               {/* Upcoming Activities Section (NEW) */}
               {upcomingActivities.length > 0 && (
@@ -495,6 +522,7 @@ export default function Dashboard() {
                   <div className="grid grid-cols-4 md:grid-cols-8 gap-y-4 gap-x-2 text-center">
                     <MenuGridItem href="/team-map" icon={Users} label="Pantau" color="text-cyan-600" bg="bg-cyan-50" />
                     <MenuGridItem href="/employees" icon={Users} label="Staff" color="text-indigo-600" bg="bg-indigo-50" roles={['admin_hr', 'manager']} />
+                    <MenuGridItem href="/manager-assignments" icon={UserCheck} label="Atasan" color="text-violet-600" bg="bg-violet-50" roles={['admin_hr']} />
                     <MenuGridItem href="/shifts" icon={Clock} label="Shift" color="text-pink-600" bg="bg-pink-50" roles={['admin_hr', 'manager']} />
                     <MenuGridItem href="/holidays" icon={CalendarDays} label="Libur" color="text-red-600" bg="bg-red-50" roles={['admin_hr']} />
                     <MenuGridItem href="/approvals" icon={ClipboardCheck} label="Approval" color="text-amber-600" bg="bg-amber-50" />
@@ -921,6 +949,47 @@ export default function Dashboard() {
           {/* RIGHT SIDEBAR COLUMN (4 Cols) */}
           <div className="lg:col-span-4 space-y-8">
 
+
+            {/* Admin Quick Actions (Desktop Only) */}
+            {(profile?.role === 'admin_hr' || profile?.role === 'manager') && (
+              <Card className="border-none shadow-xl shadow-slate-200/40 rounded-[32px] overflow-hidden bg-white ring-1 ring-slate-100">
+                <CardHeader className="flex flex-row items-center justify-between border-b border-slate-50 p-6">
+                  <CardTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
+                    <SettingsIcon className="h-5 w-5 text-slate-600" /> Menu Admin
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button variant="outline" className="h-20 flex flex-col gap-2 rounded-2xl border-slate-100 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600 transition-all shadow-sm" onClick={() => navigate('/employees')}>
+                      <Users className="h-6 w-6" />
+                      <span className="text-xs font-bold">Staff</span>
+                    </Button>
+                    <Button variant="outline" className="h-20 flex flex-col gap-2 rounded-2xl border-slate-100 hover:border-violet-200 hover:bg-violet-50 hover:text-violet-600 transition-all shadow-sm" onClick={() => navigate('/approvals')}>
+                      <ClipboardCheck className="h-6 w-6" />
+                      <span className="text-xs font-bold">Approval</span>
+                    </Button>
+                    {profile?.role === 'admin_hr' && (
+                      <Button variant="outline" className="h-20 flex flex-col gap-2 rounded-2xl border-slate-100 hover:border-violet-200 hover:bg-violet-50 hover:text-violet-600 transition-all shadow-sm" onClick={() => navigate('/manager-assignments')}>
+                        <UserCheck className="h-6 w-6" />
+                        <span className="text-xs font-bold">Atasan</span>
+                      </Button>
+                    )}
+                    <Button variant="outline" className="h-20 flex flex-col gap-2 rounded-2xl border-slate-100 hover:border-pink-200 hover:bg-pink-50 hover:text-pink-600 transition-all shadow-sm" onClick={() => navigate('/shifts')}>
+                      <Clock className="h-6 w-6" />
+                      <span className="text-xs font-bold">Shift</span>
+                    </Button>
+                    <Button variant="outline" className="h-20 flex flex-col gap-2 rounded-2xl border-slate-100 hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-600 transition-all shadow-sm" onClick={() => navigate('/team-map')}>
+                      <MapPin className="h-6 w-6" />
+                      <span className="text-xs font-bold">Pantau</span>
+                    </Button>
+                    <Button variant="outline" className="h-20 flex flex-col gap-2 rounded-2xl border-slate-100 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-600 transition-all shadow-sm" onClick={() => navigate('/reports')}>
+                      <BarChart3 className="h-6 w-6" />
+                      <span className="text-xs font-bold">Laporan</span>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Announcements Widget */}
             <Card className="border-none shadow-xl shadow-slate-200/40 rounded-[32px] overflow-hidden bg-white ring-1 ring-slate-100">

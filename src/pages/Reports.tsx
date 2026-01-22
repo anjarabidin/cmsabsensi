@@ -498,8 +498,14 @@ export default function ReportsPage() {
         {/* Header Section */}
         <div className="flex items-center justify-between mb-8 shrink-0">
           <div className="space-y-1">
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Laporan Kehadiran</h1>
-            <p className="text-slate-500 font-medium text-sm">Analisa data kehadiran dan ekspor laporan bulanan.</p>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight">
+              {profile?.role === 'manager' ? 'Evaluasi Tim' : 'Laporan Kehadiran'}
+            </h1>
+            <p className="text-slate-500 font-medium text-sm">
+              {profile?.role === 'manager'
+                ? 'Analisa kehadiran anggota tim Anda.'
+                : 'Analisa data kehadiran dan ekspor laporan bulanan.'}
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <Button

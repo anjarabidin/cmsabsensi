@@ -37,6 +37,7 @@ import Notes from "./pages/Notes";
 import Holidays from "./pages/Holidays";
 import Albums from "./pages/Albums";
 import AlbumDetail from "./pages/AlbumDetail";
+import ManagerAssignments from "./pages/ManagerAssignments";
 
 const queryClient = new QueryClient();
 
@@ -110,7 +111,8 @@ const App = () => {
                 <Route path="/reimbursement" element={<ProtectedRoute><Reimbursement /></ProtectedRoute>} />
                 <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
                 <Route path="/quick-attendance" element={<ProtectedRoute><ComingSoon /></ProtectedRoute>} />
-                <Route path="/face-registration" element={<ProtectedRoute><ComingSoon /></ProtectedRoute>} />
+                <Route path="/face-registration" element={<ProtectedRoute><FaceRegistrationPage /></ProtectedRoute>} />
+
                 <Route path="/leave" element={<ProtectedRoute><LeavePage /></ProtectedRoute>} />
                 <Route path="/overtime" element={<ProtectedRoute><OvertimePage /></ProtectedRoute>} />
                 <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
@@ -123,6 +125,7 @@ const App = () => {
                 <Route path="/payroll-report" element={<ProtectedRoute allowedRoles={['admin_hr']}><PayrollReport /></ProtectedRoute>} />
                 <Route path="/payroll" element={<ProtectedRoute><Payroll /></ProtectedRoute>} />
                 <Route path="/employees" element={<ProtectedRoute><Employees /></ProtectedRoute>} />
+                <Route path="/manager-assignments" element={<ProtectedRoute allowedRoles={['admin_hr']}><ManagerAssignments /></ProtectedRoute>} />
                 <Route path="/approvals" element={<ProtectedRoute allowedRoles={['admin_hr', 'manager']}><Approvals /></ProtectedRoute>} />
                 <Route path="/payroll/:id" element={<ProtectedRoute allowedRoles={['admin_hr']}><PayrollDetail /></ProtectedRoute>} />
                 <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

@@ -9,9 +9,12 @@ import { useCamera } from '@/hooks/useCamera';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { promptBiometricForAttendance } from '@/utils/biometricAuth';
 import { format } from 'date-fns';
+import { Capacitor } from '@capacitor/core';
+import { useMediaPipeFace } from '@/hooks/useMediaPipeFace';
+import { useFaceSystem } from '@/hooks/useFaceSystem';
 import { Attendance, OfficeLocation, WorkMode, EmployeeSchedule } from '@/types';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ScanFace } from 'lucide-react';
 
 import AttendanceMobileView from './AttendanceMobileView';
 import AttendanceDesktopView from './AttendanceDesktopView';
@@ -68,17 +71,26 @@ export default function AttendancePage() {
   const [cameraOpen, setCameraOpen] = useState(false);
   const [verifying, setVerifying] = useState(false);
 
+  const [enrolledDescriptor, setEnrolledDescriptor] = useState<Float32Array | null>(null);
+  const { initialize: initMediaPipe, detectFace } = useMediaPipeFace();
+  const { getDeepDescriptor, computeMatch } = useFaceSystem();
+
   // GPS validation - STRICTER for security
   const MAX_RADIUS_M = 50; // Reduced from 100m to 50m
   const MIN_GPS_ACCURACY = 20; // Require accuracy better than 20 meters
 
   useEffect(() => {
     fetchData();
+    // Pre-load MediaPipe if not native (PWA)
+    if (!Capacitor.isNativePlatform()) {
+      initMediaPipe();
+    }
     return () => {
       stopCamera();
     };
   }, [user?.id]);
 
+  // ... (keep existing stream attach effect lines 82-94) ...
   useEffect(() => {
     const attachStream = () => {
       if (cameraOpen && stream && videoRef.current) {
@@ -93,7 +105,7 @@ export default function AttendancePage() {
     return () => clearTimeout(timer);
   }, [cameraOpen, stream]);
 
-  // Validate Location Logic
+  // Validate Location Logic (keep lines 97-156)
   useEffect(() => {
     // If GPS is not available at all
     if (!latitude || !longitude) {
@@ -108,7 +120,7 @@ export default function AttendancePage() {
       return;
     }
 
-    // GPS ACCURACY CHECK - NEW SECURITY MEASURE
+    // GPS ACCURACY CHECK
     if (accuracy && accuracy > MIN_GPS_ACCURACY) {
       setIsLocationValid(false);
       setLocationErrorMsg(`Akurasi GPS tidak cukup (${Math.round(accuracy)}m). Diperlukan akurasi < ${MIN_GPS_ACCURACY}m. Mohon gunakan GPS di area terbuka.`);
@@ -135,7 +147,6 @@ export default function AttendancePage() {
         setLocationErrorMsg("Pilih lokasi kantor terlebih dahulu.");
       }
     } else if (workMode === 'wfh') {
-      // For WFH, only check if GPS is mocked (allow work from anywhere)
       if (isMocked) {
         setIsLocationValid(false);
         setLocationErrorMsg("Fake GPS Terdeteksi! Mohon gunakan lokasi asli.");
@@ -144,7 +155,6 @@ export default function AttendancePage() {
         setLocationErrorMsg(null);
       }
     } else {
-      // For Field, just check if GPS is mocked
       if (isMocked) {
         setIsLocationValid(false);
         setLocationErrorMsg("Fake GPS Terdeteksi! Mohon gunakan lokasi asli.");
@@ -171,14 +181,13 @@ export default function AttendancePage() {
       setTodayAttendance(attendanceData as Attendance | null);
       setNotes((attendanceData as Attendance | null)?.notes || '');
 
-      // Fetch Today's Schedule for Shift-based attendance
+      // Fetch Schedule
       const { data: scheduleData } = await (supabase
         .from('employee_schedules') as any)
         .select('*, shift:shifts(*)')
         .eq('user_id', user.id)
         .eq('date', today)
         .maybeSingle();
-
       setTodaySchedule(scheduleData as EmployeeSchedule | null);
 
       // Fetch Office Locations
@@ -186,13 +195,24 @@ export default function AttendancePage() {
         .from('office_locations')
         .select('*')
         .eq('is_active', true);
-
       setOfficeLocations((locationData as OfficeLocation[]) || []);
       if (locationData && locationData.length > 0) {
         setSelectedLocationId(locationData[0].id);
       }
 
-      // Trigger location fetch on load
+      // Fetch Face Enrollment (For PWA Verification)
+      const { data: enrollmentData } = await supabase
+        .from('face_enrollments')
+        .select('face_descriptor')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (enrollmentData?.face_descriptor) {
+        setEnrolledDescriptor(new Float32Array(enrollmentData.face_descriptor as any));
+      }
+
+      // Trigger location fetch
       getLocation();
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -201,72 +221,106 @@ export default function AttendancePage() {
     }
   };
 
-  // NEW: Simple camera opening for photo capture (no face enrollment required)
   const openCameraForPhoto = async () => {
     try {
       if (!user) {
-        toast({
-          title: 'Error',
-          description: 'User tidak ditemukan',
-          variant: 'destructive'
-        });
+        toast({ title: 'Error', description: 'User tidak ditemukan', variant: 'destructive' });
         return;
       }
-
+      // Check for day off
       if (todaySchedule?.is_day_off) {
+        toast({ title: 'Hari Libur', description: 'Hari ini adalah hari libur.', });
+      }
+
+      // PWA: Check enrollment
+      if (!Capacitor.isNativePlatform() && !enrolledDescriptor) {
         toast({
-          title: 'Hari Libur',
-          description: 'Hari ini adalah hari libur, Anda tidak perlu melakukan absensi.',
+          title: 'Wajah Belum Terdaftar',
+          description: 'Mohon daftarkan wajah Anda terlebih dahulu di menu Profil.',
+          variant: 'destructive',
+          duration: 4000
         });
+        // Allow opening camera anyway, but they won't pass verification later
       }
 
       setCameraOpen(true);
-
-      // Start camera
       await startCamera();
-
-      // Start location in background if not already available
-      if (!latitude || !longitude) {
-        getLocation();
-      }
-
+      if (!latitude || !longitude) getLocation();
     } catch (error) {
       setCameraOpen(false);
-      const errorMessage = error instanceof Error ? error.message : 'Gagal mengakses kamera';
-      toast({
-        title: 'Gagal Membuka Kamera',
-        description: errorMessage,
-        variant: 'destructive',
-      });
+      toast({ title: 'Gagal Membuka Kamera', description: 'Pastikan izin kamera diberikan.', variant: 'destructive' });
     }
   };
 
-  // NEW: Handle photo capture with biometric verification
+  // Helper: Perform AI Scan
+  const performFaceScan = async (): Promise<boolean> => {
+    if (!videoRef.current || !enrolledDescriptor) return false;
+
+    // Quick scan loop (max 10 attempts / 3 seconds)
+    const maxAttempts = 15;
+    let attempts = 0;
+
+    return new Promise(async (resolve) => {
+      const scanInterval = setInterval(async () => {
+        attempts++;
+        try {
+          if (!videoRef.current || videoRef.current.readyState < 2) return;
+
+          await detectFace(videoRef.current);
+          const currentDescriptor = await getDeepDescriptor(videoRef.current);
+
+          if (currentDescriptor) {
+            const score = computeMatch(currentDescriptor, enrolledDescriptor);
+            console.log("Attendance Face Match:", score);
+            if (score > 0.40) { // Threshold
+              clearInterval(scanInterval);
+              resolve(true);
+              return;
+            }
+          }
+        } catch (e) { console.error(e); }
+
+        if (attempts >= maxAttempts) {
+          clearInterval(scanInterval);
+          resolve(false);
+        }
+      }, 200);
+    });
+  };
+
   const handleCapturePhoto = async () => {
     try {
-      // STEP 1: BIOMETRIC VERIFICATION FIRST
       setVerifying(true);
 
-      toast({
-        title: 'Verifikasi Identitas',
-        description: 'Silakan gunakan sidik jari untuk verifikasi',
-        duration: 2000,
-      });
+      // --- 1. BRANCHING VERIFICATION STRATEGY ---
+      if (Capacitor.isNativePlatform()) {
+        // NATIVE: Use Fingerprint/System Biometric
+        toast({ title: 'Verifikasi Identitas', description: 'Gunakan sidik jari untuk verifikasi', duration: 2000 });
+        const biometricResult = await promptBiometricForAttendance();
+        if (!biometricResult.success) {
+          toast({ title: 'Verifikasi Gagal', description: 'Sidik jari tidak cocok.', variant: 'destructive' });
+          setVerifying(false);
+          return;
+        }
+      } else {
+        // PWA/WEB: Use Face Recognition via Camera
+        if (!enrolledDescriptor) {
+          toast({ title: 'Gagal', description: 'Anda belum mendaftarkan wajah. Silakan ke menu Profil > Registrasi Wajah.', variant: 'destructive' });
+          setVerifying(false);
+          return;
+        }
 
-      const biometricResult = await promptBiometricForAttendance();
+        toast({ title: 'Memindai Wajah...', description: 'Tahan posisi wajah Anda...', });
+        const isFaceValid = await performFaceScan();
 
-      if (!biometricResult.success) {
-        toast({
-          title: 'Verifikasi Gagal',
-          description: biometricResult.error || 'Sidik jari tidak cocok atau dibatalkan',
-          variant: 'destructive',
-          duration: 4000,
-        });
-        setVerifying(false);
-        return;
+        if (!isFaceValid) {
+          toast({ title: 'Wajah Tidak Cocok', description: 'Wajah tidak dikenali. Pastikan pencahayaan cukup.', variant: 'destructive' });
+          setVerifying(false);
+          return;
+        }
       }
 
-      // STEP 2: CAPTURE PHOTO after successful biometric
+      // --- 2. CAPTURE PHOTO ---
       if (!videoRef.current) {
         setVerifying(false);
         return;
@@ -281,13 +335,10 @@ export default function AttendancePage() {
         setVerifying(false);
         return;
       }
-
-      // Flip context to correct the mirror effect
       ctx.translate(canvas.width, 0);
       ctx.scale(-1, 1);
       ctx.drawImage(video, 0, 0);
 
-      // Convert to blob
       canvas.toBlob((blob) => {
         if (blob) {
           setCapturedPhoto(blob);
@@ -301,18 +352,14 @@ export default function AttendancePage() {
 
       toast({
         title: '✓ Verifikasi Berhasil',
-        description: 'Identitas terverifikasi dengan sidik jari',
+        description: Capacitor.isNativePlatform() ? 'Identitas terverifikasi dengan sidik jari' : 'Wajah terverifikasi',
         className: 'bg-green-600 text-white border-none',
         duration: 3000,
       });
 
     } catch (error) {
       console.error('Capture error:', error);
-      toast({
-        title: 'Gagal',
-        description: 'Gagal mengambil foto',
-        variant: 'destructive'
-      });
+      toast({ title: 'Gagal', description: 'Terjadi kesalahan sistem', variant: 'destructive' });
       setVerifying(false);
     }
   };

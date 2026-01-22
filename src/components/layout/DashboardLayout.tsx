@@ -143,23 +143,23 @@ const managerNavGroups = [
     ]
   },
   {
-    title: 'Manajemen Tim',
+    title: 'Kelola Tim',
     items: [
-      { title: 'Jadwal & Shift', href: '/shifts', icon: Clock },
-      { title: 'Pantau Tim', href: '/team-map', icon: Navigation },
-      { title: 'Data Karyawan', href: '/employees', icon: Users },
-      { title: 'Album Kenangan', href: '/albums', icon: Camera },
-      { title: 'Laporan Kehadiran', href: '/reports', icon: BarChart3 },
+      { title: 'Jadwal Tim', href: '/shifts', icon: Clock },
+      { title: 'Lokasi Tim', href: '/team-map', icon: Navigation },
+      { title: 'Anggota Tim', href: '/employees', icon: Users },
+      { title: 'Album', href: '/albums', icon: Camera },
+      { title: 'Evaluasi Tim', href: '/reports', icon: BarChart3 },
     ]
   },
   {
-    title: 'Saya',
+    title: 'Pribadi',
     items: [
       { title: 'Absensi Saya', href: '/attendance', icon: Clock },
       { title: 'Riwayat Saya', href: '/history', icon: Calendar },
       { title: 'Cuti Saya', href: '/leave', icon: Briefcase },
       { title: 'Agenda Saya', href: '/agenda', icon: ClipboardCheck },
-      { title: 'Pengaturan Saya', href: '/profile', icon: Settings },
+      { title: 'Pengaturan', href: '/profile', icon: Settings },
     ]
   }
 ];

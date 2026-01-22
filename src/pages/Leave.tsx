@@ -365,168 +365,243 @@ export default function LeavePage() {
         );
     }
 
+
     // ----------------------------------------------------------------------
-    // DESKTOP VIEW (PREMIUM)
+    // DESKTOP VIEW (NEW LAYOUT - Like Corrections)
     // ----------------------------------------------------------------------
     return (
         <DashboardLayout>
-            <div className="max-w-6xl mx-auto space-y-8 px-4 py-8 h-[calc(100vh-80px)] overflow-hidden flex flex-col">
-                <div className="flex items-center justify-between shrink-0">
-                    <div>
+            <div className="max-w-7xl mx-auto space-y-8 px-4 py-8 animate-in fade-in duration-500">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <div className="space-y-1">
                         <h1 className="text-3xl font-black text-slate-900 tracking-tight">Cuti & Izin</h1>
-                        <p className="text-slate-500 font-medium text-sm mt-1">Kelola pengajuan cuti dan izin ketidakhadiran kerja anda dengan mudah.</p>
-                    </div>
-                    <div className="flex gap-3">
-                        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                            <DialogTrigger asChild>
-                                <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-200 font-black rounded-xl h-11 px-6 tracking-tight gap-2 transition-all active:scale-95">
-                                    <Plus className="h-5 w-5" />
-                                    AJUKAN CUTI
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent className="sm:max-w-[600px] rounded-3xl p-0 overflow-hidden border-0 shadow-2xl">
-                                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white text-center relative overflow-hidden">
-                                    <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
-                                    <DialogTitle className="text-2xl font-black relative z-10 text-white">Form Pengajuan Cuti</DialogTitle>
-                                    <DialogDescription className="text-blue-100 font-medium relative z-10 mt-1">
-                                        Silahkan isi formulir di bawah ini dengan lengkap.
-                                    </DialogDescription>
-                                </div>
-                                <div className="p-6">
-                                    <LeaveForm
-                                        leaveType={leaveType} setLeaveType={setLeaveType}
-                                        startDate={startDate} setStartDate={setStartDate}
-                                        endDate={endDate} setEndDate={setEndDate}
-                                        reason={reason} setReason={setReason}
-                                        attachment={attachment} setAttachment={setAttachment}
-                                        handleFileChange={handleFileChange}
-                                        handleSubmit={handleSubmit}
-                                        loading={loading}
-                                        id={id}
-                                        deptName={deptName}
-                                    />
-                                </div>
-                            </DialogContent>
-                        </Dialog>
+                        <p className="text-slate-500 text-lg">Kelola pengajuan cuti dan izin ketidakhadiran kerja anda dengan mudah.</p>
                     </div>
                 </div>
 
-                {/* Dashboard Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 shrink-0">
-                    <Card className="border-none shadow-lg bg-white rounded-3xl p-6 group hover:shadow-xl transition-all">
-                        <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                                <FileText className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Total Pengajuan</p>
-                                <p className="text-2xl font-black text-slate-900 tracking-tight">{leaveHistory.length}</p>
-                            </div>
-                        </div>
-                    </Card>
-                    <Card className="border-none shadow-lg bg-white rounded-3xl p-6 group hover:shadow-xl transition-all">
-                        <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                                <Clock className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Menunggu</p>
-                                <p className="text-2xl font-black text-slate-900 tracking-tight">
-                                    {leaveHistory.filter(l => l.status === 'pending').length}
-                                </p>
-                            </div>
-                        </div>
-                    </Card>
-                    <Card className="border-none shadow-lg bg-white rounded-3xl p-6 group hover:shadow-xl transition-all">
-                        <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                                <CheckCircle2 className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Disetujui</p>
-                                <p className="text-2xl font-black text-slate-900 tracking-tight">
-                                    {leaveHistory.filter(l => l.status === 'approved').length}
-                                </p>
-                            </div>
-                        </div>
-                    </Card>
-                </div>
+                <div className="grid lg:grid-cols-12 gap-8 items-start">
+                    {/* LEFT COLUMN: Create Form (5 cols) */}
+                    <div className="lg:col-span-5 relative">
+                        <div className="sticky top-24 space-y-6">
+                            <Card className="border-none shadow-xl shadow-slate-200/40 rounded-[32px] overflow-hidden bg-white ring-1 ring-slate-100">
+                                <CardHeader className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white p-8">
+                                    <CardTitle className="flex items-center gap-3 text-xl font-bold">
+                                        <div className="h-10 w-10 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                                            <Plus className="h-6 w-6 text-white" />
+                                        </div>
+                                        Ajukan Cuti Baru
+                                    </CardTitle>
+                                    <CardDescription className="text-blue-100">
+                                        Isi formulir pengajuan cuti dengan lengkap dan jujur.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="p-8 space-y-6">
+                                    <form onSubmit={handleSubmit} className="space-y-6">
+                                        {/* Jenis Cuti */}
+                                        <div className="space-y-2">
+                                            <Label className="uppercase text-[10px] font-black text-slate-500 tracking-widest">Jenis Cuti</Label>
+                                            <Select value={leaveType} onValueChange={setLeaveType}>
+                                                <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-200 focus:ring-2 focus:ring-blue-500">
+                                                    <SelectValue placeholder="Pilih jenis cuti" />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl">
+                                                    <SelectItem value="annual">Cuti Tahunan</SelectItem>
+                                                    <SelectItem value="sick">Sakit</SelectItem>
+                                                    <SelectItem value="unpaid">Izin (Unpaid)</SelectItem>
+                                                    <SelectItem value="maternity">Cuti Melahirkan</SelectItem>
+                                                    <SelectItem value="paternity">Cuti Ayah</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
 
-                {/* History List */}
-                <Card className="flex-1 border-none shadow-xl shadow-slate-200/50 bg-white rounded-[32px] overflow-hidden flex flex-col">
-                    <CardHeader className="border-b border-slate-100 p-6 bg-slate-50/50">
-                        <CardTitle className="text-lg font-black text-slate-900">Riwayat Pengajuan</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0 flex-1 overflow-y-auto custom-scrollbar">
-                        {loadingHistory ? (
-                            <div className="flex flex-col items-center justify-center h-64 text-center">
-                                <Loader2 className="h-10 w-10 animate-spin text-blue-500 mb-4" />
-                                <p className="text-sm font-medium text-slate-400">Memuat riwayat...</p>
-                            </div>
-                        ) : leaveHistory.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-64 text-center">
-                                <div className="h-20 w-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                                    <File className="h-8 w-8 text-slate-300" />
-                                </div>
-                                <h3 className="text-lg font-bold text-slate-900">Belum ada riwayat</h3>
-                                <p className="text-slate-500 max-w-sm mt-1">Anda belum pernah mengajukan cuti.</p>
-                            </div>
-                        ) : (
-                            <table className="w-full text-left border-collapse">
-                                <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-10">
-                                    <tr>
-                                        <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-wider">Tgl Pengajuan</th>
-                                        <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-wider">Jenis Cuti</th>
-                                        <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-wider">Periode</th>
-                                        <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-wider">Keterangan</th>
-                                        <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-wider text-center">Status</th>
-                                        <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-wider text-right">Lampiran</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {leaveHistory.map((req) => (
-                                        <tr key={req.id} className="hover:bg-slate-50/80 transition-colors group">
-                                            <td className="p-4 text-xs font-bold text-slate-500">
-                                                {format(new Date(req.created_at), 'dd MMM yyyy', { locale: id })}
-                                            </td>
-                                            <td className="p-4 text-sm font-bold text-slate-900">
-                                                {getLeaveTypeLabel(req.leave_type)}
-                                            </td>
-                                            <td className="p-4">
-                                                <div className="flex flex-col">
-                                                    <span className="text-xs font-bold text-slate-700">
-                                                        {format(new Date(req.start_date), 'dd MMM', { locale: id })} - {format(new Date(req.end_date), 'dd MMM yyyy', { locale: id })}
-                                                    </span>
-                                                    <span className="text-[10px] text-slate-400 font-medium">{req.total_days} Hari Kerja</span>
-                                                </div>
-                                            </td>
-                                            <td className="p-4">
-                                                <p className="text-xs text-slate-600 line-clamp-2 max-w-xs">{req.reason}</p>
-                                                {req.status === 'rejected' && req.rejection_reason && (
-                                                    <p className="text-[10px] text-red-600 font-bold mt-1 bg-red-50 p-1 rounded w-fit">Reason: {req.rejection_reason}</p>
-                                                )}
-                                            </td>
-                                            <td className="p-4 text-center">
-                                                {getStatusBadge(req.status)}
-                                            </td>
-                                            <td className="p-4 text-right">
-                                                {req.attachment_url ? (
-                                                    <a href={req.attachment_url} target="_blank" rel="noopener noreferrer">
-                                                        <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full text-blue-600 bg-blue-50 hover:bg-blue-100">
-                                                            <Download className="h-4 w-4" />
+                                        {/* Tanggal Mulai & Selesai */}
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="uppercase text-[10px] font-black text-slate-500 tracking-widest">Tanggal Mulai</Label>
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <Button variant="outline" className={cn("w-full justify-start text-left font-medium h-12 rounded-xl bg-slate-50 border-slate-200", !startDate && "text-muted-foreground")}>
+                                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                                            {startDate ? format(startDate, "dd MMM yy", { locale: id }) : <span>Pilih</span>}
                                                         </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-0 rounded-2xl shadow-xl">
+                                                        <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus />
+                                                    </PopoverContent>
+                                                </Popover>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="uppercase text-[10px] font-black text-slate-500 tracking-widest">Tanggal Selesai</Label>
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <Button variant="outline" className={cn("w-full justify-start text-left font-medium h-12 rounded-xl bg-slate-50 border-slate-200", !endDate && "text-muted-foreground")}>
+                                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                                            {endDate ? format(endDate, "dd MMM yy", { locale: id }) : <span>Pilih</span>}
+                                                        </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-0 rounded-2xl shadow-xl">
+                                                        <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus />
+                                                    </PopoverContent>
+                                                </Popover>
+                                            </div>
+                                        </div>
+
+                                        {/* Alasan */}
+                                        <div className="space-y-2">
+                                            <Label className="uppercase text-[10px] font-black text-slate-500 tracking-widest">Alasan / Keterangan</Label>
+                                            <Textarea
+                                                placeholder="Jelaskan alasan cuti Anda secara detail..."
+                                                value={reason}
+                                                onChange={(e) => setReason(e.target.value)}
+                                                rows={4}
+                                                className="rounded-xl bg-slate-50 border-slate-200 focus:ring-blue-500 resize-none p-4"
+                                            />
+                                        </div>
+
+                                        {/* Lampiran */}
+                                        <div className="space-y-2">
+                                            <Label className="uppercase text-[10px] font-black text-slate-500 tracking-widest">Lampiran (Opsional)</Label>
+                                            <div className="border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-xl p-8 transition-all bg-slate-50/50 hover:bg-blue-50/30 cursor-pointer relative group text-center">
+                                                <Input
+                                                    type="file"
+                                                    accept="image/*,.pdf"
+                                                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                                                    onChange={handleFileChange}
+                                                />
+                                                <div className="flex flex-col items-center gap-3">
+                                                    <div className={cn("h-12 w-12 rounded-full flex items-center justify-center transition-colors", attachment ? "bg-blue-100 text-blue-600" : "bg-slate-100 text-slate-400 group-hover:text-blue-500 group-hover:bg-blue-50")}>
+                                                        {attachment ? <CheckCircle2 className="h-6 w-6" /> : <Upload className="h-6 w-6" />}
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <p className={cn("text-sm font-bold", attachment ? "text-blue-700" : "text-slate-600")}>
+                                                            {attachment ? attachment.name : "Upload Dokumen Pendukung"}
+                                                        </p>
+                                                        {!attachment && <p className="text-xs text-slate-400">Klik atau drag file ke sini (Max 5MB)</p>}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <Button
+                                            type="submit"
+                                            disabled={loading}
+                                            className="w-full h-14 rounded-xl bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-200 text-lg font-bold transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                        >
+                                            {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Plus className="mr-2 h-5 w-5" />}
+                                            {loading ? 'Mengirim...' : 'Kirim Pengajuan'}
+                                        </Button>
+                                    </form>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </div>
+
+                    {/* RIGHT COLUMN: History List (7 cols) */}
+                    <div className="lg:col-span-7 space-y-6">
+                        <div className="grid grid-cols-3 gap-4">
+                            <Card className="rounded-[24px] border-none shadow-md bg-white p-6 flex items-center gap-4">
+                                <div className="h-12 w-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+                                    <FileText className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Total</p>
+                                    <p className="text-2xl font-black text-slate-900">{leaveHistory.length}</p>
+                                </div>
+                            </Card>
+                            <Card className="rounded-[24px] border-none shadow-md bg-white p-6 flex items-center gap-4">
+                                <div className="h-12 w-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center">
+                                    <Clock className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Menunggu</p>
+                                    <p className="text-2xl font-black text-slate-900">{leaveHistory.filter(l => l.status === 'pending').length}</p>
+                                </div>
+                            </Card>
+                            <Card className="rounded-[24px] border-none shadow-md bg-white p-6 flex items-center gap-4">
+                                <div className="h-12 w-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
+                                    <CheckCircle2 className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Disetujui</p>
+                                    <p className="text-2xl font-black text-slate-900">{leaveHistory.filter(l => l.status === 'approved').length}</p>
+                                </div>
+                            </Card>
+                        </div>
+
+                        <Card className="border-none shadow-xl shadow-slate-200/40 rounded-[32px] overflow-hidden bg-white">
+                            <CardHeader className="border-b border-slate-100 bg-white px-8 py-6">
+                                <CardTitle className="text-lg font-bold text-slate-800">Riwayat Pengajuan</CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                {loadingHistory ? (
+                                    <div className="py-20 text-center space-y-3">
+                                        <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-500" />
+                                        <p className="text-slate-500 font-medium">Memuat data...</p>
+                                    </div>
+                                ) : leaveHistory.length === 0 ? (
+                                    <div className="py-24 text-center space-y-4">
+                                        <div className="h-20 w-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <FileText className="h-10 w-10 text-slate-300" />
+                                        </div>
+                                        <h4 className="text-slate-900 font-bold text-lg">Belum Ada Riwayat</h4>
+                                        <p className="text-slate-500 max-w-sm mx-auto">
+                                            Riwayat pengajuan cuti Anda akan muncul di sini.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="divide-y divide-slate-100">
+                                        {leaveHistory.map((req) => (
+                                            <div key={req.id} className="p-6 hover:bg-slate-50 transition-colors flex items-start gap-4 group">
+                                                <div className="h-14 w-14 rounded-2xl bg-slate-100 flex-shrink-0 flex flex-col items-center justify-center text-slate-500 border border-slate-200">
+                                                    <span className="text-xs font-bold uppercase">{format(new Date(req.start_date), 'MMM', { locale: id })}</span>
+                                                    <span className="text-xl font-black text-slate-800">{format(new Date(req.start_date), 'dd')}</span>
+                                                </div>
+
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <div className="flex items-center gap-2">
+                                                            {getStatusBadge(req.status)}
+                                                            <span className="text-xs text-slate-400 font-medium px-2 py-0.5 rounded-full bg-slate-50">#ID-{req.id.substring(0, 4)}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <h3 className="font-bold text-slate-900 mb-1">{getLeaveTypeLabel(req.leave_type)}</h3>
+
+                                                    <p className="text-xs text-slate-500 mb-2">
+                                                        {format(new Date(req.start_date), 'd MMM', { locale: id })} - {format(new Date(req.end_date), 'd MMM yyyy', { locale: id })}
+                                                    </p>
+
+                                                    <p className="text-sm text-slate-600 bg-slate-50/50 p-3 rounded-xl italic border border-slate-100/50">
+                                                        "{req.reason}"
+                                                    </p>
+
+                                                    {req.status === 'rejected' && req.rejection_reason && (
+                                                        <p className="text-xs text-red-600 mt-2 bg-red-50 p-2 rounded-lg font-medium">
+                                                            Ditolak: {req.rejection_reason}
+                                                        </p>
+                                                    )}
+                                                </div>
+
+                                                {req.attachment_url && (
+                                                    <a
+                                                        href={req.attachment_url}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="h-10 w-10 flex items-center justify-center rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                                                        title="Lihat Lampiran"
+                                                    >
+                                                        <FileText className="h-5 w-5" />
                                                     </a>
-                                                ) : (
-                                                    <span className="text-slate-300">-</span>
                                                 )}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        )}
-                    </CardContent>
-                </Card>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
             </div>
         </DashboardLayout>
     );
@@ -543,7 +618,7 @@ function LeaveForm({ leaveType, setLeaveType, startDate, setStartDate, endDate, 
                     <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">M</div>
                     <div>
                         <div className="text-sm font-bold text-slate-700">Manager {deptName || 'Departemen'}</div>
-                        <div className="text-[10px] text-slate-400">Approval Otomatis</div>
+                        <div className="text-[10px] text-slate-400">Perlu Persetujuan</div>
                     </div>
                 </div>
             </div>

@@ -28,7 +28,12 @@ import {
     Phone,
     CreditCard,
     Save,
-    UserX
+    UserX,
+    Database,
+    LayoutGrid,
+    Trash2,
+    Edit,
+    Users
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -72,6 +77,8 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { downloadExcel } from '@/utils/csvExport';
 
+import { MasterDataDialog } from '@/components/employees/MasterDataDialog';
+
 export default function EmployeesPage() {
     const navigate = useNavigate();
     const { toast } = useToast();
@@ -91,6 +98,12 @@ export default function EmployeesPage() {
 
     // Edit Form State
     const [editForm, setEditForm] = useState<Partial<Profile>>({});
+
+    // Master Data State
+    const [isMasterDataOpen, setIsMasterDataOpen] = useState(false);
+    const [masterTab, setMasterTab] = useState<'departments' | 'positions'>('departments');
+    // Removed unused Master Data state variables
+
 
     const handleExportExcel = () => {
         const headers = ['No', 'Nama Lengkap', 'ID Karyawan', 'NIK KTP', 'Email', 'Telepon', 'Departemen', 'Posisi', 'Status Akun'];
@@ -129,6 +142,11 @@ export default function EmployeesPage() {
                 empQuery = empQuery.eq('department_id', profile.department_id);
             }
 
+            // Hide Admin HR from Managers
+            if (profile?.role === 'manager') {
+                empQuery = empQuery.neq('role', 'admin_hr');
+            }
+
             const [empRes, deptRes, jobRes] = await Promise.all([
                 empQuery.order('full_name', { ascending: true }),
                 supabase.from('departments').select('*').order('name'),
@@ -147,12 +165,15 @@ export default function EmployeesPage() {
             toast({
                 title: 'Gagal memuat data',
                 description: 'Tidak dapat mengambil data karyawan, departemen, atau jabatan.',
-                variant: 'destructive',
+                variant: 'destructive'
             });
         } finally {
             setLoading(false);
         }
     };
+
+    // Master Data Handlers removed (moved to component)
+
 
     const handleToggleStatus = async (employee: Profile) => {
         setSelectedEmployee(employee);
@@ -167,7 +188,6 @@ export default function EmployeesPage() {
             phone: employee.phone,
             nik_ktp: employee.nik_ktp,
             employee_id: employee.employee_id,
-            nik: employee.nik,
             department_id: employee.department_id,
             job_position_id: employee.job_position_id,
             role: employee.role
@@ -441,10 +461,24 @@ export default function EmployeesPage() {
                 {/* Desktop Header */}
                 <div className="flex items-center justify-between">
                     <div className="space-y-1">
-                        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Manajemen SDM</h1>
-                        <p className="text-slate-500 font-medium text-sm">Pusat kontrol data karyawan dan hak akses sistem.</p>
+                        <h1 className="text-3xl font-black text-slate-900 tracking-tight">
+                            {profile?.role === 'manager' ? 'Anggota Tim' : 'Manajemen SDM'}
+                        </h1>
+                        <p className="text-slate-500 font-medium text-sm">
+                            {profile?.role === 'manager'
+                                ? 'Kelola data personil dalam tim Anda.'
+                                : 'Pusat kontrol data karyawan dan hak akses sistem.'}
+                        </p>
                     </div>
                     <div className="flex items-center gap-3">
+                        <Button
+                            variant="outline"
+                            className="rounded-xl border-slate-200 hover:bg-slate-50 font-bold"
+                            onClick={() => { setMasterTab('departments'); setIsMasterDataOpen(true); }}
+                        >
+                            <LayoutGrid className="mr-2 h-4 w-4" />
+                            {profile?.role === 'manager' ? 'Lihat Data Master' : 'Kelola Data'}
+                        </Button>
                         <Button variant="outline" className="rounded-xl border-slate-200" onClick={handleExportExcel}>
                             <FileSpreadsheet className="mr-2 h-4 w-4" /> Ekspor Excel
                         </Button>
@@ -467,7 +501,7 @@ export default function EmployeesPage() {
                     <Card className="rounded-3xl border-none shadow-sm bg-blue-50/50">
                         <CardContent className="p-6 flex items-center gap-4">
                             <div className="h-12 w-12 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600">
-                                <UserCheck className="h-6 w-6" />
+                                <Users className="h-6 w-6" />
                             </div>
                             <div>
                                 <p className="text-sm font-bold text-slate-500">Total Karyawan</p>
@@ -486,9 +520,12 @@ export default function EmployeesPage() {
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="rounded-3xl border-none shadow-sm bg-orange-50/50">
+                    <Card
+                        className="rounded-3xl border-none shadow-sm bg-orange-50/50 cursor-pointer hover:bg-orange-100/50 transition-colors group"
+                        onClick={() => { setMasterTab('departments'); setIsMasterDataOpen(true); }}
+                    >
                         <CardContent className="p-6 flex items-center gap-4">
-                            <div className="h-12 w-12 bg-orange-100 rounded-2xl flex items-center justify-center text-orange-600">
+                            <div className="h-12 w-12 bg-orange-100 rounded-2xl flex items-center justify-center text-orange-600 group-hover:scale-110 transition-transform">
                                 <Building2 className="h-6 w-6" />
                             </div>
                             <div>
@@ -497,9 +534,12 @@ export default function EmployeesPage() {
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="rounded-3xl border-none shadow-sm bg-purple-50/50">
+                    <Card
+                        className="rounded-3xl border-none shadow-sm bg-purple-50/50 cursor-pointer hover:bg-purple-100/50 transition-colors group"
+                        onClick={() => { setMasterTab('positions'); setIsMasterDataOpen(true); }}
+                    >
                         <CardContent className="p-6 flex items-center gap-4">
-                            <div className="h-12 w-12 bg-purple-100 rounded-2xl flex items-center justify-center text-purple-600">
+                            <div className="h-12 w-12 bg-purple-100 rounded-2xl flex items-center justify-center text-purple-600 group-hover:scale-110 transition-transform">
                                 <Briefcase className="h-6 w-6" />
                             </div>
                             <div>
@@ -580,7 +620,7 @@ export default function EmployeesPage() {
                                                             <div>
                                                                 <p className="font-bold text-slate-900 group-hover:text-blue-700 transition-colors">{employee.full_name}</p>
                                                                 <p className="text-xs text-slate-500 font-mono mt-0.5">{employee.nik_ktp || 'Belum ada NIK'}</p>
-                                                                {employee.role === 'admin_hr' && (
+                                                                {employee.role === 'admin_hr' && profile?.role !== 'manager' && (
                                                                     <Badge className="mt-1 bg-purple-100 text-purple-700 border-none text-[9px] px-1.5 h-4">ADMIN</Badge>
                                                                 )}
                                                             </div>
@@ -621,23 +661,29 @@ export default function EmployeesPage() {
                                                         </Badge>
                                                     </TableCell>
                                                     <TableCell className="pr-6 text-right">
-                                                        <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-300 hover:text-slate-700" onClick={(e) => e.stopPropagation()}>
-                                                                    <MoreVertical className="h-4 w-4" />
-                                                                </Button>
-                                                            </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 shadow-xl border-slate-100">
-                                                                <DropdownMenuLabel className="text-xs text-slate-400 font-medium">Opsi Karyawan</DropdownMenuLabel>
-                                                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditClick(employee); }} className="rounded-xl font-bold py-2.5">
-                                                                    <UserCog className="mr-2 h-4 w-4 text-blue-500" /> Edit Detail
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuSeparator />
-                                                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleToggleStatus(employee); }} className="rounded-xl font-bold py-2.5 text-red-600 focus:text-red-700 bg-red-50/50">
-                                                                    <UserX className="mr-2 h-4 w-4" /> {employee.is_active ? 'Nonaktifkan Akun' : 'Aktifkan Akun'}
-                                                                </DropdownMenuItem>
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
+                                                        {(profile?.role === 'admin_hr' || (profile?.role === 'manager' && employee.role === 'employee')) && (
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild>
+                                                                    <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-300 hover:text-slate-700" onClick={(e) => e.stopPropagation()}>
+                                                                        <MoreVertical className="h-4 w-4" />
+                                                                    </Button>
+                                                                </DropdownMenuTrigger>
+                                                                <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 shadow-xl border-slate-100">
+                                                                    <DropdownMenuLabel className="text-xs text-slate-400 font-medium">Opsi Karyawan</DropdownMenuLabel>
+                                                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditClick(employee); }} className="rounded-xl font-bold py-2.5">
+                                                                        <UserCog className="mr-2 h-4 w-4 text-blue-500" /> Edit Detail
+                                                                    </DropdownMenuItem>
+                                                                    {profile?.role === 'admin_hr' && (
+                                                                        <>
+                                                                            <DropdownMenuSeparator />
+                                                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleToggleStatus(employee); }} className="rounded-xl font-bold py-2.5 text-red-600 focus:text-red-700 bg-red-50/50">
+                                                                                <UserX className="mr-2 h-4 w-4" /> {employee.is_active ? 'Nonaktifkan Akun' : 'Aktifkan Akun'}
+                                                                            </DropdownMenuItem>
+                                                                        </>
+                                                                    )}
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
+                                                        )}
                                                     </TableCell>
                                                 </TableRow>
                                             ))
@@ -886,6 +932,15 @@ export default function EmployeesPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-        </DashboardLayout>
+            {/* Master Data Dialog - Refactored */}
+            <MasterDataDialog
+                open={isMasterDataOpen}
+                onOpenChange={setIsMasterDataOpen}
+                onSuccess={fetchData}
+                tab={masterTab}
+                onTabChange={setMasterTab}
+                userRole={profile?.role}
+            />
+        </DashboardLayout >
     );
 }

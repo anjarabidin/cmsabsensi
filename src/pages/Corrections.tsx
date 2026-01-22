@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Plus, FileText, UploadCloud, Calendar, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { Loader2, Plus, FileText, UploadCloud, Calendar, Clock, CheckCircle2, XCircle, AlertCircle, ChevronLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { Attendance, AttendanceCorrection } from '@/types';
@@ -185,179 +185,192 @@ export default function CorrectionsPage() {
   if (isMobile) {
     return (
       <DashboardLayout>
-        <div className="space-y-6 max-w-5xl mx-auto pt-[calc(1rem+env(safe-area-inset-top))] md:pt-6 pb-20 px-4 md:px-0 animate-in fade-in duration-500">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">Koreksi Absensi</h1>
-              <p className="text-slate-500">Ajukan revisi jam kerja jika terjadi kesalahan teknis.</p>
-            </div>
+        <div className="relative min-h-screen bg-slate-50/50">
+          {/* Background Gradient Header */}
+          <div className="absolute top-0 left-0 w-full h-[calc(180px+env(safe-area-inset-top))] bg-gradient-to-r from-blue-600 to-cyan-500 rounded-b-[32px] z-0 shadow-lg" />
 
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-blue-600 hover:bg-blue-700 shadow-sm">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Buat Pengajuan
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                  <DialogTitle>Formulir Koreksi</DialogTitle>
-                  <DialogDescription>
-                    Isi data dengan jujur. Sertakan bukti pendukung jika ada.
-                  </DialogDescription>
-                </DialogHeader>
+          <div className="relative z-10 space-y-4 px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-24">
+            {/* Header Section */}
+            <div className="flex items-start gap-3 text-white">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => window.history.back()}
+                className="text-white hover:bg-white/20 hover:text-white shrink-0 -ml-2 h-8 w-8"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+              <div className="flex-1">
+                <h1 className="text-xl font-bold tracking-tight text-white drop-shadow-md">Koreksi Absensi</h1>
+                <p className="text-xs text-blue-50 font-medium opacity-90">Ajukan revisi jam kerja</p>
+              </div>
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="bg-white/20 hover:bg-white/30 text-white border border-white/40 shadow-sm h-8 px-3 backdrop-blur-md">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Ajukan
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[500px]">
+                  <DialogHeader>
+                    <DialogTitle>Formulir Koreksi</DialogTitle>
+                    <DialogDescription>
+                      Isi data dengan jujur. Sertakan bukti pendukung jika ada.
+                    </DialogDescription>
+                  </DialogHeader>
 
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <Label>Tanggal Absensi</Label>
-                    <div className="relative">
-                      <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                      <Input
-                        type="date"
-                        className="pl-9"
-                        value={form.date}
-                        onChange={(e) => setForm({ ...form, date: e.target.value })}
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                      <Label>Tanggal Absensi</Label>
+                      <div className="relative">
+                        <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                        <Input
+                          type="date"
+                          className="pl-9"
+                          value={form.date}
+                          onChange={(e) => setForm({ ...form, date: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <Label>Koreksi Masuk (In)</Label>
+                        <Input type="time" value={form.corrected_clock_in} onChange={(e) => setForm({ ...form, corrected_clock_in: e.target.value })} />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>Koreksi Pulang (Out)</Label>
+                        <Input type="time" value={form.corrected_clock_out} onChange={(e) => setForm({ ...form, corrected_clock_out: e.target.value })} />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label>Alasan Koreksi</Label>
+                      <Textarea
+                        placeholder="Contoh: Lupa clock out karena buru-buru meeting..."
+                        value={form.reason}
+                        onChange={(e) => setForm({ ...form, reason: e.target.value })}
+                        rows={3}
                       />
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
-                      <Label>Koreksi Masuk (In)</Label>
-                      <Input type="time" value={form.corrected_clock_in} onChange={(e) => setForm({ ...form, corrected_clock_in: e.target.value })} />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label>Koreksi Pulang (Out)</Label>
-                      <Input type="time" value={form.corrected_clock_out} onChange={(e) => setForm({ ...form, corrected_clock_out: e.target.value })} />
-                    </div>
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label>Alasan Koreksi</Label>
-                    <Textarea
-                      placeholder="Contoh: Lupa clock out karena buru-buru meeting..."
-                      value={form.reason}
-                      onChange={(e) => setForm({ ...form, reason: e.target.value })}
-                      rows={3}
-                    />
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label>Bukti Pendukung (Opsional)</Label>
-                    <div className="border-2 border-dashed border-slate-200 rounded-lg p-4 text-center hover:bg-slate-50 transition-colors cursor-pointer relative">
-                      <Input
-                        type="file"
-                        accept="image/*,application/pdf"
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                        onChange={(e) => setProofFile(e.target.files?.[0] || null)}
-                      />
-                      <div className="flex flex-col items-center gap-1">
-                        <UploadCloud className={cn("h-8 w-8", proofFile ? "text-blue-500" : "text-slate-300")} />
-                        <span className="text-sm text-slate-500 font-medium">
-                          {proofFile ? proofFile.name : "Klik untuk upload foto/dokumen"}
-                        </span>
+                      <Label>Bukti Pendukung (Opsional)</Label>
+                      <div className="border-2 border-dashed border-slate-200 rounded-lg p-4 text-center hover:bg-slate-50 transition-colors cursor-pointer relative">
+                        <Input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                          onChange={(e) => setProofFile(e.target.files?.[0] || null)}
+                        />
+                        <div className="flex flex-col items-center gap-1">
+                          <UploadCloud className={cn("h-8 w-8", proofFile ? "text-blue-500" : "text-slate-300")} />
+                          <span className="text-sm text-slate-500 font-medium">
+                            {proofFile ? proofFile.name : "Klik untuk upload foto/dokumen"}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <DialogFooter>
-                  <Button variant="ghost" onClick={() => setDialogOpen(false)}>Batal</Button>
-                  <Button onClick={handleSubmit} disabled={submitting || !canSubmit} className="bg-blue-600 hover:bg-blue-700">
-                    {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    Kirim Pengajuan
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
+                  <DialogFooter>
+                    <Button variant="ghost" onClick={() => setDialogOpen(false)}>Batal</Button>
+                    <Button onClick={handleSubmit} disabled={submitting || !canSubmit} className="bg-blue-600 hover:bg-blue-700">
+                      {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      Kirim Pengajuan
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
 
-          <Card className="border-none shadow-sm overflow-hidden bg-white">
-            <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-slate-500" />
-                <h3 className="font-semibold text-slate-800">Riwayat Pengajuan</h3>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              {loading ? (
-                <div className="py-20 text-center space-y-3">
-                  <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-500" />
-                  <p className="text-slate-500 text-sm">Memuat data...</p>
+            <Card className="border-none shadow-sm overflow-hidden bg-white">
+              <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-slate-500" />
+                  <h3 className="font-semibold text-slate-800">Riwayat Pengajuan</h3>
                 </div>
-              ) : corrections.length === 0 ? (
-                <div className="py-20 text-center space-y-4">
-                  <div className="h-16 w-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto">
-                    <Clock className="h-8 w-8 text-slate-300" />
+              </CardHeader>
+              <CardContent className="p-0">
+                {loading ? (
+                  <div className="py-20 text-center space-y-3">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-500" />
+                    <p className="text-slate-500 text-sm">Memuat data...</p>
                   </div>
-                  <div>
-                    <h4 className="text-slate-900 font-medium">Belum Ada Pengajuan</h4>
-                    <p className="text-slate-500 text-sm max-w-sm mx-auto mt-1">
-                      Anda belum pernah mengajukan koreksi absensi. Gunakan tombol di atas untuk membuat pengajuan baru.
-                    </p>
+                ) : corrections.length === 0 ? (
+                  <div className="py-20 text-center space-y-4">
+                    <div className="h-16 w-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto">
+                      <Clock className="h-8 w-8 text-slate-300" />
+                    </div>
+                    <div>
+                      <h4 className="text-slate-900 font-medium">Belum Ada Pengajuan</h4>
+                      <p className="text-slate-500 text-sm max-w-sm mx-auto mt-1">
+                        Anda belum pernah mengajukan koreksi absensi. Gunakan tombol di atas untuk membuat pengajuan baru.
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow className="hover:bg-slate-50/50">
-                      <TableHead className="w-[150px]">Tanggal</TableHead>
-                      <TableHead>Detail Koreksi</TableHead>
-                      <TableHead>Alasan</TableHead>
-                      <TableHead className="text-center">Lampiran</TableHead>
-                      <TableHead className="text-right">Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {corrections.map((c) => (
-                      <TableRow key={c.id} className="hover:bg-slate-50/50">
-                        <TableCell className="font-medium text-slate-900">
-                          {format(new Date(c.date), 'd MMM yyyy', { locale: id })}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col gap-1 text-sm">
-                            <div className="flex items-center gap-2 text-slate-600">
-                              <span className="w-8 text-xs font-semibold uppercase text-slate-400">In</span>
-                              {c.original_clock_in ? format(new Date(c.original_clock_in), 'HH:mm') : '--:--'}
-                              <span className="text-slate-300">→</span>
-                              <span className={cn("font-medium", c.corrected_clock_in ? "text-blue-600" : "text-slate-400")}>
-                                {c.corrected_clock_in ? format(new Date(c.corrected_clock_in), 'HH:mm') : '-'}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 text-slate-600">
-                              <span className="w-8 text-xs font-semibold uppercase text-slate-400">Out</span>
-                              {c.original_clock_out ? format(new Date(c.original_clock_out), 'HH:mm') : '--:--'}
-                              <span className="text-slate-300">→</span>
-                              <span className={cn("font-medium", c.corrected_clock_out ? "text-blue-600" : "text-slate-400")}>
-                                {c.corrected_clock_out ? format(new Date(c.corrected_clock_out), 'HH:mm') : '-'}
-                              </span>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="max-w-[300px]">
-                          <span className="text-slate-700 italic">"{c.reason}"</span>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {c.proof_url ? (
-                            <a href={c.proof_url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-xs flex items-center justify-center gap-1">
-                              <FileText className="h-3 w-3" /> Lihat
-                            </a>
-                          ) : (
-                            <span className="text-slate-400 text-xs">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {statusBadge(c.status)}
-                        </TableCell>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="hover:bg-slate-50/50">
+                        <TableHead className="w-[150px]">Tanggal</TableHead>
+                        <TableHead>Detail Koreksi</TableHead>
+                        <TableHead>Alasan</TableHead>
+                        <TableHead className="text-center">Lampiran</TableHead>
+                        <TableHead className="text-right">Status</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {corrections.map((c) => (
+                        <TableRow key={c.id} className="hover:bg-slate-50/50">
+                          <TableCell className="font-medium text-slate-900">
+                            {format(new Date(c.date), 'd MMM yyyy', { locale: id })}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1 text-sm">
+                              <div className="flex items-center gap-2 text-slate-600">
+                                <span className="w-8 text-xs font-semibold uppercase text-slate-400">In</span>
+                                {c.original_clock_in ? format(new Date(c.original_clock_in), 'HH:mm') : '--:--'}
+                                <span className="text-slate-300">→</span>
+                                <span className={cn("font-medium", c.corrected_clock_in ? "text-blue-600" : "text-slate-400")}>
+                                  {c.corrected_clock_in ? format(new Date(c.corrected_clock_in), 'HH:mm') : '-'}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 text-slate-600">
+                                <span className="w-8 text-xs font-semibold uppercase text-slate-400">Out</span>
+                                {c.original_clock_out ? format(new Date(c.original_clock_out), 'HH:mm') : '--:--'}
+                                <span className="text-slate-300">→</span>
+                                <span className={cn("font-medium", c.corrected_clock_out ? "text-blue-600" : "text-slate-400")}>
+                                  {c.corrected_clock_out ? format(new Date(c.corrected_clock_out), 'HH:mm') : '-'}
+                                </span>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="max-w-[300px]">
+                            <span className="text-slate-700 italic">"{c.reason}"</span>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {c.proof_url ? (
+                              <a href={c.proof_url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-xs flex items-center justify-center gap-1">
+                                <FileText className="h-3 w-3" /> Lihat
+                              </a>
+                            ) : (
+                              <span className="text-slate-400 text-xs">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {statusBadge(c.status)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </DashboardLayout >
+      </DashboardLayout>
     );
   }
 

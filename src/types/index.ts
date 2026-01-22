@@ -48,6 +48,7 @@ export interface JobPosition {
   grade_id: string;
   title: string;
   code: string | null;
+  description: string | null;
   is_leadership: boolean;
   department?: Department;
   grade?: JobGrade;

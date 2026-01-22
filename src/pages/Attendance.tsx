@@ -132,6 +132,16 @@ export default function AttendancePage() {
     }
 
     // GPS is available, now validate based on work mode
+    console.log('GPS Data received:', {
+      latitude,
+      longitude,
+      accuracy,
+      isMocked,
+      workMode,
+      selectedLocationId,
+      officeLocationsCount: officeLocations.length
+    });
+
     if (workMode === 'wfo' && selectedLocationId && officeLocations.length > 0) {
       const office = officeLocations.find(l => l.id === selectedLocationId);
       if (office) {
@@ -140,7 +150,9 @@ export default function AttendancePage() {
           officeName: office.name,
           officeRadius: office.radius_meters,
           calculatedDistance: dist,
-          isWithinRadius: dist <= office.radius_meters
+          isWithinRadius: dist <= office.radius_meters,
+          userCoords: `${latitude}, ${longitude}`,
+          officeCoords: `${office.latitude}, ${office.longitude}`
         });
         if (dist > office.radius_meters) {
           setIsLocationValid(false);
@@ -219,9 +231,16 @@ export default function AttendancePage() {
         .select('*')
         .eq('is_active', true);
       console.log('Fetched office locations:', locationData);
+      console.log('Available offices:', locationData?.map(office => ({
+        id: office.id,
+        name: office.name,
+        radius: office.radius_meters,
+        coords: `${office.latitude}, ${office.longitude}`
+      })));
       setOfficeLocations((locationData as OfficeLocation[]) || []);
       if (locationData && locationData.length > 0) {
         setSelectedLocationId(locationData[0].id);
+        console.log('Auto-selected office:', locationData[0].name, 'ID:', locationData[0].id);
       }
 
       // Fetch Face Enrollment (For PWA Verification)

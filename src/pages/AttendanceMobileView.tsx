@@ -79,7 +79,6 @@ interface AttendanceMobileViewProps {
     isLocationValid: boolean;
     locationErrorMsg: string | null;
     getLocation: () => void;
-    MAX_RADIUS_M: number;
     // Form check
     workMode: WorkMode;
     setWorkMode: (val: WorkMode) => void;
@@ -119,7 +118,6 @@ export default function AttendanceMobileView({
     isLocationValid,
     locationErrorMsg,
     getLocation,
-    MAX_RADIUS_M,
     workMode,
     setWorkMode,
     selectedLocationId,
@@ -289,7 +287,7 @@ export default function AttendanceMobileView({
                                                                 </Marker>
                                                                 <Circle
                                                                     center={[office.latitude, office.longitude] as [number, number]}
-                                                                    radius={office.radius_meters || MAX_RADIUS_M}
+                                                                    radius={office.radius_meters}
                                                                     pathOptions={{ fillColor: isLocationValid ? '#3b82f6' : '#ef4444', color: isLocationValid ? '#3b82f6' : '#ef4444', opacity: 0.1, weight: 1 }}
                                                                 />
                                                             </>

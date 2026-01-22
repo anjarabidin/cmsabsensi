@@ -51,6 +51,10 @@
 	<string>Aplikasi ini memerlukan akses kamera untuk verifikasi wajah saat absensi.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Aplikasi ini memerlukan akses lokasi untuk memastikan Anda berada di area kantor saat absensi.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Aplikasi ini memerlukan akses lokasi untuk memastikan Anda berada di area kantor saat absensi.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Aplikasi ini memerlukan akses lokasi untuk memastikan Anda berada di area kantor saat absensi.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Aplikasi ini memerlukan izin menyimpan foto absensi.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

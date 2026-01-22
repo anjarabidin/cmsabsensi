@@ -61,8 +61,7 @@ export default function QuickAttendancePage() {
     const [nearestOfficeDist, setNearestOfficeDist] = useState<number | null>(null);
     const [isLocationValid, setIsLocationValid] = useState(false);
 
-    // GPS VALIDATION - STRICTER for Quick Attendance (WFO Only)
-    const MAX_RADIUS = 30; // Reduced from 100m to 30m for WFO
+    // GPS VALIDATION - Use database radius instead of hardcoded
     const MIN_GPS_ACCURACY = 15; // Require accuracy better than 15 meters
 
     /* FACE RECOGNITION STATES - TEMPORARILY DISABLED
@@ -121,12 +120,22 @@ export default function QuickAttendancePage() {
 
             if (officeLocations.length > 0) {
                 let minDistance = Infinity;
+                let isValid = false;
+                let validOfficeRadius = null;
+                
                 for (const office of officeLocations) {
                     const dist = getDistanceFromLatLonInM(latitude, longitude, office.latitude, office.longitude);
                     if (dist < minDistance) minDistance = dist;
+                    
+                    // Check if within this office's radius
+                    if (dist <= office.radius_meters) {
+                        isValid = true;
+                        validOfficeRadius = office.radius_meters;
+                    }
                 }
+                
                 setNearestOfficeDist(minDistance);
-                setIsLocationValid(minDistance <= MAX_RADIUS);
+                setIsLocationValid(isValid);
             } else {
                 setNearestOfficeDist(null);
                 setIsLocationValid(true);
@@ -504,7 +513,19 @@ export default function QuickAttendancePage() {
         }
 
         if (!isLocationValid) {
-            const msg = nearestOfficeDist ? `Jarak: ${Math.round(nearestOfficeDist)}m (Max: ${MAX_RADIUS}m)` : "Lokasi kantor tidak valid.";
+            // Find the nearest office and its radius for the error message
+            let nearestOffice = null;
+            let minDistance = Infinity;
+            
+            for (const office of officeLocations) {
+                const dist = getDistanceFromLatLonInM(latitude, longitude, office.latitude, office.longitude);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    nearestOffice = office;
+                }
+            }
+            
+            const msg = nearestOffice ? `Jarak: ${Math.round(minDistance)}m (Max: ${nearestOffice.radius_meters}m)` : "Lokasi kantor tidak valid.";
             toast({
                 title: "Di Luar Jangkauan Kantor",
                 description: `Anda harus berada di kantor. ${msg}`,

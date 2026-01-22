@@ -80,8 +80,7 @@ export default function AttendancePage() {
   // NEW: Face Verification Setting
   const [isFaceRequired, setIsFaceRequired] = useState(true);
 
-  // GPS validation - STRICTER for security
-  const MAX_RADIUS_M = 50; // Reduced from 100m to 50m
+  // GPS validation - Use database radius instead of hardcoded
   const MIN_GPS_ACCURACY = 20; // Require accuracy better than 20 meters
 
   useEffect(() => {
@@ -137,9 +136,9 @@ export default function AttendancePage() {
       const office = officeLocations.find(l => l.id === selectedLocationId);
       if (office) {
         const dist = getDistanceFromLatLonInM(latitude, longitude, office.latitude, office.longitude);
-        if (dist > (office.radius_meters || MAX_RADIUS_M)) {
+        if (dist > office.radius_meters) {
           setIsLocationValid(false);
-          setLocationErrorMsg(`Berada di luar jangkauan kantor (${Math.round(dist)}m). Maksimal ${office.radius_meters || MAX_RADIUS_M}m.`);
+          setLocationErrorMsg(`Berada di luar jangkauan kantor (${Math.round(dist)}m). Maksimal ${office.radius_meters}m.`);
         } else if (isMocked) {
           setIsLocationValid(false);
           setLocationErrorMsg("Fake GPS Terdeteksi! Mohon gunakan lokasi asli.");
@@ -183,7 +182,9 @@ export default function AttendancePage() {
         .maybeSingle();
 
       if (settingData) {
-        setIsFaceRequired(settingData.value);
+        console.log('App settings raw value:', settingData.value, 'type:', typeof settingData.value);
+        console.log('App settings parsed to boolean:', Boolean(settingData.value));
+        setIsFaceRequired(Boolean(settingData.value));
       }
 
       // Fetch Attendance
@@ -562,7 +563,6 @@ export default function AttendancePage() {
     isLocationValid,
     locationErrorMsg,
     getLocation,
-    MAX_RADIUS_M,
     workMode,
     setWorkMode,
     selectedLocationId,

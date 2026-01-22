@@ -16,6 +16,9 @@ const config: CapacitorConfig = {
     Camera: {
       permissions: ['camera']
     },
+    Geolocation: {
+      permissions: ['location', 'coarseLocation']
+    },
     CapacitorHttp: {
       enabled: true
     },

@@ -32,7 +32,9 @@ export default function Settings() {
             if (error && error.code !== 'PGRST116') throw error; // Ignore no rows error
 
             if (data) {
-                setRequireFaceVerification(data.value);
+                console.log('Settings raw value:', data.value, 'type:', typeof data.value);
+                console.log('Settings parsed to boolean:', Boolean(data.value));
+                setRequireFaceVerification(Boolean(data.value));
             }
         } catch (error) {
             console.error('Error loading settings:', error);

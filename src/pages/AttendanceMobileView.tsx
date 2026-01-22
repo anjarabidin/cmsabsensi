@@ -351,11 +351,21 @@ export default function AttendanceMobileView({
                                         size="lg"
                                         className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg rounded-2xl h-14 shadow-lg shadow-blue-600/20 mt-6"
                                         onClick={() => {
-                                            console.log('Button clicked - isFaceRequired:', isFaceRequired, 'capturedPhoto:', !!capturedPhoto);
+                                            console.log('=== BUTTON CLICK DEBUG ===');
+                                            console.log('isFaceRequired:', isFaceRequired, 'type:', typeof isFaceRequired);
+                                            console.log('capturedPhoto:', !!capturedPhoto);
+                                            console.log('todayAttendance?.clock_out:', todayAttendance?.clock_out);
+                                            console.log('loading:', loading);
+                                            console.log('submitting:', submitting);
+                                            console.log('todaySchedule?.is_day_off:', todaySchedule?.is_day_off);
+                                            console.log('========================');
+                                            
                                             if (todayAttendance?.clock_out) return;
                                             if (isFaceRequired) {
+                                                console.log('Face required - checking captured photo...');
                                                 capturedPhoto ? handleSubmit() : openCameraForPhoto();
                                             } else {
+                                                console.log('Face NOT required - submitting directly...');
                                                 handleSubmit();
                                             }
                                         }}

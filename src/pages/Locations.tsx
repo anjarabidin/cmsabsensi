@@ -145,13 +145,36 @@ export default function LocationsPage() {
             return true;
         }
 
-        // 3. Cek format standar Lat, Lng
+        // 3. Cek URL Google Maps dengan /lat,lng/
+        const pathMatch = input.match(/\/(-?\d+\.\d+),(-?\d+\.\d+)\//);
+        if (pathMatch) {
+            applyCoordinates(pathMatch[1], pathMatch[2]);
+            return true;
+        }
+
+        // 4. Cek URL Google Maps dengan 3D format (data=!3m)
+        const dataMatch = input.match(/3d(-?\d+\.\d+),(-?\d+\.\d+)/);
+        if (dataMatch) {
+            applyCoordinates(dataMatch[1], dataMatch[2]);
+            return true;
+        }
+
+        // 5. Cek format standar Lat, Lng dengan berbagai separator
         const cleaned = input.replace(/lat(itude)?|long(itude)?|lng|lokasi|koordinat|[:=]/gi, ' ').trim();
-        const coordRegex = /(-?\d+\.\d+)[\s,]+(-?\d+\.\d+)/;
+        const coordRegex = /(-?\d+\.\d+)[\s,;]+(-?\d+\.\d+)/;
         const match = cleaned.match(coordRegex);
 
         if (match) {
             applyCoordinates(match[1], match[2]);
+            return true;
+        }
+
+        // 6. Cek format desimal dengan comma
+        const decimalRegex = /(-?\d+\.\d+)[\s,]+(-?\d+\.\d+)/;
+        const decimalMatch = input.match(decimalRegex);
+
+        if (decimalMatch) {
+            applyCoordinates(decimalMatch[1], decimalMatch[2]);
             return true;
         }
 

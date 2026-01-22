@@ -604,18 +604,6 @@ export default function AttendancePage() {
     loading,
     submitting,
     handleSubmit,
-    cameraOpen,
-    setCameraOpen,
-    videoRef,
-    stream,
-    stopCamera,
-    handleCapturePhoto,
-    openCameraForPhoto,
-    photoPreview,
-    setPhotoPreview,
-    capturedPhoto,
-    verifying,
-    isFaceRequired, // PASS TO VIEW
   };
 
   if (isMobile) {

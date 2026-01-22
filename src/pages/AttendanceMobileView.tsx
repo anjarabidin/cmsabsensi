@@ -13,12 +13,8 @@ import {
     MapPin,
     AlertOctagon,
     RefreshCw,
-    Fingerprint,
     LogIn,
     LogOut,
-    X,
-    Scan,
-    Smartphone
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -26,7 +22,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Attendance, OfficeLocation, WorkMode, EmployeeSchedule } from '@/types';
@@ -90,19 +85,6 @@ interface AttendanceMobileViewProps {
     loading: boolean;
     submitting: boolean;
     handleSubmit: () => void;
-    // Camera
-    cameraOpen: boolean;
-    setCameraOpen: (open: boolean) => void;
-    videoRef: RefObject<HTMLVideoElement>;
-    stream: MediaStream | null;
-    stopCamera: () => void;
-    handleCapturePhoto: () => void;
-    openCameraForPhoto: () => void;
-    photoPreview: string | null;
-    setPhotoPreview: (val: string | null) => void;
-    capturedPhoto: Blob | null;
-    verifying?: boolean;
-    isFaceRequired?: boolean;
 }
 
 export default function AttendanceMobileView({
@@ -127,20 +109,7 @@ export default function AttendanceMobileView({
     loading,
     submitting,
     handleSubmit,
-    cameraOpen,
-    setCameraOpen,
-    videoRef,
-    stream,
-    stopCamera,
-    handleCapturePhoto,
-    openCameraForPhoto,
-    photoPreview,
-    setPhotoPreview,
-    capturedPhoto,
-    isFaceRequired,
 }: AttendanceMobileViewProps) {
-    console.log('MobileView - isFaceRequired:', isFaceRequired, 'type:', typeof isFaceRequired);
-
     return (
         <DashboardLayout>
             <div className="relative min-h-screen bg-slate-50/50">
@@ -318,54 +287,13 @@ export default function AttendanceMobileView({
                                         />
                                     </div>
 
-                                    {/* Simple Status Indicator */}
-                                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-2 mb-2">
-                                        <p className="text-xs font-bold text-blue-800">
-                                            Status Verifikasi: {isFaceRequired ? 'WAJIB Foto' : 'TIDAK WAJIB Foto'}
-                                        </p>
-                                    </div>
-
-                                    {/* Photo Trigger - Only if Face Required */}
-                                    {isFaceRequired && (
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Verifikasi Biometrik</label>
-                                            {!photoPreview ? (
-                                                <div
-                                                    onClick={openCameraForPhoto}
-                                                    className="border-2 border-dashed border-slate-200 rounded-[24px] h-36 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-blue-200 transition-all group"
-                                                >
-                                                    <div className="h-12 w-12 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform mb-3">
-                                                        <Fingerprint className="h-6 w-6" />
-                                                    </div>
-                                                    <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">Ambil Foto & Verifikasi</span>
-                                                </div>
-                                            ) : (
-                                                <div className="relative rounded-[24px] overflow-hidden h-48 bg-black shadow-lg group">
-                                                    <img src={photoPreview} className="w-full h-full object-cover" alt="Preview" />
-                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                                                    <div className="absolute top-4 right-4">
-                                                        <Button size="icon" variant="secondary" className="h-10 w-10 rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white/40 border-none" onClick={() => setPhotoPreview(null)}>
-                                                            <RefreshCw className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
                                     {/* Action Button - Moved from top */}
                                     <Button
                                         size="lg"
                                         className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg rounded-2xl h-14 shadow-lg shadow-blue-600/20 mt-6"
                                         onClick={() => {
-                                            console.log('Button clicked - isFaceRequired:', isFaceRequired);
-                                            
                                             if (todayAttendance?.clock_out) return;
-                                            if (isFaceRequired) {
-                                                capturedPhoto ? handleSubmit() : openCameraForPhoto();
-                                            } else {
-                                                handleSubmit();
-                                            }
+                                            handleSubmit();
                                         }}
                                         disabled={loading || submitting || !!todaySchedule?.is_day_off}
                                     >
@@ -382,31 +310,6 @@ export default function AttendanceMobileView({
                         </Card>
                     )}
                 </div>
-                {/* Camera Dialog ... (Kept same) */}
-                <Dialog open={cameraOpen} onOpenChange={setCameraOpen}>
-                    <DialogContent className="max-w-md p-0 border-none bg-black text-white rounded-none sm:rounded-[40px] z-[100] h-full sm:h-auto">
-                        <div className="relative aspect-[3/4] w-full bg-black">
-                            {!stream ? (
-                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-6">
-                                    <Loader2 className="h-10 w-10 animate-spin text-white" />
-                                    <p className="text-sm font-black uppercase tracking-[0.2em] text-white">Menyiapkan Kamera</p>
-                                </div>
-                            ) : (
-                                <>
-                                    <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
-                                    <div className="absolute bottom-10 inset-x-0 flex justify-center items-center gap-12 z-40">
-                                        <Button size="icon" variant="ghost" className="h-16 w-16 rounded-full text-white" onClick={() => { stopCamera(); setCameraOpen(false); }}>
-                                            <X className="h-8 w-8" />
-                                        </Button>
-                                        <Button size="icon" className="h-20 w-20 rounded-full border-4 border-white bg-white/20 text-white" onClick={handleCapturePhoto}>
-                                            <Fingerprint className="h-9 w-9" />
-                                        </Button>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </DialogContent>
-                </Dialog>
             </div>
         </DashboardLayout>
     );

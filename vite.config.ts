@@ -38,7 +38,7 @@ export default defineConfig(({ mode }) => ({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,wasm}'],
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
+        maximumFileSizeToCacheInBytes: 15 * 1024 * 1024, // 15MB untuk mengakomodasi file WASM AI yang besar
       }
     })
   ],
@@ -47,4 +47,18 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    chunkSizeWarningLimit: 3000, // Naikkan limit warning ke 3MB (karena AI models memang besar)
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-tabs', 'lucide-react'],
+          'vendor-pdf': ['jspdf', 'jspdf-autotable'],
+          'vendor-ai': ['@mediapipe/tasks-vision', 'face-api.js'],
+          'vendor-supabase': ['@supabase/supabase-js'],
+        }
+      }
+    }
+  }
 }));

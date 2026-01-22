@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,32 +8,19 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useGeolocation } from '@/hooks/useGeolocation';
-import { useCamera } from '@/hooks/useCamera';
 import { useIsMobile } from '@/hooks/useIsMobile';
-/* FACE RECOGNITION - TEMPORARILY DISABLED (IN DEVELOPMENT)
-import { useMediaPipeFace } from '@/hooks/useMediaPipeFace';
-import { useFaceSystem } from '@/hooks/useFaceSystem';
-*/
 import { promptBiometricForAttendance } from '@/utils/biometricAuth';
 import {
-    Camera,
     Loader2,
     MapPin,
     CheckCircle2,
     AlertCircle,
-    X,
-    Navigation,
     RefreshCw,
-    Scan,
-    Fingerprint,
-    Smartphone,
-    Lock
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { GoogleMapsEmbed } from '@/components/GoogleMapsEmbed';
 import { cn } from '@/lib/utils';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { EmployeeSchedule, Attendance } from '@/types';
 
 export default function QuickAttendancePage() {
@@ -43,17 +30,10 @@ export default function QuickAttendancePage() {
     const { toast } = useToast();
 
     // 1. Hooks - Call all hooks first at the top
-    const { stream, videoRef, startCamera, stopCamera, capturePhoto } = useCamera();
-    /* FACE RECOGNITION - TEMPORARILY DISABLED
-    const { isReady, initialize, detectFace } = useMediaPipeFace();
-    const { getDeepDescriptor, computeMatch, isLoaded: faceSystemLoaded } = useFaceSystem();
-    */
     const { latitude, longitude, accuracy, isMocked, loading: locationChecking, getLocation } = useGeolocation();
 
     // 2. States
     const [step, setStep] = useState<'idle' | 'processing'>('idle');
-    const [capturedPhoto, setCapturedPhoto] = useState<Blob | null>(null);
-    const [photoPreview, setPhotoPreview] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
 
     // Office validation states
@@ -63,32 +43,6 @@ export default function QuickAttendancePage() {
 
     // GPS VALIDATION - Use database radius instead of hardcoded
     const MIN_GPS_ACCURACY = 50; // Require accuracy better than 50 meters (more realistic)
-
-    /* FACE RECOGNITION STATES - TEMPORARILY DISABLED
-    const [faceMatch, setFaceMatch] = useState<number | null>(null);
-    const [faceDetected, setFaceDetected] = useState(false);
-    const [checkingFace, setCheckingFace] = useState(false);
-    const [registeredDescriptor, setRegisteredDescriptor] = useState<Float32Array | null>(null);
-    const frameCounterRef = useRef(0);
-    */
-
-    // Camera state for photo capture
-    const [cameraOpen, setCameraOpen] = useState(false);
-    const [verifying, setVerifying] = useState(false);
-
-    // Initial location fetch
-    useEffect(() => {
-        getLocation();
-    }, [getLocation]);
-
-    // Fetch Office Locations
-    useEffect(() => {
-        const fetchOffices = async () => {
-            const { data } = await supabase.from('office_locations').select('*').eq('is_active', true);
-            setOfficeLocations(data || []);
-        };
-        fetchOffices();
-    }, []);
 
     // Helper functions for distance
     function getDistanceFromLatLonInM(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -108,13 +62,29 @@ export default function QuickAttendancePage() {
         return deg * (Math.PI / 180);
     }
 
+    // Initial location fetch
+    useEffect(() => {
+        const fetchOffices = async () => {
+            try {
+                const { data: locationData } = await supabase
+                    .from('office_locations')
+                    .select('*')
+                    .eq('is_active', true);
+                setOfficeLocations((locationData as any[]) || []);
+            } catch (error) {
+                console.error('Error fetching offices:', error);
+            }
+        };
+
+        fetchOffices();
+    }, []);
+
     // Real-time Distance Check with GPS Accuracy
     useEffect(() => {
         if (latitude !== null && longitude !== null) {
             // GPS ACCURACY CHECK - STRICTER for WFO
             if (accuracy && accuracy > MIN_GPS_ACCURACY) {
                 setIsLocationValid(false);
-                setNearestOfficeDist(null);
                 return;
             }
 
@@ -138,377 +108,25 @@ export default function QuickAttendancePage() {
                 setIsLocationValid(isValid);
             } else {
                 setNearestOfficeDist(null);
-                setIsLocationValid(true);
+                setIsLocationValid(true); // Allow if no offices set
             }
         }
     }, [latitude, longitude, officeLocations, accuracy]);
 
-    // Fix: Attach stream to video element when stream is available
-    useEffect(() => {
-        if (videoRef.current && stream) {
-            videoRef.current.srcObject = stream;
-        }
-    }, [stream, videoRef]);
-
-
-    /* =========================================================================
-       FACE RECOGNITION FUNCTIONS - TEMPORARILY DISABLED (IN DEVELOPMENT)
-       
-       Replaced with biometric fingerprint authentication
-       Original code preserved below for future restoration
-    ========================================================================= */
-
-    /* ORIGINAL checkFaceMatch - Commented out
-    const checkFaceMatch = async (): Promise<boolean> => {
-        if (!videoRef.current || !isReady) {
-            toast({
-                title: 'Sistem Belum Siap',
-                description: 'Memuat biometrik...',
-                variant: 'destructive'
-            });
-            return false;
-        }
-
-        setCheckingFace(true);
-
-        try {
-            const result = await detectFace(videoRef.current);
-            if (!result || !result.faceLandmarks || result.faceLandmarks.length === 0) {
-                setFaceDetected(false);
-                toast({ title: 'Wajah Tidak Terdeteksi', variant: 'destructive' });
-                return false;
-            }
-
-            setFaceDetected(true);
-
-            const currentDescriptor = await getDeepDescriptor(videoRef.current);
-            if (!currentDescriptor) {
-                toast({ title: 'Gagal memproses ID wajah', variant: 'destructive' });
-                return false;
-            }
-
-            const { data: faceData, error } = await (supabase
-                .from('face_enrollments') as any)
-                .select('face_descriptor')
-                .eq('user_id', user?.id)
-                .eq('is_active', true)
-                .maybeSingle();
-
-            if (error || !faceData) {
-                toast({ title: 'Belum Registrasi Wajah', variant: 'destructive' });
-                return false;
-            }
-
-            const registeredDescriptor = new Float32Array(faceData.face_descriptor as any);
-            const similarity = computeMatch(currentDescriptor, registeredDescriptor);
-            setFaceMatch(similarity);
-
-            const THRESHOLD = 0.40;
-            if (similarity < THRESHOLD) {
-                toast({
-                    title: 'Wajah Tidak Cocok',
-                    description: `Kemiripan: ${(similarity * 100).toFixed(0)}%. Mohon daftar ulang wajah.`,
-                    variant: 'destructive',
-                    duration: 5000
-                });
-                return false;
-            }
-
-            return true;
-        } catch (error) {
-            console.error('Face match error:', error);
-            return false;
-        } finally {
-            setCheckingFace(false);
-        }
-    };
-    */
-
-    // NEW: Simplified camera opening for photo capture
-    const handleStartCameraSimple = async () => {
-        try {
-            if (!user) {
-                toast({
-                    title: 'Error',
-                    description: 'User tidak ditemukan',
-                    variant: 'destructive'
-                });
-                return;
-            }
-
-            setCameraOpen(true);
-            await startCamera();
-            getLocation(); // Refresh location
-
-        } catch (error: any) {
-            setCameraOpen(false);
-            toast({
-                title: 'Error',
-                description: error.message || 'Gagal mengakses kamera',
-                variant: 'destructive',
-            });
-        }
-    };
-
-    /* ORIGINAL handleStartCamera with face checks - Commented out
-    const handleStartCamera = async () => {
-        try {
-            if (!user) {
-                toast({
-                    title: 'Error',
-                    description: 'User tidak ditemukan',
-                    variant: 'destructive'
-                });
-                return;
-            }
-
-            setCameraOpen(true);
-
-            const [faceCheckResult, cameraResult, initResult] = await Promise.allSettled([
-                supabase
-                    .from('face_enrollments')
-                    .select('id, face_descriptor')
-                    .eq('user_id', user.id)
-                    .eq('is_active', true)
-                    .limit(1)
-                    .maybeSingle(),
-                startCamera(),
-                initialize()
-            ]);
-
-            getLocation();
-
-            const faceRegFulfilled = faceCheckResult.status === 'fulfilled' && faceCheckResult.value && faceCheckResult.value.data;
-            if (!faceRegFulfilled) {
-                setCameraOpen(false);
-                toast({
-                    title: 'Registrasi Wajah Diperlukan',
-                    description: 'Anda belum mendaftarkan wajah. Silakan daftar di halaman Profil terlebih dahulu.',
-                    variant: 'destructive'
-                });
-                setTimeout(() => navigate('/profile'), 1500);
-                return;
-            }
-
-            const faceData = faceCheckResult.value.data;
-            if (faceData && (faceData as any).face_descriptor) {
-                setRegisteredDescriptor(new Float32Array((faceData as any).face_descriptor as any));
-            }
-
-            if (cameraResult.status === 'rejected') {
-                setCameraOpen(false);
-                toast({
-                    title: 'Gagal Membuka Kamera',
-                    description: 'Mohon berikan izin kamera untuk melanjutkan.',
-                    variant: 'destructive',
-                });
-                return;
-            }
-
-        } catch (error: any) {
-            setCameraOpen(false);
-            toast({
-                title: 'Error',
-                description: error.message || 'Terjadi kesalahan sistem.',
-                variant: 'destructive',
-            });
-        }
-    };
-    */
-
-
-    /* FACE DETECTION LOOP - TEMPORARILY DISABLED
-    const animationFrameRef = useRef<number>();
-    useEffect(() => {
-        if (!cameraOpen || !stream || !isReady || !faceSystemLoaded || step !== 'idle') {
-            if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-            return;
-        }
-
-        const runDetection = async () => {
-            if (!videoRef.current || !cameraOpen || checkingFace) {
-                animationFrameRef.current = requestAnimationFrame(runDetection);
-                return;
-            }
-
-            const video = videoRef.current;
-            if (video.readyState >= 2) {
-                try {
-                    const result = await detectFace(video);
-                    if (result && result.faceLandmarks?.length > 0) {
-                        setFaceDetected(true);
-
-                        frameCounterRef.current++;
-                        if (registeredDescriptor && frameCounterRef.current % 5 === 0) {
-                            const descriptor = await getDeepDescriptor(video);
-                            if (descriptor) {
-                                const similarity = computeMatch(descriptor, registeredDescriptor);
-                                setFaceMatch(similarity);
-                            }
-                        }
-                    } else {
-                        setFaceDetected(false);
-                        setFaceMatch(0);
-                    }
-                } catch (err) {
-                    console.error("Auto detection error", err);
-                }
-            }
-
-            animationFrameRef.current = requestAnimationFrame(runDetection);
-        };
-
-        animationFrameRef.current = requestAnimationFrame(runDetection);
-
-        return () => {
-            if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-        };
-    }, [cameraOpen, stream, isReady, faceSystemLoaded, step, user, checkingFace]);
-    */
-
-    // NEW: Handle capture with biometric verification
-    const handleCapture = async () => {
-        try {
-            // STEP 1: BIOMETRIC VERIFICATION FIRST
-            setVerifying(true);
-
-            toast({
-                title: 'Verifikasi Identitas',
-                description: 'Silakan gunakan sidik jari untuk verifikasi',
-                duration: 2000,
-            });
-
-            const biometricResult = await promptBiometricForAttendance();
-
-            if (!biometricResult.success) {
-                // --- DESKTOP/INCOMPATIBLE FALLBACK ---
-                if (biometricResult.error?.includes('tidak tersedia') || biometricResult.error?.includes('not available')) {
-                    toast({
-                        title: 'Mode Desktop',
-                        description: 'Hardware sidik jari tidak terdeteksi. Melanjutkan dengan verifikasi foto.',
-                    });
-                    // Allow to proceed to capture
-                } else {
-                    toast({
-                        title: 'Verifikasi Gagal',
-                        description: biometricResult.error || 'Sidik jari tidak cocok atau dibatalkan',
-                        variant: 'destructive',
-                    });
-                    setVerifying(false);
-                    return;
-                }
-            }
-
-            // STEP 2: CAPTURE PHOTO after successful biometric
-            if (!videoRef.current) {
-                setVerifying(false);
-                return;
-            }
-
-            const video = videoRef.current;
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
-            if (!ctx) {
-                setVerifying(false);
-                return;
-            }
-
-            // Flip / Mirror
-            ctx.translate(canvas.width, 0);
-            ctx.scale(-1, 1);
-            ctx.drawImage(video, 0, 0);
-
-            canvas.toBlob((blob) => {
-                if (blob) {
-                    setCapturedPhoto(blob);
-                    setPhotoPreview(URL.createObjectURL(blob));
-                    setStep('processing');
-                }
-            }, 'image/jpeg', 0.95);
-
-            stopCamera();
-            setCameraOpen(false);
-            setVerifying(false);
-
-            toast({
-                title: '✓ Verifikasi Berhasil',
-                description: 'Identitas terverifikasi dengan sidik jari',
-                className: 'bg-green-600 text-white border-none',
-                duration: 3000,
-            });
-
-        } catch (error) {
-            toast({ title: 'Gagal', description: 'Gagal mengambil foto', variant: 'destructive' });
-            setVerifying(false);
-        }
-    };
-
-    /* ORIGINAL handleCapture with face verification - Commented out
-    const handleCapture = async () => {
-        const isMatch = await checkFaceMatch();
-        if (!isMatch) return;
-
-        try {
-            if (!videoRef.current) return;
-
-            const video = videoRef.current;
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
-            if (!ctx) return;
-
-            ctx.translate(canvas.width, 0);
-            ctx.scale(-1, 1);
-            ctx.drawImage(video, 0, 0);
-
-            canvas.toBlob((blob) => {
-                if (blob) {
-                    setCapturedPhoto(blob);
-                    setPhotoPreview(URL.createObjectURL(blob));
-                    setStep('processing');
-                }
-            }, 'image/jpeg', 0.95);
-
-            if (animationFrameRef.current) {
-                cancelAnimationFrame(animationFrameRef.current);
-            }
-            stopCamera();
-            setCameraOpen(false);
-        } catch (error) {
-            toast({ title: 'Gagal', description: 'Gagal mengambil foto', variant: 'destructive' });
-        }
-    };
-    */
-
-    // Cleanup
-    useEffect(() => {
-        return () => {
-            /* Cleanup for face detection - disabled
-            if (animationFrameRef.current) {
-                cancelAnimationFrame(animationFrameRef.current);
-            }
-            */
-        };
-    }, []);
-
+    // Simple submit handler
     const handleSubmit = async () => {
-        if (!user || !capturedPhoto || latitude === null || longitude === null) {
+        if (!user || latitude === null || longitude === null) {
             toast({
                 title: 'Data Tidak Lengkap',
-                description: 'Pastikan foto dan lokasi tersedia.',
+                description: 'Pastikan lokasi tersedia.',
                 variant: 'destructive',
             });
-            if (latitude === null) getLocation();
             return;
         }
 
         // --- DISTANCE VALIDATION ---
-
         if (isMocked) {
-            toast({ title: "Lokasi Tidak Valid", description: "Terdeteksi menggunakan Fake GPS.", variant: "destructive" });
+            toast({ title: "Lokasi Tidak Valid", description: "Terdeteksi menggunakan Fake GPS.", variant: 'destructive' });
             return;
         }
 
@@ -533,32 +151,13 @@ export default function QuickAttendancePage() {
             });
             return;
         }
-        // ---------------------------
 
-        setSubmitting(true);
         try {
+            setSubmitting(true);
+            setStep('processing');
+
             const today = format(new Date(), 'yyyy-MM-dd');
-
-            // Fetch Today's Schedule
-            const { data: scheduleData } = await (supabase
-                .from('employee_schedules') as any)
-                .select('*, shift:shifts(*)')
-                .eq('user_id', user.id)
-                .eq('date', today)
-                .maybeSingle();
-
-            const todaySchedule = scheduleData as EmployeeSchedule | null;
-
-            // Barrier: Day Off
-            if (todaySchedule?.is_day_off) {
-                toast({
-                    title: 'Hari Ini Libur',
-                    description: 'Anda tidak memiliki jadwal kerja hari ini.',
-                    variant: 'destructive',
-                });
-                setSubmitting(false);
-                return;
-            }
+            const now = new Date();
 
             // Check existing attendance
             const { data: existing } = await supabase
@@ -581,18 +180,6 @@ export default function QuickAttendancePage() {
             }
 
             const type = !existing ? 'clock_in' : 'clock_out';
-            const fileName = `${user.id}/${today}_${type}_${Date.now()}.jpg`;
-
-            // Upload photo
-            const { error: uploadError } = await supabase.storage
-                .from('attendance-photos')
-                .upload(fileName, capturedPhoto);
-
-            if (uploadError) throw uploadError;
-
-            const { data: { publicUrl } } = supabase.storage
-                .from('attendance-photos')
-                .getPublicUrl(fileName);
 
             const now = new Date();
             let isLate = false;
@@ -602,6 +189,16 @@ export default function QuickAttendancePage() {
                 let startStr = '08:00:00';
                 let tolerance = 15;
                 let advance = 30;
+
+                // Check if today's schedule exists
+                const { data: scheduleData } = await supabase
+                    .from('employee_schedules')
+                    .select('*, shifts(*)')
+                    .eq('user_id', user.id)
+                    .eq('date', today)
+                    .maybeSingle();
+
+                const todaySchedule = scheduleData as EmployeeSchedule | null;
 
                 if (todaySchedule?.shift) {
                     startStr = todaySchedule.shift.start_time;
@@ -636,7 +233,6 @@ export default function QuickAttendancePage() {
                     clock_in: now.toISOString(),
                     clock_in_latitude: latitude,
                     clock_in_longitude: longitude,
-                    clock_in_photo_url: publicUrl,
                     status: 'present',
                     is_late: isLate,
                     late_minutes: lateMinutes,
@@ -658,7 +254,6 @@ export default function QuickAttendancePage() {
                         clock_out: now.toISOString(),
                         clock_out_latitude: latitude,
                         clock_out_longitude: longitude,
-                        clock_out_photo_url: publicUrl,
                         work_hours_minutes: workMinutes,
                     })
                     .eq('id', existing.id);
@@ -681,13 +276,8 @@ export default function QuickAttendancePage() {
             });
         } finally {
             setSubmitting(false);
+            setStep('idle');
         }
-    };
-
-    const handleRetake = () => {
-        setCapturedPhoto(null);
-        setPhotoPreview(null);
-        setStep('idle');
     };
 
     const getGPSStrength = (acc: number | null) => {
@@ -708,10 +298,10 @@ export default function QuickAttendancePage() {
                     <Card className="w-full max-w-md border-0 shadow-2xl rounded-[32px] overflow-hidden bg-white p-12 text-center space-y-6">
                         <div className="flex justify-center relative">
                             <div className="h-24 w-24 bg-blue-50 rounded-3xl flex items-center justify-center shadow-inner">
-                                <Smartphone className="h-12 w-12 text-blue-600" />
+                                <AlertCircle className="h-12 w-12 text-blue-600" />
                             </div>
                             <div className="absolute -bottom-2 right-[35%] bg-white rounded-full p-2 shadow-lg border border-red-50">
-                                <Lock className="h-6 w-6 text-red-500" />
+                                <AlertCircle className="h-6 w-6 text-red-500" />
                             </div>
                         </div>
                         <div className="space-y-2">
@@ -742,7 +332,7 @@ export default function QuickAttendancePage() {
                             <div className="flex items-center justify-between mb-4">
                                 <div>
                                     <h1 className="text-2xl font-black text-slate-800 tracking-tight">Absen Cepat</h1>
-                                    <p className="text-xs text-slate-500 font-medium mt-1">Verifikasi Lokasi & Sidik Jari</p>
+                                    <p className="text-xs text-slate-500 font-medium mt-1">Verifikasi Lokasi</p>
                                 </div>
                                 <Button
                                     variant="ghost"
@@ -750,76 +340,32 @@ export default function QuickAttendancePage() {
                                     onClick={() => navigate('/dashboard')}
                                     className="rounded-full bg-slate-50 hover:bg-slate-100 text-slate-500"
                                 >
-                                    <X className="h-5 w-5" />
+                                    <RefreshCw className="h-5 w-5" />
                                 </Button>
                             </div>
                         </div>
 
                         <div className="px-6 pb-6 space-y-6">
-
-                            {/* Camera / Action Section - FIRST */}
+                            {/* Simple Submit Section */}
                             <div className="bg-white rounded-3xl pt-2">
-                                {step === 'idle' && (
-                                    <div className="text-center">
-                                        <Button
-                                            onClick={handleStartCameraSimple}
-                                            size="lg"
-                                            className="w-full h-14 bg-blue-600 hover:bg-blue-700 rounded-2xl text-lg font-bold shadow-blue-200 shadow-xl transition-all active:scale-95"
-                                            disabled={!latitude || !longitude}
-                                        >
-                                            {!latitude ? (
-                                                <span className="flex items-center gap-2">
-                                                    <Loader2 className="h-5 w-5 animate-spin" /> Tunggu Lokasi...
-                                                </span>
-                                            ) : (
-                                                <span className="flex items-center gap-2">
-                                                    <Fingerprint className="h-6 w-6" /> Buka Kamera
-                                                </span>
-                                            )}
-                                        </Button>
-                                        <p className="text-xs text-slate-400 mt-4">Pastikan Anda berada di area kantor untuk verifikasi sidik jari.</p>
-                                    </div>
-                                )}
-
-                                {step === 'processing' && photoPreview && (
-                                    <div className="space-y-4 animate-in fade-in zoom-in duration-300">
-                                        <div className="relative aspect-[3/4] bg-slate-100 rounded-3xl overflow-hidden shadow-inner ring-1 ring-slate-200">
-                                            <img
-                                                src={photoPreview}
-                                                alt="Preview"
-                                                className="w-full h-full object-cover"
-                                            />
-                                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4 pt-10 text-white">
-                                                <p className="text-xs opacity-75">Lokasi Terkunci</p>
-                                                <p className="text-sm font-bold flex items-center gap-1">
-                                                    <Navigation className="h-3 w-3" /> {latitude?.toFixed(6)}, {longitude?.toFixed(6)}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <Button
-                                                variant="outline"
-                                                onClick={handleRetake}
-                                                className="h-12 rounded-xl font-medium"
-                                                disabled={submitting}
-                                            >
-                                                <RefreshCw className="h-4 w-4 mr-2" /> Ulangi
-                                            </Button>
-                                            <Button
-                                                onClick={handleSubmit}
-                                                className="h-12 bg-green-600 hover:bg-green-700 rounded-xl font-bold shadow-lg shadow-green-200"
-                                                disabled={submitting}
-                                            >
-                                                {submitting ? (
-                                                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                                                ) : (
-                                                    <CheckCircle2 className="mr-2 h-5 w-5" />
-                                                )}
-                                                {submitting ? 'Proses...' : 'Kirim Absen'}
-                                            </Button>
-                                        </div>
-                                    </div>
-                                )}
+                                <div className="text-center">
+                                    <Button
+                                        onClick={handleSubmit}
+                                        size="lg"
+                                        className="w-full h-14 bg-blue-600 hover:bg-blue-700 rounded-2xl text-lg font-bold shadow-blue-200 shadow-xl transition-all active:scale-95"
+                                        disabled={!latitude || !longitude || submitting}
+                                    >
+                                        {!latitude ? (
+                                            <span className="flex items-center gap-2">
+                                                <Loader2 className="h-5 w-5 animate-spin" /> Tunggu Lokasi...
+                                            </span>
+                                        ) : (
+                                            <span className="flex items-center gap-2">
+                                                <CheckCircle2 className="h-6 w-6" /> {submitting ? 'Memproses...' : 'ABSEN SEKARANG'}
+                                            </span>
+                                        )}
+                                    </Button>
+                                </div>
                             </div>
 
                             {/* GPS & Map Section - SECOND */}
@@ -847,7 +393,10 @@ export default function QuickAttendancePage() {
                                                         </span>
                                                     </div>
                                                     <Badge variant="outline" className={cn("bg-white/50 border-0 text-[10px]", isLocationValid ? "text-green-700" : "text-red-700")}>
-                                                        {nearestOfficeDist ? Math.round(nearestOfficeDist) : 0}m / 30m
+                                                        {nearestOfficeDist ? Math.round(nearestOfficeDist) : 0}m / {officeLocations.find(o => {
+                                                            const dist = getDistanceFromLatLonInM(latitude, longitude, o.latitude, o.longitude);
+                                                            return dist === nearestOfficeDist;
+                                                        })?.radius_meters || 30}m
                                                     </Badge>
                                                 </div>
                                             )}
@@ -857,13 +406,13 @@ export default function QuickAttendancePage() {
                                         <div className="absolute bottom-2 left-2 right-2 bg-white/90 backdrop-blur-md p-3 rounded-2xl shadow-sm flex items-center justify-between border border-white/50">
                                             <div className="flex items-center gap-3">
                                                 <div className={cn("h-10 w-10 rounded-full flex items-center justify-center shadow-inner", gpsStatus.bg)}>
-                                                    <Navigation className={cn("h-5 w-5", gpsStatus.color, accuracy && accuracy > 50 ? "animate-pulse" : "")} />
+                                                    <RefreshCw className={cn("h-5 w-5", gpsStatus.color, accuracy && accuracy > 50 ? "animate-pulse" : "")} />
                                                 </div>
                                                 <div>
                                                     <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Akurasi GPS</p>
                                                     <div className="flex items-center gap-1">
-                                                        <span className={cn("text-sm font-black", gpsStatus.color)}>{accuracy ? Math.round(accuracy) : '-'} Meter</span>
-                                                        <Badge variant="secondary" className={cn("text-[8px] h-4 px-1.5", gpsStatus.bg, gpsStatus.color)}>{gpsStatus.text}</Badge>
+                                                        <span className={cn("text-sm font-black", gpsStatus.color)}>{accuracy ? Math.round(accuracy) : '-'}</span>
+                                                        <span className="text-xs text-slate-400">Meter</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -880,116 +429,17 @@ export default function QuickAttendancePage() {
                                         <div className="relative">
                                             <div className="absolute inset-0 bg-blue-500/20 rounded-full animate-ping" />
                                             <div className="relative bg-white p-3 rounded-full shadow-sm">
-                                                <Navigation className="h-6 w-6 text-blue-500 animate-pulse" />
+                                                <RefreshCw className="h-6 w-6 text-blue-500 animate-pulse" />
                                             </div>
                                         </div>
                                         <p className="text-xs font-medium animate-pulse">Mencari titik lokasi...</p>
                                     </div>
                                 )}
                             </div>
-
                         </div>
                     </CardContent>
                 </Card>
             </div>
-
-            {/* Quick Attendance Camera Modal - Biometric Version */}
-            <Dialog open={cameraOpen} onOpenChange={(open) => {
-                if (!open) {
-                    stopCamera();
-                    setCameraOpen(false);
-                }
-            }}>
-                <DialogContent className="max-w-md p-0 border-none bg-black text-white gap-0 overflow-hidden rounded-none sm:rounded-[40px] z-[100]">
-                    <div className="relative aspect-[3/4] w-full bg-black">
-                        {!stream ? (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-6">
-                                <div className="h-20 w-20 bg-white/10 rounded-full  flex items-center justify-center">
-                                    <Loader2 className="h-10 w-10 animate-spin text-white" />
-                                </div>
-                                <div className="text-center space-y-1">
-                                    <p className="text-sm font-black uppercase tracking-[0.2em]">Menyiapkan Kamera</p>
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">Mohon Tunggu</p>
-                                </div>
-                            </div>
-                        ) : (
-                            <>
-                                <video
-                                    ref={videoRef}
-                                    autoPlay
-                                    playsInline
-                                    muted
-                                    style={{ transform: 'scaleX(-1)', filter: 'brightness(1.08) contrast(1.05) saturate(1.1)' }}
-                                    className="w-full h-full object-cover"
-                                />
-
-                                {/* Biometric Verification Overlay - Simplified */}
-                                <div className="absolute top-10 inset-x-0 flex flex-col items-center gap-4 z-20">
-                                    <Badge
-                                        variant="default"
-                                        className="gap-2 px-4 py-2 border-none shadow-lg backdrop-blur-md bg-blue-600/90"
-                                    >
-                                        <Fingerprint className="h-4 w-4 animate-pulse" />
-                                        Siap Verifikasi
-                                    </Badge>
-                                </div>
-
-                                {/* Camera Frame Guide */}
-                                <div className="absolute inset-x-12 inset-y-24 border-2 border-dashed border-white/30 rounded-[60px] flex flex-col items-center justify-center">
-                                    <div className="flex flex-col items-center gap-2">
-                                        <div className="h-12 w-12 rounded-full border-2 border-white/40 flex items-center justify-center">
-                                            <Camera className="h-6 w-6 text-white/60" />
-                                        </div>
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-white/60">Posisikan di Tengah</span>
-                                    </div>
-                                </div>
-
-                                {/* Loading indicator when verifying biometric */}
-                                {verifying && (
-                                    <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center z-30">
-                                        <div className="bg-white rounded-[32px] p-6 flex flex-col items-center gap-4 shadow-2xl animate-in zoom-in duration-300">
-                                            <div className="relative h-16 w-16 bg-blue-600 rounded-full flex items-center justify-center">
-                                                <Fingerprint className="h-8 w-8 text-white animate-pulse" />
-                                            </div>
-                                            <div className="text-center">
-                                                <p className="text-sm font-black text-slate-900 uppercase tracking-tighter">Memverifikasi...</p>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sidik Jari</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </>
-                        )}
-
-                        {/* Camera Actions */}
-                        <div className="absolute bottom-10 inset-x-0 flex justify-center items-center gap-12 z-40">
-                            <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-16 w-16 rounded-full text-white hover:bg-white/20 active:scale-90 transition-transform"
-                                onClick={() => {
-                                    stopCamera();
-                                    setCameraOpen(false);
-                                }}
-                            >
-                                <X className="h-8 w-8" />
-                            </Button>
-
-                            <Button
-                                size="icon"
-                                className="h-20 w-20 rounded-full border-4 border-white bg-white/20 text-white hover:bg-white/30 hover:scale-110 active:scale-95 transition-all shadow-2xl backdrop-blur-sm disabled:opacity-50"
-                                onClick={handleCapture}
-                                disabled={verifying || !stream}
-                            >
-                                <Fingerprint className="h-9 w-9" />
-                            </Button>
-
-                            <div className="h-16 w-16 invisible" />
-                        </div>
-                    </div>
-                </DialogContent>
-            </Dialog>
-
         </DashboardLayout>
     );
 }

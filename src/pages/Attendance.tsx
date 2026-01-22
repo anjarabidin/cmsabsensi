@@ -78,7 +78,9 @@ export default function AttendancePage() {
   const [verifying, setVerifying] = useState(false);
 
   // NEW: Face Verification Setting
-  const [isFaceRequired, setIsFaceRequired] = useState(true);
+  // Default changed to FALSE as per user request (temporary dev convenience).
+  // Will be overwritten by DB setting if row exists.
+  const [isFaceRequired, setIsFaceRequired] = useState(false);
 
   // Debug: Monitor isFaceRequired changes
   useEffect(() => {
@@ -614,6 +616,20 @@ export default function AttendancePage() {
     loading,
     submitting,
     handleSubmit,
+    // Camera & Face Props
+    cameraOpen,
+    setCameraOpen,
+    videoRef,
+    stream,
+    stopCamera,
+    handleCapturePhoto,
+    openCameraForPhoto,
+    photoPreview,
+    setPhotoPreview,
+    capturedPhoto,
+    verifying,
+    isFaceRequired,
+    MAX_RADIUS_M: 50 // Pass constant if needed by view
   };
 
   if (isMobile) {

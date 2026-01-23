@@ -18,11 +18,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 
 const loginEmailSchema = z.string().email('Email tidak valid');
-const registerEmailSchema = z.string()
-  .email('Email tidak valid')
-  .refine((email) => email.endsWith('@cmsdutasolusi.co.id'), {
-    message: 'Hanya email perusahaan yang diperbolehkan'
-  });
+const registerEmailSchema = z.string().email('Email tidak valid');
 const passwordSchema = z.string().min(6, 'Password minimal 6 karakter');
 const nameSchema = z.string().min(2, 'Nama minimal 2 karakter');
 const phoneSchema = z.string().min(10, 'Nomor WhatsApp minimal 10 digit').regex(/^[0-9]+$/, 'Hanya angka');
@@ -365,7 +361,7 @@ export default function Auth() {
                   <Input
                     id="login-email"
                     type="email"
-                    placeholder="wajib email perusahaan"
+                    placeholder="nama@email.com"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     disabled={isLoading}
@@ -524,7 +520,7 @@ export default function Auth() {
                   <Input
                     id="register-email"
                     type="email"
-                    placeholder="wajib email perusahaan"
+                    placeholder="nama@email.com"
                     value={registerEmail}
                     onChange={(e) => setRegisterEmail(e.target.value)}
                     disabled={isLoading || justRegistered}

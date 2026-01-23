@@ -19,6 +19,7 @@ import { Loader2, ScanFace } from 'lucide-react';
 
 import AttendanceMobileView from './AttendanceMobileView';
 import AttendanceDesktopView from './AttendanceDesktopView';
+import { AttendanceSuccessPopup } from '@/components/attendance/AttendanceSuccessPopup';
 
 // Utility to calculate distance between two coordinates in meters (Haversine Formula)
 function getDistanceFromLatLonInM(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -77,6 +78,12 @@ export default function AttendancePage() {
   // Camera state for photo capture
   const [cameraOpen, setCameraOpen] = useState(false);
   const [verifying, setVerifying] = useState(false);
+
+  // Success Popup State
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [successType, setSuccessType] = useState<'clock_in' | 'clock_out' | 'late'>('clock_in');
+  const [successTime, setSuccessTime] = useState(new Date());
+  const [lateMinutesPopup, setLateMinutesPopup] = useState(0);
 
   // NEW: Face Verification Setting
   // Default changed to FALSE as per user request (temporary dev convenience).
@@ -528,9 +535,15 @@ export default function AttendancePage() {
         // FIXED: Shift End Time Logic (Strict Block)
         // Prevent users from Clocking In if the shift has already ended.
         let shiftEndTime = null;
-        if (todaySchedule?.shift?.end_time) {
+        if (todaySchedule?.shift?.end_time && todaySchedule?.shift?.start_time) {
           const shiftEndString = `${today}T${todaySchedule.shift.end_time}`;
           shiftEndTime = fromZonedTime(shiftEndString, TIMEZONE);
+
+          // Handle Overnight Shifts (e.g. 22:00 - 06:00)
+          // If end_time is numerically smaller than start_time, it means it ends usually the next day.
+          if (todaySchedule.shift.end_time < todaySchedule.shift.start_time) {
+            shiftEndTime = new Date(shiftEndTime.getTime() + 24 * 60 * 60 * 1000);
+          }
         }
 
         // BARRIER: Cannot Clock In AFTER Shift Ends!
@@ -561,6 +574,8 @@ export default function AttendancePage() {
         const isLate = now > lateThreshold;
         const lateMinutes = isLate ? Math.floor((now.getTime() - shiftStartDate.getTime()) / 60000) : 0;
 
+
+
         await supabase.from('attendances').insert({
           user_id: user.id, date: today, clock_in: now.toISOString(),
           clock_in_latitude: latitude, clock_in_longitude: longitude,
@@ -569,27 +584,14 @@ export default function AttendancePage() {
           status: 'present', is_late: isLate, late_minutes: lateMinutes, notes: notes.trim() || null
         });
 
-        toast({
-          title: isLate ? 'Absen Masuk (Terlambat)' : '✅ Absen Masuk Berhasil!',
-          description: isLate ? `Anda terlambat ${lateMinutes} menit.` : 'Absensi masuk tercatat. Data tersimpan dengan aman.',
-          variant: isLate ? 'destructive' : 'default',
-          duration: 3000
-        });
+        // Trigger Popup
+        setSuccessTime(now);
+        setSuccessType(isLate ? 'late' : 'clock_in');
+        setLateMinutesPopup(lateMinutes);
+        setShowSuccessPopup(true);
+
       } else {
-        // --- RELAXED CLOCK OUT ---
-        // User requested "Clock Out terserah", so we remove the strict warnings about leaving early.
-        // We only block if it's technically a different day (handled by fetching today's attendance only).
-
-        // Optional: Simple confirmation if VERY early (e.g. before 12 PM) just to prevent accidental clicks
-        const noonThreshold = fromZonedTime(`${today}T12:00:00`, TIMEZONE);
-        if (now < noonThreshold) {
-          if (!window.confirm("Ini masih pagi (sebelum jam 12:00). Yakin mau absen pulang sekarang?")) {
-            setSubmitting(false);
-            return;
-          }
-        }
-        // -----------------------------
-
+        // ... (inside clock out block) ...
         const clockInTime = new Date(todayAttendance!.clock_in);
         const workHoursMinutes = Math.floor((now.getTime() - clockInTime.getTime()) / 60000);
 
@@ -599,12 +601,10 @@ export default function AttendancePage() {
           work_hours_minutes: workHoursMinutes, notes: notes.trim() || null
         }).eq('id', todayAttendance!.id);
 
-        toast({
-          title: '✅ Berhasil Pulang',
-          description: 'Absensi pulang tercatat. Terima kasih atas kerja keras Anda hari ini!',
-          className: "bg-green-600 text-white border-none",
-          duration: 3000
-        });
+        // Trigger Popup
+        setSuccessTime(now);
+        setSuccessType('clock_out');
+        setShowSuccessPopup(true);
       }
 
       setCapturedPhoto(null);
@@ -655,12 +655,20 @@ export default function AttendancePage() {
     capturedPhoto,
     verifying,
     isFaceRequired,
-    MAX_RADIUS_M: 50 // Pass constant if needed by view
+    MAX_RADIUS_M: 50
   };
 
-  if (isMobile) {
-    return <AttendanceMobileView {...viewProps} />;
-  }
+  return (
+    <>
+      {isMobile ? <AttendanceMobileView {...viewProps} /> : <AttendanceDesktopView {...viewProps} />}
 
-  return <AttendanceDesktopView {...viewProps} />;
+      <AttendanceSuccessPopup
+        open={showSuccessPopup}
+        onOpenChange={setShowSuccessPopup}
+        type={successType}
+        timestamp={successTime}
+        lateMinutes={lateMinutesPopup}
+      />
+    </>
+  );
 }

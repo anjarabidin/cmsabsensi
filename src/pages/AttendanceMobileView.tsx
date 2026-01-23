@@ -192,8 +192,8 @@ export default function AttendanceMobileView({
                                 <div className="h-20 w-20 bg-green-50 text-green-500 rounded-[28px] shadow-sm border border-green-100 flex items-center justify-center mb-6">
                                     <CheckCircle2 className="h-10 w-10" />
                                 </div>
-                                <h3 className="text-xl font-black text-slate-900 mb-1">Tugas Selesai!</h3>
-                                <p className="text-slate-500 text-sm font-medium">Anda sudah absen pulang hari ini.</p>
+                                <h3 className="text-xl font-black text-slate-900 dark:text-slate-900 mb-1">Tugas Selesai!</h3>
+                                <p className="text-slate-500 dark:text-slate-500 text-sm font-medium">Anda sudah absen pulang hari ini.</p>
                             </CardContent>
                         </Card>
                     ) : (
@@ -203,7 +203,7 @@ export default function AttendanceMobileView({
                                     <div className="p-2.5 bg-blue-50 rounded-2xl text-blue-600">
                                         <MapPin className="h-5 w-5" />
                                     </div>
-                                    <h3 className="font-black text-slate-800 tracking-tight text-lg">Lokasi & Bukti</h3>
+                                    <h3 className="font-black text-slate-900 dark:text-slate-900 tracking-tight text-lg">Lokasi & Bukti</h3>
                                 </div>
 
                                 {/* GPS Status Indicator & Validation */}
@@ -213,8 +213,8 @@ export default function AttendanceMobileView({
                                             <MapPin className="h-4 w-4 text-green-600" />
                                         </div>
                                         <div className="flex-1">
-                                            <p className="text-xs font-bold text-green-700">GPS Terkunci</p>
-                                            <p className="text-[10px] text-green-600">
+                                            <p className="text-xs font-bold text-green-700 dark:text-green-700">GPS Terkunci</p>
+                                            <p className="text-[10px] text-green-600 dark:text-green-600">
                                                 Lat: {latitude.toFixed(6)}, Lon: {longitude.toFixed(6)}
                                             </p>
                                         </div>
@@ -229,10 +229,10 @@ export default function AttendanceMobileView({
                                             )}
                                         </div>
                                         <div className="flex-1">
-                                            <p className="text-xs font-bold text-yellow-700">
+                                            <p className="text-xs font-bold text-yellow-700 dark:text-yellow-700">
                                                 {locationLoading ? 'Mencari GPS...' : 'GPS Belum Terkunci'}
                                             </p>
-                                            <p className="text-[10px] text-yellow-600">
+                                            <p className="text-[10px] text-yellow-600 dark:text-yellow-600">
                                                 {locationError || 'Klik "Perbarui GPS" untuk mencoba lagi'}
                                             </p>
                                         </div>
@@ -240,7 +240,7 @@ export default function AttendanceMobileView({
                                 )}
 
                                 {!isLocationValid && workMode === 'wfo' && latitude && longitude && (
-                                    <Alert variant="destructive" className="bg-red-50 border-red-200 text-red-800 rounded-2xl">
+                                    <Alert variant="destructive" className="bg-red-50 border-red-200 text-red-800 dark:text-red-800 rounded-2xl">
                                         <AlertOctagon className="h-4 w-4" />
                                         <AlertTitle className="text-sm font-bold">Lokasi Tidak Valid</AlertTitle>
                                         <AlertDescription className="text-xs">
@@ -251,7 +251,7 @@ export default function AttendanceMobileView({
 
                                 {/* Camera / Photo Trigger Section (NEW: Integrated Here) */}
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest ml-1">
                                         {isFaceRequired ? "Foto Wajah (Wajib)" : "Foto Wajah (Opsional)"}
                                     </label>
 
@@ -285,7 +285,7 @@ export default function AttendanceMobileView({
                                             <div className="h-10 w-10 rounded-full bg-white shadow-sm flex items-center justify-center mb-1">
                                                 <Camera className={cn("h-5 w-5", isFaceRequired ? "text-blue-500" : "text-slate-400")} />
                                             </div>
-                                            <p className={cn("text-xs font-bold", isFaceRequired ? "text-blue-600" : "text-slate-500")}>
+                                            <p className={cn("text-xs font-bold", isFaceRequired ? "text-blue-600" : "text-slate-500 dark:text-slate-500")}>
                                                 {isFaceRequired ? "Ambil Foto Sekarang" : "Ambil Foto (Opsional)"}
                                             </p>
                                         </div>
@@ -296,7 +296,7 @@ export default function AttendanceMobileView({
                                     {/* Inputs for WorkMode and Map */}
                                     <div className="space-y-2">
                                         <div className="flex items-center justify-between px-1">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Mode & Lokasi</label>
+                                            <label className="text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest">Mode & Lokasi</label>
                                             <button
                                                 type="button"
                                                 onClick={getLocation}
@@ -308,7 +308,7 @@ export default function AttendanceMobileView({
                                             </button>
                                         </div>
                                         <Select value={workMode} onValueChange={(v) => setWorkMode(v as WorkMode)}>
-                                            <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-blue-100"><SelectValue /></SelectTrigger>
+                                            <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-blue-100 text-slate-900 dark:text-slate-900"><SelectValue /></SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="wfo">Work From Office</SelectItem>
                                                 <SelectItem value="wfh">Work From Home</SelectItem>
@@ -318,7 +318,7 @@ export default function AttendanceMobileView({
 
                                         {workMode === 'wfo' && (
                                             <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
-                                                <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-slate-50/50"><SelectValue placeholder="Pilih Lokasi" /></SelectTrigger>
+                                                <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-slate-50/50 text-slate-900 dark:text-slate-900"><SelectValue placeholder="Pilih Lokasi" /></SelectTrigger>
                                                 <SelectContent>
                                                     {officeLocations.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
                                                 </SelectContent>
@@ -361,7 +361,7 @@ export default function AttendanceMobileView({
                                             )}
                                         </div>
                                     ) : (
-                                        <div className="h-44 w-full rounded-[24px] bg-slate-50 border border-slate-100 flex flex-col items-center justify-center text-[10px] text-slate-400 font-bold uppercase tracking-widest gap-2">
+                                        <div className="h-44 w-full rounded-[24px] bg-slate-50 border border-slate-100 flex flex-col items-center justify-center text-[10px] text-slate-400 dark:text-slate-400 font-bold uppercase tracking-widest gap-2">
                                             <div className="h-10 w-10 bg-white rounded-full flex items-center justify-center shadow-sm">
                                                 {locationLoading ? <Loader2 className="h-5 w-5 text-blue-500 animate-spin" /> : <MapPin className="h-5 w-5 text-slate-300" />}
                                             </div>
@@ -370,13 +370,13 @@ export default function AttendanceMobileView({
                                     )}
 
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Catatan</label>
+                                        <label className="text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest ml-1">Catatan</label>
                                         <Textarea
                                             placeholder="Tambahkan keterangan..."
                                             rows={2}
                                             value={notes}
                                             onChange={e => setNotes(e.target.value)}
-                                            className="resize-none rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-colors"
+                                            className="resize-none rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-colors text-slate-900 dark:text-slate-900 dark:placeholder:text-slate-400"
                                         />
                                     </div>
 

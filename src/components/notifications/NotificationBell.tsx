@@ -56,10 +56,27 @@ export function NotificationBell({ iconClassName }: NotificationBellProps) {
           },
           (payload) => {
             const newNotif = payload.new as Notification;
-            setNotifications((prev) => [newNotif, ...prev]);
-            setUnreadCount((prev) => prev + 1);
+            const isPushOnly = newNotif.type && newNotif.type.startsWith('push_');
 
-            // Toast Alert (Sonner)
+            // 1. Update List & Count (ONLY if NOT push-only)
+            if (!isPushOnly) {
+              setNotifications((prev) => [newNotif, ...prev]);
+              setUnreadCount((prev) => prev + 1);
+            }
+
+            // 2. Trigger Native Browser Notification (for PWA)
+            // Even if it's push-only, we want the ALERT to show up if the browser allows it.
+            if (Notification.permission === 'granted') {
+              // Check if we should show it (maybe limit to push-only? No, allow all for now as user requested push behavior)
+              new Notification(newNotif.title, {
+                body: newNotif.message,
+                icon: '/logo.png',
+                tag: newNotif.id
+              });
+            }
+
+            // 3. Trigger Toast (Sonner)
+            // Useful for active tab users who might miss the system notification or on mobile where system notifs are tricky
             import('sonner').then(({ toast }) => {
               toast(newNotif.title, {
                 description: newNotif.message,
@@ -70,14 +87,6 @@ export function NotificationBell({ iconClassName }: NotificationBellProps) {
                 } : undefined
               });
             });
-
-            // Trigger Native Browser Notification (Muncul di HP)
-            if (Notification.permission === 'granted') {
-              new Notification(newNotif.title, {
-                body: newNotif.message,
-                icon: '/logo.png', // Pastikan ada logo.png di public
-              });
-            }
           }
         )
         .subscribe();
@@ -106,6 +115,7 @@ export function NotificationBell({ iconClassName }: NotificationBellProps) {
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)
+        .not('type', 'like', 'push_%')
         .order('created_at', { ascending: false })
         .limit(20);
 
@@ -188,6 +198,7 @@ export function NotificationBell({ iconClassName }: NotificationBellProps) {
       case 'payroll': return '💰';
       case 'onboarding': return '👋';
       case 'system': return '⚙️';
+      case 'reminder_agenda': return '📅';
       default: return '🔔';
     }
   };

@@ -357,7 +357,7 @@ export default function Auth() {
           <form onSubmit={handleLogin}>
             <CardContent className="space-y-6 pt-8 pb-4 px-8">
               <div className="space-y-2">
-                <Label htmlFor="login-email" className="text-slate-700 font-semibold text-sm">
+                <Label htmlFor="login-email" className="text-slate-700 dark:text-slate-700 font-semibold text-sm">
                   Email Perusahaan
                 </Label>
                 <div className="relative">
@@ -370,14 +370,14 @@ export default function Auth() {
                     onChange={(e) => setLoginEmail(e.target.value)}
                     disabled={isLoading}
                     required
-                    className="h-14 pl-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all text-base focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                    className="h-14 pl-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all text-base focus:border-blue-300 focus:ring-2 focus:ring-blue-100 text-slate-900 dark:text-slate-900 placeholder:text-slate-400"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <Label htmlFor="login-password" className="text-slate-700 font-semibold text-sm">
+                  <Label htmlFor="login-password" className="text-slate-700 dark:text-slate-700 font-semibold text-sm">
                     Password
                   </Label>
                   <a href="#" className="text-xs text-blue-600 hover:text-blue-700 font-semibold hover:underline">
@@ -394,7 +394,7 @@ export default function Auth() {
                     onChange={(e) => setLoginPassword(e.target.value)}
                     disabled={isLoading}
                     required
-                    className="h-14 pl-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all text-base focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                    className="h-14 pl-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all text-base focus:border-blue-300 focus:ring-2 focus:ring-blue-100 text-slate-900 dark:text-slate-900 placeholder:text-slate-400"
                   />
                 </div>
               </div>
@@ -501,7 +501,7 @@ export default function Auth() {
           <form onSubmit={handleRegister}>
             <CardContent className="space-y-4 pt-8 pb-4 px-8">
               <div className="space-y-2">
-                <Label htmlFor="register-name" className="text-slate-700 font-semibold text-sm">
+                <Label htmlFor="register-name" className="text-slate-700 dark:text-slate-700 font-semibold text-sm">
                   Nama Lengkap
                 </Label>
                 <div className="relative">
@@ -514,13 +514,13 @@ export default function Auth() {
                     onChange={(e) => setRegisterName(e.target.value)}
                     disabled={isLoading || justRegistered}
                     required
-                    className="h-12 pl-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                    className="h-12 pl-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:border-blue-300 focus:ring-2 focus:ring-blue-100 text-slate-900 dark:text-slate-900 placeholder:text-slate-400"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="register-email" className="text-slate-700 font-semibold text-sm">
+                <Label htmlFor="register-email" className="text-slate-700 dark:text-slate-700 font-semibold text-sm">
                   Email Perusahaan
                 </Label>
                 <div className="relative">
@@ -533,13 +533,13 @@ export default function Auth() {
                     onChange={(e) => setRegisterEmail(e.target.value)}
                     disabled={isLoading || justRegistered}
                     required
-                    className="h-12 pl-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                    className="h-12 pl-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:border-blue-300 focus:ring-2 focus:ring-blue-100 text-slate-900 dark:text-slate-900 placeholder:text-slate-400"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="register-phone" className="text-slate-700 font-semibold text-sm">
+                <Label htmlFor="register-phone" className="text-slate-700 dark:text-slate-700 font-semibold text-sm">
                   No. WhatsApp
                 </Label>
                 <div className="relative">
@@ -553,14 +553,14 @@ export default function Auth() {
                     disabled={isLoading || justRegistered}
                     required
                     maxLength={15}
-                    className="h-12 pl-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                    className="h-12 pl-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:border-blue-300 focus:ring-2 focus:ring-blue-100 text-slate-900 dark:text-slate-900 placeholder:text-slate-400"
                   />
                 </div>
               </div>
 
 
               <div className="space-y-2">
-                <Label htmlFor="register-password" className="text-slate-700 font-semibold text-sm">
+                <Label htmlFor="register-password" className="text-slate-700 dark:text-slate-700 font-semibold text-sm">
                   Password
                 </Label>
                 <div className="relative">
@@ -573,7 +573,7 @@ export default function Auth() {
                     onChange={(e) => setRegisterPassword(e.target.value)}
                     disabled={isLoading || justRegistered}
                     required
-                    className="h-12 pl-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                    className="h-12 pl-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:border-blue-300 focus:ring-2 focus:ring-blue-100 text-slate-900 dark:text-slate-900 placeholder:text-slate-400"
                   />
                 </div>
               </div>

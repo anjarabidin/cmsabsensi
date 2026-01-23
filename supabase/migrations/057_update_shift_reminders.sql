@@ -1,4 +1,4 @@
--- Update the check_shift_reminders function to include a 17:00 WIB reminder
+-- Update the check_shift_reminders function to include a 17:00 WIB reminder and use push-only types
 CREATE OR REPLACE FUNCTION check_shift_reminders()
 RETURNS void AS $$
 DECLARE
@@ -34,7 +34,7 @@ BEGIN
             AND NOT EXISTS ( -- Avoid duplicate notifications
                 SELECT 1 FROM notifications n 
                 WHERE n.user_id = es.user_id 
-                AND n.type = 'reminder_clock_in' 
+                AND n.type = 'push_reminder_clock_in' 
                 AND n.created_at::date = v_today
             )
     LOOP
@@ -43,7 +43,7 @@ BEGIN
             v_user_record.user_id,
             'CMS | Pengingat Absensi Masuk',
             'Halo ' || v_user_record.full_name || ', 5 menit lagi jam kerja Anda (' || v_user_record.shift_name || ') akan dimulai. Jangan lupa absen ya!',
-            'reminder_clock_in',
+            'push_reminder_clock_in', -- Changed to push_ prefix
             '/dashboard' -- Direct to dashboard to clock in
         );
     END LOOP;
@@ -70,7 +70,7 @@ BEGIN
             AND NOT EXISTS (
                 SELECT 1 FROM notifications n 
                 WHERE n.user_id = es.user_id 
-                AND n.type = 'reminder_clock_out' 
+                AND n.type = 'push_reminder_clock_out' 
                 AND n.created_at::date = v_today
             )
     LOOP
@@ -79,7 +79,7 @@ BEGIN
             v_user_record.user_id,
             'CMS | Pengingat Pulang',
             'Sebentar lagi jam pulang. Rapikan meja kerja dan pastikan tidak ada barang yang tertinggal ya!',
-            'reminder_clock_out',
+            'push_reminder_clock_out', -- Changed to push_ prefix
             '/dashboard'
         );
     END LOOP;
@@ -102,14 +102,11 @@ BEGIN
                 AND a.clock_in IS NOT NULL 
                 AND a.clock_out IS NULL
                 -- Condition: Only remind if they don't have a shift ending later than 17:00
-                -- If s.end_time is NULL (no shift/flexible), we remind them.
-                -- If s.end_time < 17:00 (e.g. 16:00), we remind them (they should have left!).
-                -- If s.end_time >= 17:00 (e.g. 18:00), we DO NOT remind them here (Standard Shift Reminder #2 will catch them later).
                 AND (s.end_time IS NULL OR s.end_time < '17:00:00')
                 AND NOT EXISTS (
                     SELECT 1 FROM notifications n 
                     WHERE n.user_id = es.user_id 
-                    AND n.type = 'reminder_1700' 
+                    AND n.type = 'push_reminder_1700' 
                     AND n.created_at::date = v_today
                 )
         LOOP
@@ -118,7 +115,7 @@ BEGIN
                 v_user_record.user_id,
                 'CMS | Pengingat Sore (17:00)',
                 'Halo ' || v_user_record.full_name || ', sudah jam 17:00 WIB. Jangan lupa absen pulang jika pekerjaan sudah selesai! (Notifikasi Otomatis)',
-                'reminder_1700',
+                'push_reminder_1700', -- Changed to push_ prefix
                 '/dashboard'
             );
         END LOOP;

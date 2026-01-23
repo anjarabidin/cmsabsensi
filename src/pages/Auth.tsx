@@ -290,6 +290,8 @@ export default function Auth() {
 
       if (error.message.includes('User already registered') || error.message.includes('unique constraint')) {
         message = 'Email sudah terdaftar. Silakan login';
+      } else if (error.message.toLowerCase().includes('rate limit')) {
+        message = 'Terlalu banyak percobaan pengiriman email. Mohon tunggu beberapa saat sebelum mencoba lagi.';
       }
 
       toast({

@@ -299,9 +299,9 @@ export default function Auth() {
     } else {
       toast({
         title: 'Registrasi Berhasil! 📧',
-        description: 'Tautan konfirmasi telah dikirim ke email Anda. Silakan cek inbox/spam untuk verifikasi, lalu login.',
-        duration: 8000,
-        className: 'bg-green-600 text-white border-none',
+        description: 'Tautan konfirmasi telah dikirim. Cek Inbox/Spam email Anda, verifikasi, lalu Login.',
+        duration: 6000,
+        variant: 'default', // Gunakan default agar konsisten
       });
 
       // Clear form
@@ -312,11 +312,11 @@ export default function Auth() {
       setJustRegistered(true);
       setIsLoading(false);
 
-      // Switch to login tab after 2 seconds
+      // Switch to login tab after 3 seconds (kasih waktu baca)
       setTimeout(() => {
         setActiveTab('login');
         setJustRegistered(false);
-      }, 2000);
+      }, 3000);
     }
   };
 

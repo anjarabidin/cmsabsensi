@@ -331,7 +331,6 @@ export default function LocationsPage() {
                             setShowMap={setShowMap}
                             handleSubmit={handleSubmit}
                             submitting={submitting}
-                            submitting={submitting}
                             resetForm={resetForm}
                         />
                     </div>
@@ -514,7 +513,6 @@ export default function LocationsPage() {
                     showMap={showMap}
                     setShowMap={setShowMap}
                     handleSubmit={handleSubmit}
-                    submitting={submitting}
                     submitting={submitting}
                     resetForm={resetForm}
                 />

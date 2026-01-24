@@ -62,6 +62,7 @@ export default function LocationsPage() {
             const { data, error } = await supabase
                 .from('office_locations')
                 .select('*')
+                .eq('is_active', true) // Filter: hanya ambil yang aktif
                 .order('name');
 
             if (error) throw error;
@@ -106,13 +107,18 @@ export default function LocationsPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Apakah Anda yakin ingin menghapus lokasi ini?')) return;
+        if (!confirm('Apakah Anda yakin ingin menghapus lokasi ini? Data historis akan tetap tersimpan.')) return;
 
         try {
-            const { error } = await supabase.from('office_locations').delete().eq('id', id);
+            // Soft Delete: Hanya set is_active = false
+            const { error } = await supabase
+                .from('office_locations')
+                .update({ is_active: false })
+                .eq('id', id);
+
             if (error) throw error;
 
-            toast({ title: 'Berhasil', description: 'Lokasi berhasil dihapus.' });
+            toast({ title: 'Berhasil', description: 'Lokasi berhasil dihapus (diarsipkan).' });
 
             // If deleting selected, clear selection
             if (selectedLocation?.id === id) setSelectedLocation(null);

@@ -139,8 +139,8 @@ const superAdminNavGroups = [
     title: 'Super Admin',
     items: [
       { title: 'Dashboard', href: '/dashboard', icon: Home },
-      { title: 'Audit Logs', href: '/audit-logs', icon: FileText },
-      { title: 'System Settings', href: '/settings', icon: Settings },
+      { title: 'Log Audit', href: '/audit-logs', icon: FileText },
+      { title: 'Pengaturan Sistem', href: '/settings', icon: Settings },
     ]
   },
   {
@@ -161,9 +161,19 @@ const superAdminNavGroups = [
     ]
   },
   {
-    title: 'Approval',
+    title: 'Pusat Approval',
     items: [
-      { title: 'Pusat Approval', href: '/approvals', icon: ClipboardCheck },
+      { title: 'Daftar Persetujuan', href: '/approvals', icon: ClipboardCheck },
+    ]
+  },
+  {
+    title: 'Menu Saya',
+    items: [
+      { title: 'Absensi ', href: '/attendance', icon: Clock },
+      { title: 'Riwayat Saya', href: '/history', icon: Calendar },
+      { title: 'Cuti & Izin', href: '/leave', icon: Briefcase },
+      { title: 'Agenda Saya', href: '/agenda', icon: ClipboardCheck },
+      { title: 'Profil Saya', href: '/profile', icon: Settings },
     ]
   }
 ];

@@ -489,8 +489,11 @@ export default function ProfilePage() {
                   <div className="text-center mt-4 mb-6">
                     <h2 className="text-2xl font-black text-slate-900">{profile?.full_name}</h2>
                     <div className="flex items-center justify-center gap-2 mt-2">
-                      <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-none px-3 py-1">
-                        {profile?.position || 'Employee'}
+                      <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-none px-3 py-1 uppercase tracking-wider font-bold">
+                        {profile?.role === 'super_admin' ? 'Super Admin' :
+                          profile?.role === 'admin_hr' ? 'HR Admin' :
+                            profile?.role === 'manager' ? 'Manager' :
+                              profile?.position || 'Karyawan'}
                       </Badge>
                       <Badge variant="outline" className="border-slate-200 text-slate-500">
                         {profile?.employee_id || 'ID: --'}
@@ -915,7 +918,10 @@ export default function ProfilePage() {
                 <div className="text-center space-y-1">
                   <h2 className="text-2xl font-black text-slate-900 tracking-tight">{profile?.full_name}</h2>
                   <p className="text-blue-600 font-bold text-sm uppercase tracking-widest px-4 py-1 bg-blue-50 rounded-full inline-block">
-                    {profile?.position || 'Staff'}
+                    {profile?.role === 'super_admin' ? 'Super Admin' :
+                     profile?.role === 'admin_hr' ? 'HR Admin' :
+                     profile?.role === 'manager' ? 'Manager' :
+                     profile?.position || 'Karyawan'}
                   </p>
                 </div>
 

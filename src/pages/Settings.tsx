@@ -8,9 +8,11 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Camera } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Settings() {
     const { toast } = useToast();
+    const { user, role } = useAuth();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -48,12 +50,13 @@ export default function Settings() {
         try {
             const { error } = await supabase
                 .from('app_settings')
-                .upsert({
-                    key: 'require_face_verification',
+                .update({
                     value: requireFaceVerification,
-                    description: 'Toggle whether face verification is required for attendance',
-                    updated_at: new Date().toISOString()
-                });
+                    description: 'Toggle apakah verifikasi wajah diperlukan untuk absensi',
+                    updated_at: new Date().toISOString(),
+                    updated_by: user?.id
+                })
+                .eq('key', 'require_face_verification');
 
             if (error) throw error;
 
@@ -62,11 +65,11 @@ export default function Settings() {
                 description: "Perubahan konfigurasi absensi telah diperbarui.",
                 className: "bg-green-500 text-white border-none"
             });
-        } catch (error) {
-            console.error('Error saving:', error);
+        } catch (error: any) {
+            console.error('Error saving settings:', error);
             toast({
                 title: "Gagal Menyimpan",
-                description: "Terjadi kesalahan saat menyimpan pengaturan.",
+                description: error.message || "Terjadi kesalahan saat menyimpan pengaturan.",
                 variant: "destructive"
             });
         } finally {

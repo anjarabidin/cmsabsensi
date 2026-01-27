@@ -158,7 +158,7 @@ export default function AgendaPage() {
                   *,
                   participants:agenda_participants(
                     user_id,
-                    profile:user_id(full_name, avatar_url)
+                    status
                   )
                 `)
                 .gte('start_time', `${queryStart}T00:00:00`)

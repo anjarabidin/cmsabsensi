@@ -589,7 +589,7 @@ export default function Dashboard() {
                     <div className="h-1 w-3 bg-purple-500 rounded-full" /> Menu Admin
                   </h3>
                   <div className="grid grid-cols-4 md:grid-cols-8 gap-y-4 gap-x-2 text-center">
-                    <MenuGridItem href="/team-map" icon={Users} label="Pantau" color="text-cyan-600" bg="bg-cyan-50" />
+                    <MenuGridItem href="/team-map" icon={Users} label="Pantau Tim" color="text-cyan-600" bg="bg-cyan-50" />
                     <MenuGridItem href="/employees" icon={Users} label="Staff" color="text-indigo-600" bg="bg-indigo-50" roles={['super_admin', 'admin_hr', 'manager']} />
                     <MenuGridItem href="/manager-assignments" icon={UserCheck} label="Atasan" color="text-violet-600" bg="bg-violet-50" roles={['super_admin', 'admin_hr']} />
                     <MenuGridItem href="/shifts" icon={Clock} label="Shift" color="text-pink-600" bg="bg-pink-50" roles={['super_admin', 'admin_hr', 'manager']} />
@@ -601,7 +601,7 @@ export default function Dashboard() {
                     {profile?.role === 'super_admin' && (
                       <>
                         <MenuGridItem href="/audit-logs" icon={FileText} label="Audit" color="text-slate-800" bg="bg-slate-100" />
-                        <MenuGridItem href="/settings" icon={SettingsIcon} label="System" color="text-neutral-600" bg="bg-neutral-100" />
+                        <MenuGridItem href="/settings" icon={SettingsIcon} label="Pengaturan" color="text-neutral-600" bg="bg-neutral-100" />
                       </>
                     )}
                   </div>

@@ -86,7 +86,7 @@ export function AttendanceSuccessPopup({
                         <p className="text-3xl font-black text-slate-900 tracking-tight">
                             {format(timestamp, "HH:mm")}
                         </p>
-                        <p className="text-sm font-semibold text-slate-500">
+                        <p className="text-sm font-semibold text-slate-500" >
                             {format(timestamp, "EEEE, d MMMM yyyy", { locale: id })}
                         </p>
                     </div>

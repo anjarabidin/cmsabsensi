@@ -297,15 +297,17 @@ export default function AttendanceMobileView({
                                     <div className="space-y-2">
                                         <div className="flex items-center justify-between px-1">
                                             <label className="text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest">Mode & Lokasi</label>
-                                            <button
+                                            <Button
                                                 type="button"
+                                                variant="outline"
+                                                size="sm"
                                                 onClick={getLocation}
                                                 disabled={locationLoading}
-                                                className="text-[10px] font-bold text-blue-600 flex items-center gap-1 active:scale-95 transition-transform"
+                                                className="h-7 px-3 rounded-full border-blue-200 text-blue-600 bg-blue-50/50 hover:bg-blue-100/50 text-xs font-bold transition-all active:scale-95"
                                             >
-                                                {locationLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                                                {locationLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <RefreshCw className="h-3 w-3 mr-1.5" />}
                                                 Perbarui GPS
-                                            </button>
+                                            </Button>
                                         </div>
                                         <Select value={workMode} onValueChange={(v) => setWorkMode(v as WorkMode)}>
                                             <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-blue-100 text-slate-900 dark:text-slate-900"><SelectValue /></SelectTrigger>
@@ -386,6 +388,12 @@ export default function AttendanceMobileView({
                                         className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg rounded-2xl h-14 shadow-lg shadow-blue-600/20 mt-6"
                                         onClick={() => {
                                             if (todayAttendance?.clock_out) return;
+
+                                            // Confirm before clock out
+                                            if (todayAttendance && !window.confirm("Apakah yakin ingin pulang?")) {
+                                                return;
+                                            }
+
                                             // Validate photo if required
                                             if (isFaceRequired && !capturedPhoto) {
                                                 openCameraForPhoto?.(); // Force open camera if missed

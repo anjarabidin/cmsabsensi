@@ -1,4 +1,4 @@
-export type AppRole = 'admin_hr' | 'manager' | 'employee';
+export type AppRole = 'super_admin' | 'admin_hr' | 'manager' | 'employee';
 export type WorkMode = 'wfo' | 'wfh' | 'field';
 export type AttendanceStatus = 'present' | 'late' | 'absent' | 'leave' | 'sick';
 export type RequestStatus = 'pending' | 'approved' | 'rejected';

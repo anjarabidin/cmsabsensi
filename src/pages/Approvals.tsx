@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CheckCircle2, XCircle, AlertCircle, Clock, Calendar, FileText, ChevronLeft, Filter, Activity, MessageSquare, Eye } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, AlertCircle, Clock, Calendar, FileText, ChevronLeft, Filter, Activity, MessageSquare, Eye, Download, Printer } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -15,6 +15,15 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useNavigate } from 'react-router-dom';
+import { downloadExcel } from '@/utils/csvExport';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // Type definitions...
 interface LeaveRequest {
@@ -96,6 +105,7 @@ export default function Approvals() {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
+    const [filterType, setFilterType] = useState<string>('all');
 
     const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
     const [overtimeRequests, setOvertimeRequests] = useState<OvertimeRequest[]>([]);
@@ -120,7 +130,7 @@ export default function Approvals() {
 
     // Role check helper
     const role = profile?.role;
-    const isAdmin = role === 'admin_hr';
+    const isAdmin = role === 'super_admin' || role === 'admin_hr';
 
     useEffect(() => {
         if (user) {
@@ -360,6 +370,39 @@ export default function Approvals() {
         reimbursementRequests.filter(r => r.status === 'pending').length +
         pendingAccounts.filter(a => !a.is_active).length;
 
+    // Combine all history items for easier filtering/exporting
+    const allHistory = [
+        ...leaveRequests.filter(r => r.status !== 'pending').map(r => ({ ...r, type: 'leave', sortDate: r.created_at })),
+        ...overtimeRequests.filter(r => r.status !== 'pending').map(r => ({ ...r, type: 'overtime', sortDate: r.created_at })),
+        ...correctionRequests.filter(r => r.status !== 'pending').map(r => ({ ...r, type: 'correction', sortDate: r.created_at })),
+        ...reimbursementRequests.filter(r => r.status !== 'pending').map(r => ({ ...r, type: 'reimbursement', sortDate: r.created_at }))
+    ].sort((a, b) => new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime());
+
+    const filteredHistory = allHistory.filter(item => {
+        if (filterType === 'all') return true;
+        return item.type === filterType;
+    });
+
+    const handleExportHistory = () => {
+        const headers = ['No', 'Karyawan', 'Tipe', 'Tanggal Pengajuan', 'Status', 'Keterangan', 'Alasan Tolak'];
+        const rows = filteredHistory.map((req, index) => [
+            String(index + 1),
+            req.profiles?.full_name || '-',
+            req.type === 'leave' ? `Cuti (${req.leave_type})` : req.type === 'overtime' ? 'Lembur' : req.type === 'correction' ? 'Koreksi' : 'Klaim',
+            format(new Date(req.created_at), 'dd MMM yyyy HH:mm', { locale: id }),
+            req.status === 'approved' ? 'DISETUJUI' : 'DITOLAK',
+            req.reason || '-',
+            req.rejection_reason || '-'
+        ]);
+
+        downloadExcel(headers, rows, {
+            filename: `Laporan_Approval_${format(new Date(), 'dd-MM-yyyy')}`,
+            title: 'LAPORAN RIWAYAT PERSETUJUAN',
+            generatedBy: profile?.full_name || 'System'
+        });
+        toast({ title: "Berhasil", description: "Laporan berhasil diunduh." });
+    };
+
     return (
         <DashboardLayout>
             <div className="relative min-h-screen bg-slate-50/50">
@@ -415,7 +458,7 @@ export default function Approvals() {
                         <div className="grid grid-cols-4 gap-4 relative z-10">
                             {[
                                 {
-                                    label: 'Pending',
+                                    label: 'Menunggu',
                                     value: pendingCount,
                                     icon: AlertCircle,
                                     color: 'text-amber-600',
@@ -436,7 +479,7 @@ export default function Approvals() {
                                     bg: 'bg-blue-50',
                                 },
                                 {
-                                    label: 'Response',
+                                    label: 'Respon',
                                     value: '98%',
                                     icon: Activity,
                                     color: 'text-emerald-600',
@@ -459,11 +502,11 @@ export default function Approvals() {
                     {/* MOBILE STATS (Hidden on Destkop) */}
                     <div className="grid md:hidden grid-cols-3 gap-2">
                         <div className="bg-white/10 backdrop-blur-md p-2 rounded-lg border border-white/20">
-                            <p className="text-[9px] font-bold text-blue-100 uppercase tracking-wider mb-0.5">PENDING</p>
+                            <p className="text-[9px] font-bold text-blue-100 uppercase tracking-wider mb-0.5">MENUNGGU</p>
                             <p className="text-xl font-bold text-white leading-none">{pendingCount}</p>
                         </div>
                         <div className="bg-white/10 backdrop-blur-md p-2 rounded-lg border border-white/20">
-                            <p className="text-[9px] font-bold text-blue-100 uppercase tracking-wider mb-0.5">NEW</p>
+                            <p className="text-[9px] font-bold text-blue-100 uppercase tracking-wider mb-0.5">BARU</p>
                             <p className="text-xl font-bold text-white leading-none">{pendingAccounts.filter(a => !a.is_active).length}</p>
                         </div>
                         <div className="bg-white/10 backdrop-blur-md p-2 rounded-lg border border-white/20">
@@ -513,12 +556,41 @@ export default function Approvals() {
                             </TabsList>
                         </Tabs>
 
-                        {/* Optional Filter/Export Tools for Desktop */}
+                        {/* Filter & Export Tools */}
                         <div className="flex gap-2">
-                            <Button variant="ghost" size="sm" className="text-slate-400 hover:text-slate-600">
-                                <div className="h-4 w-4 mr-2 bg-slate-200 rounded-full" />
-                                Filter
-                            </Button>
+                            {activeTab === 'history' && (
+                                <>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="outline" size="sm" className="h-10 rounded-xl border-slate-200 text-slate-600 font-bold bg-white hover:bg-slate-50">
+                                                <Filter className="h-4 w-4 mr-2" />
+                                                {filterType === 'all' ? 'Semua Tipe' :
+                                                    filterType === 'leave' ? 'Cuti' :
+                                                        filterType === 'overtime' ? 'Lembur' :
+                                                            filterType === 'correction' ? 'Koreksi' : 'Klaim'}
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="rounded-xl w-48 shadow-xl border-slate-100">
+                                            <DropdownMenuItem onClick={() => setFilterType('all')} className="font-medium py-2">Semua Tipe</DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem onClick={() => setFilterType('leave')} className="font-medium py-2">Cuti</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => setFilterType('overtime')} className="font-medium py-2">Lembur</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => setFilterType('correction')} className="font-medium py-2">Koreksi Absen</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => setFilterType('reimbursement')} className="font-medium py-2">Klaim / Reimburse</DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleExportHistory}
+                                        className="h-10 rounded-xl border-slate-200 text-slate-600 font-bold hover:bg-slate-50 bg-white"
+                                    >
+                                        <Download className="h-4 w-4 mr-2" />
+                                        Unduh Laporan
+                                    </Button>
+                                </>
+                            )}
                         </div>
                     </div>
 
@@ -587,24 +659,101 @@ export default function Approvals() {
                                             )}
 
                                             {/* General Requests Section */}
+                                            {/* General Requests Section */}
                                             <div className="space-y-4">
                                                 <div className="flex items-center gap-2 px-2">
                                                     <div className="h-8 w-1 bg-blue-500 rounded-full"></div>
                                                     <h3 className="text-lg font-bold text-slate-800">Permohonan Masuk</h3>
                                                 </div>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 md:gap-6">
-                                                    {leaveRequests.filter(r => r.status === 'pending').map(req => (
-                                                        <RequestCard key={req.id} type="leave" request={req} onApprove={() => handleAction('approve', 'leave', req.id)} onReject={() => handleAction('reject', 'leave', req.id)} onViewAttachment={(url) => setAttachmentDialog({ open: true, url })} />
-                                                    ))}
-                                                    {overtimeRequests.filter(r => r.status === 'pending').map(req => (
-                                                        <RequestCard key={req.id} type="overtime" request={req} onApprove={() => handleAction('approve', 'overtime', req.id)} onReject={() => handleAction('reject', 'overtime', req.id)} onViewAttachment={(url) => setAttachmentDialog({ open: true, url })} />
-                                                    ))}
-                                                    {correctionRequests.filter(r => r.status === 'pending').map(req => (
-                                                        <RequestCard key={req.id} type="correction" request={req} onApprove={() => handleAction('approve', 'correction', req.id)} onReject={() => handleAction('reject', 'correction', req.id)} onViewAttachment={req.proof_url ? (url) => setAttachmentDialog({ open: true, url }) : undefined} />
-                                                    ))}
-                                                    {reimbursementRequests.filter(r => r.status === 'pending').map(req => (
-                                                        <RequestCard key={req.id} type="reimbursement" request={req} onApprove={() => handleAction('approve', 'reimbursement', req.id)} onReject={() => handleAction('reject', 'reimbursement', req.id)} onViewAttachment={req.attachment_url ? (url) => setAttachmentDialog({ open: true, url }) : undefined} />
-                                                    ))}
+
+                                                <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+                                                    <div className="overflow-x-auto">
+                                                        <table className="w-full text-left text-sm">
+                                                            <thead className="bg-slate-50 border-b border-slate-100 uppercase tracking-wider text-xs font-bold text-slate-500">
+                                                                <tr>
+                                                                    <th className="px-6 py-4">Karyawan</th>
+                                                                    <th className="px-6 py-4">Tipe</th>
+                                                                    <th className="px-6 py-4">Tanggal & Waktu</th>
+                                                                    <th className="px-6 py-4">Alasan</th>
+                                                                    <th className="px-6 py-4 text-right">Aksi</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-slate-100">
+                                                                {[
+                                                                    ...leaveRequests.filter(r => r.status === 'pending').map(r => ({ ...r, type: 'leave', sortDate: r.created_at })),
+                                                                    ...overtimeRequests.filter(r => r.status === 'pending').map(r => ({ ...r, type: 'overtime', sortDate: r.date })),
+                                                                    ...correctionRequests.filter(r => r.status === 'pending').map(r => ({ ...r, type: 'correction', sortDate: r.date })),
+                                                                    ...reimbursementRequests.filter(r => r.status === 'pending').map(r => ({ ...r, type: 'reimbursement', sortDate: r.claim_date }))
+                                                                ]
+                                                                    .sort((a, b) => new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime())
+                                                                    .map((req: any) => (
+                                                                        <tr key={`${req.type}-${req.id}`} className="hover:bg-slate-50/50 transition-colors">
+                                                                            <td className="px-6 py-4">
+                                                                                <div className="flex items-center gap-3">
+                                                                                    <Avatar className="h-10 w-10 border border-slate-100">
+                                                                                        <AvatarImage src={req.profiles?.avatar_url} />
+                                                                                        <AvatarFallback className="bg-blue-100 text-blue-600 font-bold text-xs">
+                                                                                            {req.profiles?.full_name?.substring(0, 2).toUpperCase()}
+                                                                                        </AvatarFallback>
+                                                                                    </Avatar>
+                                                                                    <div>
+                                                                                        <p className="font-bold text-slate-900">{req.profiles?.full_name}</p>
+                                                                                        <p className="text-xs text-slate-500">{req.profiles?.position || 'Karyawan'}</p>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </td>
+                                                                            <td className="px-6 py-4">
+                                                                                <Badge variant="secondary" className={`capitalize font-bold border-0 ${req.type === 'leave' ? 'bg-orange-100 text-orange-700' :
+                                                                                    req.type === 'overtime' ? 'bg-purple-100 text-purple-700' :
+                                                                                        req.type === 'correction' ? 'bg-blue-100 text-blue-700' :
+                                                                                            'bg-green-100 text-green-700'
+                                                                                    }`}>
+                                                                                    {req.type === 'leave' ? 'Cuti' : req.type === 'overtime' ? 'Lembur' : req.type === 'correction' ? 'Koreksi' : 'Klaim'}
+                                                                                </Badge>
+                                                                                {req.type === 'leave' && <p className="text-[10px] text-slate-500 mt-1 capitalize">{req.leave_type}</p>}
+                                                                            </td>
+                                                                            <td className="px-6 py-4">
+                                                                                <div className="flex items-center gap-2 text-slate-700 font-medium">
+                                                                                    <Calendar className="h-4 w-4 text-slate-400" />
+                                                                                    {req.start_date ? format(new Date(req.start_date), 'dd MMM yyyy', { locale: id }) : format(new Date(req.date || req.claim_date), 'dd MMM yyyy', { locale: id })}
+                                                                                </div>
+                                                                                {req.end_date && <p className="text-xs text-slate-500 mt-0.5 ml-6">s/d {format(new Date(req.end_date), 'dd MMM yyyy', { locale: id })}</p>}
+                                                                                {req.hours && <p className="text-xs text-slate-500 mt-0.5 ml-6">{req.hours} Jam ({req.start_time} - {req.end_time})</p>}
+                                                                            </td>
+                                                                            <td className="px-6 py-4">
+                                                                                <div className="max-w-[200px] truncate" title={req.reason}>
+                                                                                    {req.reason}
+                                                                                </div>
+                                                                                {(req.attachment_url || req.proof_url) && (
+                                                                                    <Button variant="link" size="sm" onClick={() => setAttachmentDialog({ open: true, url: req.attachment_url || req.proof_url })} className="h-auto p-0 text-xs text-blue-600 mt-1">
+                                                                                        Lihat Lampiran
+                                                                                    </Button>
+                                                                                )}
+                                                                            </td>
+                                                                            <td className="px-6 py-4 text-right">
+                                                                                <div className="flex justify-end gap-2">
+                                                                                    <Button size="sm" variant="outline" onClick={() => handleAction('reject', req.type as any, req.id)} className="h-8 w-24 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 font-bold">
+                                                                                        Tolak
+                                                                                    </Button>
+                                                                                    <Button size="sm" onClick={() => handleAction('approve', req.type as any, req.id)} className="h-8 w-24 bg-green-600 hover:bg-green-700 text-white shadow-green-200 font-bold">
+                                                                                        Setujui
+                                                                                    </Button>
+                                                                                </div>
+                                                                            </td>
+                                                                        </tr>
+                                                                    ))}
+                                                            </tbody>
+                                                        </table>
+                                                        {leaveRequests.filter(r => r.status === 'pending').length === 0 &&
+                                                            overtimeRequests.filter(r => r.status === 'pending').length === 0 &&
+                                                            correctionRequests.filter(r => r.status === 'pending').length === 0 &&
+                                                            reimbursementRequests.filter(r => r.status === 'pending').length === 0 && (
+                                                                <div className="p-12 text-center text-slate-400">
+                                                                    <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-slate-300" />
+                                                                    <p>Tidak ada permohonan pending</p>
+                                                                </div>
+                                                            )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -613,42 +762,103 @@ export default function Approvals() {
                             )}
                         </TabsContent>
 
-                        {/* History Content */}
                         <TabsContent value="history" className="space-y-4 mt-0">
                             {loading ? (
                                 <div className="flex justify-center py-12">
                                     <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-                                    {leaveRequests.filter(r => r.status !== 'pending').map(req => (
-                                        <RequestCard key={req.id} type="leave" request={req} historyMode onViewAttachment={(url) => setAttachmentDialog({ open: true, url })} />
-                                    ))}
-                                    {overtimeRequests.filter(r => r.status !== 'pending').map(req => (
-                                        <RequestCard key={req.id} type="overtime" request={req} historyMode onViewAttachment={(url) => setAttachmentDialog({ open: true, url })} />
-                                    ))}
-                                    {correctionRequests.filter(r => r.status !== 'pending').map(req => (
-                                        <RequestCard key={req.id} type="correction" request={req} historyMode onViewAttachment={req.proof_url ? (url) => setAttachmentDialog({ open: true, url }) : undefined} />
-                                    ))}
-                                    {reimbursementRequests.filter(r => r.status !== 'pending').map(req => (
-                                        <RequestCard key={req.id} type="reimbursement" request={req} historyMode onViewAttachment={req.attachment_url ? (url) => setAttachmentDialog({ open: true, url }) : undefined} />
-                                    ))}
+                                <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left text-sm">
+                                            <thead className="bg-slate-50 border-b border-slate-100 uppercase tracking-wider text-xs font-bold text-slate-500">
+                                                <tr>
+                                                    <th className="px-6 py-4">Karyawan</th>
+                                                    <th className="px-6 py-4">Tipe</th>
+                                                    <th className="px-6 py-4">Tanggal & Waktu</th>
+                                                    <th className="px-6 py-4 text-center">Status</th>
+                                                    <th className="px-6 py-4">Keterangan</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {filteredHistory.map((req: any) => (
+                                                    <tr key={`${req.type}-${req.id}`} className="hover:bg-slate-50/50 transition-colors">
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <Avatar className="h-10 w-10 border border-slate-100">
+                                                                    <AvatarImage src={req.profiles?.avatar_url} />
+                                                                    <AvatarFallback className="bg-slate-100 text-slate-600 font-bold text-xs">
+                                                                        {req.profiles?.full_name?.substring(0, 2).toUpperCase()}
+                                                                    </AvatarFallback>
+                                                                </Avatar>
+                                                                <div>
+                                                                    <p className="font-bold text-slate-900">{req.profiles?.full_name}</p>
+                                                                    <p className="text-xs text-slate-500">{req.profiles?.position || 'Karyawan'}</p>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <Badge variant="secondary" className={`capitalize font-bold border-0 ${req.type === 'leave' ? 'bg-orange-100 text-orange-700' :
+                                                                req.type === 'overtime' ? 'bg-purple-100 text-purple-700' :
+                                                                    req.type === 'correction' ? 'bg-blue-100 text-blue-700' :
+                                                                        'bg-green-100 text-green-700'
+                                                                }`}>
+                                                                {req.type === 'leave' ? 'Cuti' : req.type === 'overtime' ? 'Lembur' : req.type === 'correction' ? 'Koreksi' : 'Klaim'}
+                                                            </Badge>
+                                                            {req.type === 'leave' && <p className="text-[10px] text-slate-500 mt-1 capitalize">{req.leave_type}</p>}
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex items-center gap-2 text-slate-700 font-medium">
+                                                                <Calendar className="h-4 w-4 text-slate-400" />
+                                                                {req.start_date ? format(new Date(req.start_date), 'dd MMM yyyy', { locale: id }) : format(new Date(req.date || req.claim_date), 'dd MMM yyyy', { locale: id })}
+                                                            </div>
+                                                            <p className="text-xs text-slate-500 mt-0.5 ml-6">Diajukan: {format(new Date(req.created_at), 'dd MMM HH:mm', { locale: id })}</p>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-center">
+                                                            {req.status === 'approved' ? (
+                                                                <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-200">
+                                                                    <CheckCircle2 className="mr-1 h-3 w-3" /> Disetujui
+                                                                </Badge>
+                                                            ) : (
+                                                                <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-200">
+                                                                    <XCircle className="mr-1 h-3 w-3" /> Ditolak
+                                                                </Badge>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="max-w-[200px] truncate" title={req.reason}>
+                                                                {req.reason}
+                                                            </div>
+                                                            {req.status === 'rejected' && req.rejection_reason && (
+                                                                <div className="text-xs text-red-600 mt-1 italic flex items-start gap-1">
+                                                                    <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
+                                                                    <span>{req.rejection_reason}</span>
+                                                                </div>
+                                                            )}
+                                                            {(req.attachment_url || req.proof_url) && (
+                                                                <Button variant="link" size="sm" onClick={() => setAttachmentDialog({ open: true, url: req.attachment_url || req.proof_url })} className="h-auto p-0 text-xs text-blue-600 mt-1">
+                                                                    Lihat Lampiran
+                                                                </Button>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
 
-                                    {/* Empty State */}
-                                    {(leaveRequests.filter(r => r.status !== 'pending').length === 0 &&
-                                        overtimeRequests.filter(r => r.status !== 'pending').length === 0 &&
-                                        correctionRequests.filter(r => r.status !== 'pending').length === 0 &&
-                                        reimbursementRequests.filter(r => r.status !== 'pending').length === 0) && (
-                                            <div className="col-span-full">
-                                                <Card className="border-none shadow-md">
-                                                    <CardContent className="py-20 text-center">
-                                                        <FileText className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-                                                        <h3 className="text-xl font-bold text-slate-700">Belum Ada Riwayat</h3>
-                                                        <p className="text-slate-500 mt-2">Belum ada permohonan yang diproses.</p>
-                                                    </CardContent>
-                                                </Card>
+                                        {filteredHistory.length === 0 && (
+                                            <div className="p-12 text-center text-slate-400">
+                                                <FileText className="h-12 w-12 mx-auto mb-3 text-slate-300" />
+                                                <h3 className="text-lg font-bold text-slate-700">Belum Ada Riwayat</h3>
+                                                <p className="text-slate-500 mt-1">
+                                                    {filterType === 'all'
+                                                        ? 'Belum ada permohonan yang diproses sebelumnya.'
+                                                        : `Belum ada riwayat untuk tipe ${filterType}.`
+                                                    }
+                                                </p>
                                             </div>
                                         )}
+                                    </div>
                                 </div>
                             )}
                         </TabsContent>
@@ -816,16 +1026,44 @@ function RequestCard({
         }
     };
 
+    const getStatusStyles = (status: string) => {
+        switch (status) {
+            case 'approved':
+                return {
+                    card: 'bg-white border-green-200 hover:border-green-300 hover:shadow-green-100/50',
+                    leftStrip: 'bg-green-500',
+                    badge: 'bg-green-100 text-green-700 border-green-200'
+                };
+            case 'rejected':
+                return {
+                    card: 'bg-red-50/30 border-red-200 hover:border-red-300 hover:shadow-red-100/50',
+                    leftStrip: 'bg-red-500',
+                    badge: 'bg-red-100 text-red-700 border-red-200'
+                };
+            default:
+                return {
+                    card: 'bg-white border-slate-200 hover:border-blue-300',
+                    leftStrip: 'bg-slate-300',
+                    badge: 'bg-amber-100 text-amber-700 border-amber-200'
+                };
+        }
+    };
+
+    const styles = getStatusStyles(request.status);
+
     return (
-        <Card className="border shadow-sm overflow-hidden transition-all bg-white hover:shadow-md">
+        <Card className={`border shadow-sm overflow-hidden transition-all hover:shadow-md relative group ${styles.card}`}>
+            {/* Status Strip */}
+            <div className={`absolute left-0 top-0 bottom-0 w-1 ${styles.leftStrip}`} />
+
             <div
-                className="p-3 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors"
+                className="p-4 pl-5 flex items-center justify-between cursor-pointer transition-colors"
                 onClick={() => setIsOpen(!isOpen)}
             >
                 <div className="flex items-center gap-3 overflow-hidden flex-1">
-                    <Avatar className="h-9 w-9 border border-slate-200">
+                    <Avatar className={`h-10 w-10 border-2 ${request.status === 'approved' ? 'border-green-100' : request.status === 'rejected' ? 'border-red-100' : 'border-slate-100'}`}>
                         <AvatarImage src={request.profiles?.avatar_url} />
-                        <AvatarFallback className="bg-blue-50 text-blue-600 text-xs font-bold">
+                        <AvatarFallback className={`${request.status === 'approved' ? 'bg-green-50 text-green-600' : request.status === 'rejected' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'} text-xs font-bold`}>
                             {request.profiles?.full_name?.substring(0, 2).toUpperCase() || 'UN'}
                         </AvatarFallback>
                     </Avatar>
@@ -865,11 +1103,11 @@ function RequestCard({
 
             {/* Accordion Content */}
             {isOpen && (
-                <div className="px-4 pb-4 pt-0 animate-in slide-in-from-top-2">
-                    <div className="border-t border-slate-100 pt-3 mt-1 space-y-3">
+                <div className="px-4 pb-4 pt-0 animate-in slide-in-from-top-2 ml-1">
+                    <div className="border-t border-slate-100/50 pt-3 mt-1 space-y-3">
 
                         {/* Detail Info Grid */}
-                        <div className="grid grid-cols-2 gap-3 bg-slate-50/50 p-2 rounded-lg border border-slate-100">
+                        <div className={`grid grid-cols-2 gap-3 p-2 rounded-lg border ${request.status === 'rejected' ? 'bg-white/50 border-red-100' : 'bg-slate-50/50 border-slate-100'}`}>
                             <div>
                                 <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold mb-0.5">Departemen</p>
                                 <p className="text-xs text-slate-700 font-medium">{request.profiles?.departments?.name || '-'}</p>

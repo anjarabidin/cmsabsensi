@@ -45,7 +45,7 @@ export default function LocationsPage() {
     const [showMap, setShowMap] = useState(false);
 
     useEffect(() => {
-        if (role === 'admin_hr') fetchLocations();
+        if (role === 'super_admin' || role === 'admin_hr') fetchLocations();
     }, [role]);
 
     // Update selected location when locations change (e.g. after edit)
@@ -203,7 +203,7 @@ export default function LocationsPage() {
         l.address?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    if (role !== 'admin_hr') {
+    if (role !== 'super_admin' && role !== 'admin_hr') {
         return (
             <DashboardLayout>
                 <div className="flex items-center justify-center min-h-[60vh] text-muted-foreground">

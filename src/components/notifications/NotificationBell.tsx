@@ -124,7 +124,7 @@ export function NotificationBell({ iconClassName }: NotificationBellProps) {
 
       // 2. Fetch "Action Items" for HR (Onboarding Verifications)
       // Only if role is admin_hr
-      if (activeRole === 'admin_hr') {
+      if (activeRole === 'admin_hr' || activeRole === 'super_admin') {
         const { count, error: countError } = await supabase
           .from('profiles')
           .select('*', { count: 'exact', head: true })

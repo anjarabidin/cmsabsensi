@@ -37,6 +37,7 @@ import Notes from "./pages/Notes";
 import Holidays from "./pages/Holidays";
 import Albums from "./pages/Albums";
 import AlbumDetail from "./pages/AlbumDetail";
+import AuditLogs from './pages/AuditLogs';
 import ManagerAssignments from "./pages/ManagerAssignments";
 import Settings from "./pages/Settings";
 
@@ -121,26 +122,27 @@ const App = () => {
                 <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
                 <Route path="/corrections" element={<ProtectedRoute><Corrections /></ProtectedRoute>} />
                 <Route path="/salary-slips" element={<ProtectedRoute><SalarySlips /></ProtectedRoute>} />
-                <Route path="/employees/:id/salary" element={<ProtectedRoute allowedRoles={['admin_hr']}><EmployeeSalary /></ProtectedRoute>} />
-                <Route path="/team-map" element={<ProtectedRoute allowedRoles={['admin_hr', 'manager']}><TeamMap /></ProtectedRoute>} />
-                <Route path="/locations" element={<ProtectedRoute allowedRoles={['admin_hr']}><Locations /></ProtectedRoute>} />
-                <Route path="/reports" element={<ProtectedRoute allowedRoles={['admin_hr', 'manager']}><Reports /></ProtectedRoute>} />
-                <Route path="/payroll-report" element={<ProtectedRoute allowedRoles={['admin_hr']}><PayrollReport /></ProtectedRoute>} />
+                <Route path="/employees/:id/salary" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><EmployeeSalary /></ProtectedRoute>} />
+                <Route path="/team-map" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr', 'manager']}><TeamMap /></ProtectedRoute>} />
+                <Route path="/locations" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><Locations /></ProtectedRoute>} />
+                <Route path="/reports" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr', 'manager']}><Reports /></ProtectedRoute>} />
+                <Route path="/payroll-report" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><PayrollReport /></ProtectedRoute>} />
                 <Route path="/payroll" element={<ProtectedRoute><Payroll /></ProtectedRoute>} />
                 <Route path="/employees" element={<ProtectedRoute><Employees /></ProtectedRoute>} />
-                <Route path="/manager-assignments" element={<ProtectedRoute allowedRoles={['admin_hr']}><ManagerAssignments /></ProtectedRoute>} />
-                <Route path="/approvals" element={<ProtectedRoute allowedRoles={['admin_hr', 'manager']}><Approvals /></ProtectedRoute>} />
-                <Route path="/payroll/:id" element={<ProtectedRoute allowedRoles={['admin_hr']}><PayrollDetail /></ProtectedRoute>} />
+                <Route path="/manager-assignments" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><ManagerAssignments /></ProtectedRoute>} />
+                <Route path="/approvals" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr', 'manager']}><Approvals /></ProtectedRoute>} />
+                <Route path="/payroll/:id" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><PayrollDetail /></ProtectedRoute>} />
                 <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
-                <Route path="/shifts" element={<ProtectedRoute allowedRoles={['admin_hr', 'manager']}><Shifts /></ProtectedRoute>} />
-                <Route path="/holidays" element={<ProtectedRoute allowedRoles={['admin_hr']}><Holidays /></ProtectedRoute>} />
+                <Route path="/shifts" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr', 'manager']}><Shifts /></ProtectedRoute>} />
+                <Route path="/holidays" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><Holidays /></ProtectedRoute>} />
                 <Route path="/agenda" element={<ProtectedRoute><AgendaPage /></ProtectedRoute>} />
                 <Route path="/notes" element={<ProtectedRoute><Notes /></ProtectedRoute>} />
                 <Route path="/albums" element={<ProtectedRoute><Albums /></ProtectedRoute>} />
                 <Route path="/albums/:id" element={<ProtectedRoute><AlbumDetail /></ProtectedRoute>} />
-                <Route path="/settings" element={<ProtectedRoute allowedRoles={['admin_hr']}><Settings /></ProtectedRoute>} />
+                <Route path="/settings" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><Settings /></ProtectedRoute>} />
                 <Route path="/coming-soon" element={<ProtectedRoute><ComingSoon /></ProtectedRoute>} />
+                <Route path="/audit-logs" element={<ProtectedRoute allowedRoles={['super_admin']}><AuditLogs /></ProtectedRoute>} />
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Routes>
             </ErrorBoundary>

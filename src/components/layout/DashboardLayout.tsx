@@ -55,7 +55,7 @@ interface NavItem {
   title: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
-  roles?: ('admin_hr' | 'manager' | 'employee')[];
+  roles?: ('super_admin' | 'admin_hr' | 'manager' | 'employee')[];
 }
 
 // Role-specific Navigation Configurations
@@ -134,6 +134,40 @@ const adminNavGroups = [
   }
 ];
 
+const superAdminNavGroups = [
+  {
+    title: 'Super Admin',
+    items: [
+      { title: 'Dashboard', href: '/dashboard', icon: Home },
+      { title: 'Audit Logs', href: '/audit-logs', icon: FileText },
+      { title: 'System Settings', href: '/settings', icon: Settings },
+    ]
+  },
+  {
+    title: 'Manajemen SDM',
+    items: [
+      { title: 'Data Karyawan', href: '/employees', icon: Users },
+      { title: 'Jadwal & Shift', href: '/shifts', icon: Clock },
+      { title: 'Lokasi Kantor', href: '/locations', icon: MapPin },
+      { title: 'Pantau Tim', href: '/team-map', icon: Navigation },
+      { title: 'Laporan', href: '/reports', icon: BarChart3 },
+    ]
+  },
+  {
+    title: 'Keuangan',
+    items: [
+      { title: 'Gaji & Payroll', href: '/payroll', icon: DollarSign },
+      { title: 'Laporan Gaji', href: '/payroll-report', icon: FileText },
+    ]
+  },
+  {
+    title: 'Approval',
+    items: [
+      { title: 'Pusat Approval', href: '/approvals', icon: ClipboardCheck },
+    ]
+  }
+];
+
 const managerNavGroups = [
   {
     title: 'Overview',
@@ -165,6 +199,7 @@ const managerNavGroups = [
 ];
 
 const getNavGroups = (role: string) => {
+  if (role === 'super_admin') return superAdminNavGroups;
   if (role === 'admin_hr') return adminNavGroups;
   if (role === 'manager') return managerNavGroups;
   return employeeNavGroups;
@@ -250,6 +285,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const getRoleBadge = () => {
     if (!activeRole) return '';
     switch (activeRole) {
+      case 'super_admin': return 'Super Admin';
       case 'admin_hr': return 'HRD';
       case 'manager': return 'Manager';
       case 'employee': return 'Staff';
@@ -259,6 +295,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const getRoleLabel = (role: string) => {
     switch (role) {
+      case 'super_admin': return 'System Administrator';
       case 'admin_hr': return 'Administrator';
       case 'manager': return 'Manajer';
       case 'employee': return 'Karyawan';

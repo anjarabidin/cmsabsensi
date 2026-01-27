@@ -43,7 +43,7 @@ interface LeaveRequest {
 
 export default function LeavePage() {
     const { toast } = useToast();
-    const { user } = useAuth();
+    const { user, role, activeRole } = useAuth();
     const navigate = useNavigate();
     const isMobile = useIsMobile();
 
@@ -309,6 +309,7 @@ export default function LeavePage() {
                                             loading={loading}
                                             id={id}
                                             deptName={deptName}
+                                            userRole={activeRole || role} // Use role from AuthContext
                                         />
                                     </CardContent>
                                 </Card>
@@ -398,6 +399,21 @@ export default function LeavePage() {
                                 </CardHeader>
                                 <CardContent className="p-8 space-y-6">
                                     <form onSubmit={handleSubmit} className="space-y-6">
+                                        {/* Approval Info */}
+                                        <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-100 mb-4">
+                                            <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Dikirim Kepada</Label>
+                                            <div className="flex items-center gap-2">
+                                                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">
+                                                    {(activeRole || role) === 'manager' ? 'A' : 'M'}
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-bold text-slate-700">
+                                                        {(activeRole || role) === 'manager' ? 'Admin HR / Super Admin' : `Manager ${deptName || 'Departemen'}`}
+                                                    </div>
+                                                    <div className="text-[10px] text-slate-400">Perlu Persetujuan</div>
+                                                </div>
+                                            </div>
+                                        </div>
                                         {/* Jenis Cuti */}
                                         <div className="space-y-2">
                                             <Label className="uppercase text-[10px] font-black text-slate-500 tracking-widest">Jenis Cuti</Label>
@@ -608,16 +624,20 @@ export default function LeavePage() {
 }
 
 // Sub-component for reuse
-function LeaveForm({ leaveType, setLeaveType, startDate, setStartDate, endDate, setEndDate, reason, setReason, attachment, setAttachment, handleFileChange, handleSubmit, loading, id, deptName }: any) {
+function LeaveForm({ leaveType, setLeaveType, startDate, setStartDate, endDate, setEndDate, reason, setReason, attachment, setAttachment, handleFileChange, handleSubmit, loading, id, deptName, userRole }: any) {
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             {/* Approval Info */}
             <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
                 <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Dikirim Kepada</Label>
                 <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">M</div>
+                    <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">
+                        {userRole === 'manager' ? 'A' : 'M'}
+                    </div>
                     <div>
-                        <div className="text-sm font-bold text-slate-700">Manager {deptName || 'Departemen'}</div>
+                        <div className="text-sm font-bold text-slate-700">
+                            {userRole === 'manager' ? 'Admin HR / Super Admin' : `Manager ${deptName || 'Departemen'}`}
+                        </div>
                         <div className="text-[10px] text-slate-400">Perlu Persetujuan</div>
                     </div>
                 </div>
@@ -650,7 +670,21 @@ function LeaveForm({ leaveType, setLeaveType, startDate, setStartDate, endDate, 
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0 rounded-2xl shadow-xl">
-                            <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus className="rounded-2xl" />
+                            <Calendar
+                                mode="single"
+                                selected={startDate}
+                                onSelect={setStartDate}
+                                initialFocus
+                                className="rounded-2xl"
+                                disabled={(date) => {
+                                    // Prevent selecting yesterdays for Annual Leave (Plans)
+                                    // Allow selecting past dates for Sick Leave (Reporting)
+                                    if (leaveType !== 'sick') {
+                                        return date < new Date(new Date().setHours(0, 0, 0, 0));
+                                    }
+                                    return false;
+                                }}
+                            />
                         </PopoverContent>
                     </Popover>
                 </div>

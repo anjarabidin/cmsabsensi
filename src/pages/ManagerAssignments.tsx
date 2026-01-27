@@ -47,7 +47,7 @@ export default function ManagerAssignments() {
 
     // Redirect if not admin
     useEffect(() => {
-        if (role && role !== 'admin_hr') {
+        if (role && role !== 'admin_hr' && role !== 'super_admin') {
             navigate('/dashboard');
         } else {
             fetchData();

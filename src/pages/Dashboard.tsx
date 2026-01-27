@@ -102,7 +102,7 @@ export default function Dashboard() {
 
   // Allow admin_hr OR any email containing 'admin' (for dev convenience)
   // Allow admin_hr, manager OR any email containing 'admin' (for dev convenience)
-  const isAdmin = profile?.role === 'admin_hr' || profile?.role === 'manager' || profile?.email?.includes('admin');
+  const isAdmin = profile?.role === 'super_admin' || profile?.role === 'admin_hr' || profile?.role === 'manager' || profile?.email?.includes('admin');
 
   useEffect(() => {
     fetchDashboardData();
@@ -164,7 +164,7 @@ export default function Dashboard() {
       }
 
       // Fetch Team Stats if Manager/Admin
-      if (profile?.role === 'admin_hr' || profile?.role === 'manager') {
+      if (profile?.role === 'super_admin' || profile?.role === 'admin_hr' || profile?.role === 'manager') {
         let teamProfilesQuery = supabase.from('profiles').select('id').eq('is_active', true);
         if (profile.role === 'manager' && profile.department_id) {
           teamProfilesQuery = teamProfilesQuery.eq('department_id', profile.department_id);
@@ -582,7 +582,7 @@ export default function Dashboard() {
               )}
 
               {/* Admin Section - Only Visible to HR/Manager */}
-              {(profile?.role === 'admin_hr' || profile?.role === 'manager') && (
+              {(profile?.role === 'super_admin' || profile?.role === 'admin_hr' || profile?.role === 'manager') && (
                 <>
                   <div className="my-4 border-t border-slate-100" />
                   <h3 className="text-xs font-bold text-slate-700 mb-3 flex items-center gap-2">
@@ -590,14 +590,20 @@ export default function Dashboard() {
                   </h3>
                   <div className="grid grid-cols-4 md:grid-cols-8 gap-y-4 gap-x-2 text-center">
                     <MenuGridItem href="/team-map" icon={Users} label="Pantau" color="text-cyan-600" bg="bg-cyan-50" />
-                    <MenuGridItem href="/employees" icon={Users} label="Staff" color="text-indigo-600" bg="bg-indigo-50" roles={['admin_hr', 'manager']} />
-                    <MenuGridItem href="/manager-assignments" icon={UserCheck} label="Atasan" color="text-violet-600" bg="bg-violet-50" roles={['admin_hr']} />
-                    <MenuGridItem href="/shifts" icon={Clock} label="Shift" color="text-pink-600" bg="bg-pink-50" roles={['admin_hr', 'manager']} />
-                    <MenuGridItem href="/holidays" icon={CalendarDays} label="Libur" color="text-red-600" bg="bg-red-50" roles={['admin_hr']} />
+                    <MenuGridItem href="/employees" icon={Users} label="Staff" color="text-indigo-600" bg="bg-indigo-50" roles={['super_admin', 'admin_hr', 'manager']} />
+                    <MenuGridItem href="/manager-assignments" icon={UserCheck} label="Atasan" color="text-violet-600" bg="bg-violet-50" roles={['super_admin', 'admin_hr']} />
+                    <MenuGridItem href="/shifts" icon={Clock} label="Shift" color="text-pink-600" bg="bg-pink-50" roles={['super_admin', 'admin_hr', 'manager']} />
+                    <MenuGridItem href="/holidays" icon={CalendarDays} label="Libur" color="text-red-600" bg="bg-red-50" roles={['super_admin', 'admin_hr']} />
                     <MenuGridItem href="/approvals" icon={ClipboardCheck} label="Approval" color="text-amber-600" bg="bg-amber-50" />
-                    <MenuGridItem href="/payroll" icon={DollarSign} label="Payroll" color="text-green-600" bg="bg-green-50" roles={['admin_hr']} />
-                    <MenuGridItem href="/locations" icon={MapPin} label="Lokasi" color="text-rose-600" bg="bg-rose-50" roles={['admin_hr']} />
-                    <MenuGridItem href="/reports" icon={BarChart3} label="Laporan" color="text-slate-600" bg="bg-slate-50" roles={['admin_hr', 'manager']} />
+                    <MenuGridItem href="/payroll" icon={DollarSign} label="Payroll" color="text-green-600" bg="bg-green-50" roles={['super_admin', 'admin_hr']} />
+                    <MenuGridItem href="/locations" icon={MapPin} label="Lokasi" color="text-rose-600" bg="bg-rose-50" roles={['super_admin', 'admin_hr']} />
+                    <MenuGridItem href="/reports" icon={BarChart3} label="Laporan" color="text-slate-600" bg="bg-slate-50" roles={['super_admin', 'admin_hr', 'manager']} />
+                    {profile?.role === 'super_admin' && (
+                      <>
+                        <MenuGridItem href="/audit-logs" icon={FileText} label="Audit" color="text-slate-800" bg="bg-slate-100" />
+                        <MenuGridItem href="/settings" icon={SettingsIcon} label="System" color="text-neutral-600" bg="bg-neutral-100" />
+                      </>
+                    )}
                   </div>
                 </>
               )}

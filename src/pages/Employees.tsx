@@ -82,7 +82,7 @@ import { MasterDataDialog } from '@/components/employees/MasterDataDialog';
 export default function EmployeesPage() {
     const navigate = useNavigate();
     const { toast } = useToast();
-    const { profile } = useAuth();
+    const { profile, role } = useAuth();
     const isMobile = useIsMobile();
     const [employees, setEmployees] = useState<Profile[]>([]);
     const [departments, setDepartments] = useState<any[]>([]);
@@ -128,8 +128,8 @@ export default function EmployeesPage() {
     };
 
     useEffect(() => {
-        fetchData();
-    }, []);
+        if (role) fetchData();
+    }, [role, profile?.department_id]);
 
     const fetchData = async () => {
         setLoading(true);
@@ -138,12 +138,12 @@ export default function EmployeesPage() {
                 .from('profiles')
                 .select('*, department:departments(id, name), job_position:job_positions(id, title)');
 
-            if ((profile?.role === 'manager' || profile?.role === 'employee') && profile?.department_id) {
+            if ((role === 'manager' || role === 'employee') && role !== 'super_admin' && profile?.department_id) {
                 empQuery = empQuery.eq('department_id', profile.department_id);
             }
 
             // Hide Admin HR from Managers
-            if (profile?.role === 'manager') {
+            if (role === 'manager') {
                 empQuery = empQuery.neq('role', 'admin_hr');
             }
 
@@ -297,7 +297,7 @@ export default function EmployeesPage() {
                                             <Database className="mr-2 h-4 w-4" /> Data Master
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onClick={handleExportExcel}>
-                                            <Download className="mr-2 h-4 w-4" /> Export Excel
+                                            <Download className="mr-2 h-4 w-4" /> Unduh Excel
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -495,7 +495,7 @@ export default function EmployeesPage() {
                             {profile?.role === 'manager' ? 'Lihat Data Master' : 'Kelola Data'}
                         </Button>
                         <Button variant="outline" className="rounded-xl border-slate-200" onClick={handleExportExcel}>
-                            <FileSpreadsheet className="mr-2 h-4 w-4" /> Ekspor Excel
+                            <FileSpreadsheet className="mr-2 h-4 w-4" /> Unduh Excel
                         </Button>
                         <Button
                             variant="secondary"
@@ -638,6 +638,9 @@ export default function EmployeesPage() {
                                                                 {employee.role === 'admin_hr' && profile?.role !== 'manager' && (
                                                                     <Badge className="mt-1 bg-purple-100 text-purple-700 border-none text-[9px] px-1.5 h-4">ADMIN</Badge>
                                                                 )}
+                                                                {employee.role === 'super_admin' && (
+                                                                    <Badge className="mt-1 bg-slate-800 text-white border-none text-[9px] px-1.5 h-4">SUPER ADMIN</Badge>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </TableCell>
@@ -676,29 +679,50 @@ export default function EmployeesPage() {
                                                         </Badge>
                                                     </TableCell>
                                                     <TableCell className="pr-6 text-right">
-                                                        {(profile?.role === 'admin_hr' || (profile?.role === 'manager' && employee.role === 'employee')) && (
-                                                            <DropdownMenu>
-                                                                <DropdownMenuTrigger asChild>
-                                                                    <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-300 hover:text-slate-700" onClick={(e) => e.stopPropagation()}>
-                                                                        <MoreVertical className="h-4 w-4" />
-                                                                    </Button>
-                                                                </DropdownMenuTrigger>
-                                                                <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 shadow-xl border-slate-100">
-                                                                    <DropdownMenuLabel className="text-xs text-slate-400 font-medium">Opsi Karyawan</DropdownMenuLabel>
-                                                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditClick(employee); }} className="rounded-xl font-bold py-2.5">
-                                                                        <UserCog className="mr-2 h-4 w-4 text-blue-500" /> Edit Detail
-                                                                    </DropdownMenuItem>
-                                                                    {profile?.role === 'admin_hr' && (
-                                                                        <>
-                                                                            <DropdownMenuSeparator />
-                                                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleToggleStatus(employee); }} className="rounded-xl font-bold py-2.5 text-red-600 focus:text-red-700 bg-red-50/50">
-                                                                                <UserX className="mr-2 h-4 w-4" /> {employee.is_active ? 'Nonaktifkan Akun' : 'Aktifkan Akun'}
-                                                                            </DropdownMenuItem>
-                                                                        </>
-                                                                    )}
-                                                                </DropdownMenuContent>
-                                                            </DropdownMenu>
-                                                        )}
+                                                        <div className="flex justify-end items-center gap-2">
+                                                            {(role === 'super_admin' || role === 'admin_hr' || (role === 'manager' && employee.role === 'employee')) && (
+                                                                (employee.role !== 'super_admin' || role === 'super_admin') && (
+                                                                    <>
+                                                                        <Button
+                                                                            variant="secondary"
+                                                                            size="icon"
+                                                                            className="h-8 w-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 border border-blue-100 shadow-sm transition-all"
+                                                                            onClick={(e) => { e.stopPropagation(); handleEditClick(employee); }}
+                                                                            title="Edit Detail"
+                                                                        >
+                                                                            <UserCog className="h-4 w-4" />
+                                                                        </Button>
+
+                                                                        <DropdownMenu>
+                                                                            <DropdownMenuTrigger asChild>
+                                                                                <Button
+                                                                                    variant="ghost"
+                                                                                    size="icon"
+                                                                                    className="h-8 w-8 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
+                                                                                    onClick={(e) => e.stopPropagation()}
+                                                                                >
+                                                                                    <MoreVertical className="h-4 w-4" />
+                                                                                </Button>
+                                                                            </DropdownMenuTrigger>
+                                                                            <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 shadow-xl border-slate-100">
+                                                                                <DropdownMenuLabel className="text-xs text-slate-400 font-medium">Opsi Karyawan</DropdownMenuLabel>
+                                                                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditClick(employee); }} className="rounded-xl font-bold py-2.5">
+                                                                                    <UserCog className="mr-2 h-4 w-4 text-blue-500" /> Edit Detail
+                                                                                </DropdownMenuItem>
+                                                                                {(role === 'super_admin' || role === 'admin_hr') && (
+                                                                                    <>
+                                                                                        <DropdownMenuSeparator />
+                                                                                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleToggleStatus(employee); }} className="rounded-xl font-bold py-2.5 text-red-600 focus:text-red-700 bg-red-50/50">
+                                                                                            <UserX className="mr-2 h-4 w-4" /> {employee.is_active ? 'Nonaktifkan Akun' : 'Aktifkan Akun'}
+                                                                                        </DropdownMenuItem>
+                                                                                    </>
+                                                                                )}
+                                                                            </DropdownMenuContent>
+                                                                        </DropdownMenu>
+                                                                    </>
+                                                                )
+                                                            )}
+                                                        </div>
                                                     </TableCell>
                                                 </TableRow>
                                             ))
@@ -883,18 +907,24 @@ export default function EmployeesPage() {
                                 <div className="space-y-2">
                                     <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Role Akses</Label>
                                     <div className="grid grid-cols-3 gap-3">
-                                        {['employee', 'manager', 'admin_hr'].map((role) => (
-                                            <div
-                                                key={role}
-                                                onClick={() => setEditForm({ ...editForm, role: role as any })}
-                                                className={`cursor-pointer border-2 rounded-xl p-3 text-center transition-all ${editForm.role === role
-                                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                                    : 'border-slate-100 bg-white text-slate-500 hover:border-blue-200'
-                                                    }`}
-                                            >
-                                                <p className="text-xs font-black uppercase">{role.replace('_', ' ')}</p>
-                                            </div>
-                                        ))}
+                                        {(() => {
+                                            const availableRoles = ['employee', 'manager', 'admin_hr'];
+                                            if (profile?.role === 'super_admin') {
+                                                availableRoles.push('super_admin');
+                                            }
+                                            return availableRoles.map((role) => (
+                                                <div
+                                                    key={role}
+                                                    onClick={() => setEditForm({ ...editForm, role: role as any })}
+                                                    className={`cursor-pointer border-2 rounded-xl p-3 text-center transition-all ${editForm.role === role
+                                                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                                        : 'border-slate-100 bg-white text-slate-500 hover:border-blue-200'
+                                                        }`}
+                                                >
+                                                    <p className="text-xs font-black uppercase">{role.replace('_', ' ')}</p>
+                                                </div>
+                                            ));
+                                        })()}
                                     </div>
                                     <p className="text-[10px] text-slate-400 mt-2">
                                         * <b>Employee</b>: Akses standar (Absen, Cuti). <br />

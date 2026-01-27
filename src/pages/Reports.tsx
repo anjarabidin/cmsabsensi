@@ -47,7 +47,7 @@ type ProfileRow = {
 export default function ReportsPage() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const { profile } = useAuth();
+  const { profile, role } = useAuth();
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
@@ -64,8 +64,10 @@ export default function ReportsPage() {
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
 
   useEffect(() => {
-    fetchReport();
-  }, []);
+    if (role) {
+      fetchReport();
+    }
+  }, [role, profile?.department_id]);
 
   const fetchReport = async () => {
     setLoading(true);
@@ -83,11 +85,11 @@ export default function ReportsPage() {
         .select('id, full_name, employee_id, department:departments(name), role, avatar_url, department_id')
         .order('full_name', { ascending: true });
 
-      if (profile?.role === 'manager' && profile?.department_id) {
+      if (role === 'manager' && profile?.department_id) {
         // Manager only sees their department
         attQuery = attQuery.eq('profiles.department_id', profile.department_id);
         profQuery = profQuery.eq('department_id', profile.department_id);
-      } else if (profile?.role !== 'admin_hr' && profile?.role !== 'super_admin') {
+      } else if (role !== 'admin_hr' && role !== 'super_admin') {
         // Regular employee only sees own data
         attQuery = attQuery.eq('user_id', profile?.id);
         profQuery = profQuery.eq('id', profile?.id);
@@ -514,7 +516,7 @@ export default function ReportsPage() {
               onClick={exportExcel}
               disabled={filteredAttendances.length === 0}
             >
-              <FileSpreadsheet className="mr-2 h-4 w-4" /> Excel
+              <FileSpreadsheet className="mr-2 h-4 w-4" /> Unduh Excel
             </Button>
             <Button
               variant="outline"
@@ -522,7 +524,7 @@ export default function ReportsPage() {
               onClick={exportCsv}
               disabled={filteredAttendances.length === 0}
             >
-              <Download className="mr-2 h-4 w-4" /> CSV
+              <Download className="mr-2 h-4 w-4" /> Unduh CSV
             </Button>
           </div>
         </div>
@@ -541,7 +543,7 @@ export default function ReportsPage() {
                   setEndDate(format(new Date(), 'yyyy-MM-dd'));
                   setSelectedDept('all');
                   setSelectedRole('all');
-                }} className="text-xs text-slate-400 hover:text-red-500 h-6 px-2">Reset</Button>
+                }} className="text-xs text-slate-400 hover:text-red-500 h-6 px-2">Atur Ulang</Button>
               </div>
 
               {/* Quick Date Filters */}

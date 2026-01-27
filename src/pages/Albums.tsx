@@ -61,7 +61,7 @@ export default function AlbumsPage() {
     const [newAlbumVisibility, setNewAlbumVisibility] = useState<'public' | 'department'>('public');
     const [creating, setCreating] = useState(false);
 
-    const canManage = activeRole === 'admin_hr' || activeRole === 'manager';
+    const canManage = activeRole === 'super_admin' || activeRole === 'admin_hr' || activeRole === 'manager';
 
     useEffect(() => {
         fetchAlbums();

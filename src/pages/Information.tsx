@@ -75,7 +75,7 @@ export default function InformationPage() {
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [itemToDelete, setItemToDelete] = useState<{ id: string, title: string } | null>(null);
 
-    const isAdmin = profile?.role === 'admin_hr' || profile?.email?.includes('admin');
+    const isAdmin = profile?.role === 'super_admin' || profile?.role === 'admin_hr' || profile?.email?.includes('admin');
 
     useEffect(() => {
         fetchAnnouncements();

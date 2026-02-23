@@ -16,7 +16,6 @@ import {
     RefreshCw,
     LogIn,
     LogOut,
-    BellPlus,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -181,16 +180,6 @@ export default function AttendanceMobileView({
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                            {!todayAttendance?.clock_out && (
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => setReminderOpen(true)}
-                                    className="text-white hover:bg-white/20 h-10 w-10 rounded-full"
-                                >
-                                    <BellPlus className="h-5 w-5" />
-                                </Button>
-                            )}
                             <WibClock />
                         </div>
                     </div>

@@ -38,7 +38,9 @@ import {
   UserCheck,
   Fingerprint,
   UserX,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Bell,
+  Loader2
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';

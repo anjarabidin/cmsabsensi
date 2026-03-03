@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useState, useMemo, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useMemo, useRef, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { AppRole, Profile } from '@/types';
+import { toast } from '@/hooks/use-toast';
 
 interface AuthContextType {
   user: User | null;
@@ -17,6 +18,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  navPermissions: Record<string, boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,170 +30,253 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [activeRole, setActiveRole] = useState<AppRole | null>(null);
+  const [navPermissions, setNavPermissions] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
+  const initialProfileFetched = useRef(false);
 
-  const fetchProfile = async (userId: string) => {
+  // Helper to get or create device ID
+  const getDeviceId = () => {
     try {
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select(`
-          *,
-          department:departments(id, name, code),
-          job_position:job_positions(id, title)
-        `)
-        .eq('id', userId)
-        .single();
+      let deviceId = localStorage.getItem('device_id');
+      if (!deviceId) {
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+          deviceId = crypto.randomUUID();
+        } else {
+          deviceId = 'dev-' + Math.random().toString(36).substring(2, 15);
+        }
+        localStorage.setItem('device_id', deviceId);
+      }
+      return deviceId;
+    } catch (e) {
+      return 'fallback-' + Date.now();
+    }
+  };
 
-      if (profileError) {
-        console.error('Error fetching profile:', profileError);
-        return;
+  const fetchProfile = async (userId: string): Promise<AppRole[]> => {
+    console.log('🔐 [AuthContext] fetchProfile START for userId:', userId);
+    // Safety timeout: if fetchProfile hangs > 10s, release loading to avoid permanent stuck
+    const timeoutId = setTimeout(() => {
+      console.error('🔐 [AuthContext] fetchProfile TIMEOUT (10s) — forcing setLoading(false)');
+      setLoading(false);
+    }, 10000);
+
+    try {
+      console.log('🔐 [AuthContext] fetchProfile: calling Supabase Promise.all...');
+      // ⚡ OPTIMIZED: Fetch profile AND roles in PARALLEL (saves ~400ms round-trip)
+      const [profileRes, roleRes] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select(`*, department:department_id(id, name, code), job_position:job_position_id(id, title)`)
+          .eq('id', userId)
+          .single(),
+        supabase.from('user_roles').select('role').eq('user_id', userId)
+      ]);
+      console.log('🔐 [AuthContext] fetchProfile: Supabase resolved. profileErr:', profileRes.error?.message, '| roleErr:', roleRes.error?.message);
+
+      if (profileRes.error) {
+        console.error('❌ Error fetching profile:', profileRes.error);
+        setLoading(false);
+        return [];
       }
 
-      setProfile(profileData as Profile);
+      setProfile(profileRes.data as Profile);
 
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId);
-
-      if (roleError) {
-        console.error('Error fetching roles:', roleError);
-        return;
+      if (roleRes.error) {
+        console.error('❌ Error fetching roles:', roleRes.error);
+        setLoading(false);
+        return [];
       }
 
-      const userRoles = (roleData || []).map(r => r.role as AppRole);
-      setRoles(userRoles);
-      const primaryRole = userRoles.includes('super_admin') ? 'super_admin'
-        : userRoles.includes('admin_hr') ? 'admin_hr'
-          : userRoles.includes('manager') ? 'manager'
-            : userRoles.includes('employee') ? 'employee'
-              : (profileData.role as AppRole); // Fallback to profile.role if user_roles table is empty/unsynced
+      const userRoles = (roleRes.data || []).map(r => r.role as AppRole);
+
+      // Fallback to profile.role if user_roles is empty
+      const effectiveRoles = userRoles.length === 0 && profileRes.data?.role
+        ? [profileRes.data.role as AppRole]
+        : userRoles;
+
+      setRoles(effectiveRoles);
+
+      const primaryRole = effectiveRoles.includes('super_admin') ? 'super_admin'
+        : effectiveRoles.includes('admin_hr') ? 'admin_hr'
+          : effectiveRoles.includes('manager') ? 'manager'
+            : effectiveRoles.includes('employee') ? 'employee'
+              : effectiveRoles.includes('driver') ? 'driver'
+                : (profileRes.data?.role as AppRole);
 
       setRole(primaryRole);
       setActiveRole(primaryRole);
 
-      // Sync user_roles state if empty but profile has role
-      if (userRoles.length === 0 && profileData.role) {
-        setRoles([profileData.role as AppRole]);
-      }
-      setActiveRole(primaryRole);
+      // ⚡ Fetch Navigation Permissions (Role-based + User Overrides)
+      const [rolePermsRes, userPermsRes] = await Promise.all([
+        supabase.from('role_nav_permissions').select('nav_key, is_enabled').eq('role', primaryRole),
+        supabase.from('user_nav_permissions').select('nav_key, is_enabled').eq('user_id', userId)
+      ]);
+
+      const perms: Record<string, boolean> = {};
+      // 1. Apply role defaults
+      (rolePermsRes.data || []).forEach(row => { perms[row.nav_key] = row.is_enabled; });
+      // 2. Override with user-specific settings (if any)
+      (userPermsRes.data || []).forEach(row => { perms[row.nav_key] = row.is_enabled; });
+
+      setNavPermissions(perms);
+
+      console.log('🔐 [AuthContext] fetchProfile DONE. primaryRole:', primaryRole);
+
+      return effectiveRoles;
     } catch (error) {
-      console.error('Error in fetchProfile:', error);
-    }
-  };
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-
-        if (session?.user) {
-          setTimeout(() => {
-            fetchProfile(session.user.id);
-          }, 0);
-        } else {
-          setProfile(null);
-          setRole(null);
-          setRoles([]);
-          setActiveRole(null);
-        }
-
-        setLoading(false);
-      }
-    );
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      }
-
+      console.error('❌ Error in fetchProfile:', error);
       setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // Helper to get or create device ID
-  const getDeviceId = () => {
-    let deviceId = localStorage.getItem('device_id');
-    if (!deviceId) {
-      deviceId = crypto.randomUUID();
-      localStorage.setItem('device_id', deviceId);
+      return [];
+    } finally {
+      clearTimeout(timeoutId);
+      // ⚡ Release loading state immediately after profile is set
+      setLoading(false);
     }
-    return deviceId;
   };
 
-  const signIn = async (email: string, password: string) => {
-    // 1. Standard Supabase Auth
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) return { error };
-    if (!data.user) return { error: new Error("User not found") };
-
-    // 2. Device Locking Logic
+  const checkDeviceLock = async (userId: string, isSuperAdmin: boolean): Promise<{ success: boolean; error?: string }> => {
     const deviceId = getDeviceId();
     const userAgent = navigator.userAgent;
 
     try {
-      // Check if user has a registered device
       const { data: existingDevice } = await supabase
         .from('user_devices')
         .select('device_id')
-        .eq('user_id', data.user.id)
+        .eq('user_id', userId)
         .maybeSingle();
 
       if (existingDevice) {
-        // Enforce Lock
         if (existingDevice.device_id !== deviceId) {
-          // Auto-logout if unauthorized device
-          await supabase.auth.signOut();
-          return {
-            error: new Error("AKSES DITOLAK: Akun ini terkunci pada perangkat lain. Hubungi HR untuk reset.")
-          };
+          if (isSuperAdmin) {
+            await supabase.from('user_devices').update({
+              device_id: deviceId,
+              device_name: `${userAgent} (Reset)`,
+              last_login: new Date().toISOString()
+            }).eq('user_id', userId);
+            return { success: true };
+          }
+          return { success: false, error: `AKSES DITOLAK: Akun ini terkunci di perangkat lain.` };
         }
+        // Fire-and-forget: update last_login without blocking
+        supabase.from('user_devices')
+          .update({ last_login: new Date().toISOString() })
+          .eq('user_id', userId)
+          .then(() => { });
       } else {
-        // First time login: Register this device
-        const { error: registerError } = await supabase
-          .from('user_devices')
-          .insert({
-            user_id: data.user.id,
-            device_id: deviceId,
-            device_name: userAgent
-          });
-
-        if (registerError) {
-          console.error("Device registration failed:", registerError);
-          // Optional: decide if we block login if registration fails
-        }
+        // Fire-and-forget: register device without blocking
+        supabase.from('user_devices').insert({
+          user_id: userId,
+          device_id: deviceId,
+          device_name: userAgent,
+          last_login: new Date().toISOString()
+        }).then(() => { });
       }
+      return { success: true };
     } catch (err) {
-      console.error("Device verification error:", err);
+      console.error('[Auth] Device check error:', err);
+      return { success: true }; // Fail open
     }
+  };
 
-    return { data, error: null };
+  useEffect(() => {
+    let authSubscription: any;
+
+    const init = async () => {
+      // Global safety timeout to prevent permanent spinner
+      const globalTimeout = setTimeout(() => {
+        if (loading) {
+          console.warn('🔐 [AuthContext] Global Init Timeout (8s) — forcing setLoading(false)');
+          setLoading(false);
+        }
+      }, 8000);
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+        setUser(session?.user ?? null);
+
+        if (session?.user) {
+          console.log('🔐 [AuthContext] Session found in init(), fetching profile...');
+          if (!initialProfileFetched.current) {
+            initialProfileFetched.current = true;
+            // Fetch profile immediately to speed up initial load
+            await fetchProfile(session.user.id);
+          }
+        } else {
+          setLoading(false);
+        }
+      } catch (e) {
+        console.error('[Auth] Init error:', e);
+        setLoading(false);
+      } finally {
+        clearTimeout(globalTimeout);
+      }
+    };
+
+    init();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
+      console.log('🔐 [AuthContext] onAuthStateChange event:', event);
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
+
+      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+        if (newSession?.user) {
+          // If already fetching or fetched during init(), skip this trigger unless it's a new SIGNED_IN
+          if (initialProfileFetched.current && event === 'INITIAL_SESSION') {
+            console.log('🔐 [AuthContext] Profile already fetching/fetched, skipping INITIAL_SESSION trigger.');
+            return;
+          }
+
+          initialProfileFetched.current = true;
+          console.log('🔐 [AuthContext] Deferring fetchProfile to next tick (avoid deadlock during _recoverAndRefresh)...');
+          setTimeout(async () => {
+            console.log('🔐 [AuthContext] fetchProfile executing (deferred tick)...');
+            const userRoles = await fetchProfile(newSession.user!.id);
+            // Device lock in background — never block the UI
+            checkDeviceLock(newSession.user!.id, userRoles.includes('super_admin')).then(({ success }) => {
+              if (!success) {
+                toast({
+                  title: "Akses Perangkat Ditolak",
+                  description: "Akun Anda terdaftar di perangkat lain. Silakan hubungi admin.",
+                  variant: "destructive"
+                });
+                supabase.auth.signOut().then(() => {
+                  setProfile(null); setRole(null); setRoles([]); setActiveRole(null);
+                });
+              }
+            });
+          }, 0);
+        }
+      } else if (event === 'SIGNED_OUT') {
+        initialProfileFetched.current = false;
+        setProfile(null);
+        setRole(null);
+        setRoles([]);
+        setActiveRole(null);
+        setLoading(false);
+      } else {
+        // TOKEN_REFRESHED, PASSWORD_RECOVERY, etc. — never touch profile state
+        console.log('🔐 [AuthContext] Ignoring non-profile event:', event);
+      }
+    });
+
+    authSubscription = subscription;
+    return () => authSubscription?.unsubscribe();
+  }, []);
+
+  const signIn = async (email: string, password: string) => {
+    return await supabase.auth.signInWithPassword({ email, password });
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-
-    const { error } = await supabase.auth.signUp({
+    return await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          full_name: fullName,
-        },
-      },
+        data: { full_name: fullName }
+      }
     });
-    return { error };
   };
 
   const signOut = async () => {
@@ -205,18 +290,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshProfile = async () => {
-    if (user) {
-      await fetchProfile(user.id);
-    }
+    if (user) await fetchProfile(user.id);
   };
 
-  const hasRole = (checkRole: AppRole) => {
-    return roles.includes(checkRole);
-  };
+  const hasRole = (r: AppRole) => roles.includes(r);
 
-  const switchRole = (newRole: AppRole) => {
-    if (roles.includes(newRole)) {
-      setActiveRole(newRole);
+  const switchRole = async (r: AppRole) => {
+    if (roles.includes(r) && user) {
+      setActiveRole(r);
+      // ⚡ Update permissions when switching roles (including user overrides)
+      const [rolePermsRes, userPermsRes] = await Promise.all([
+        supabase.from('role_nav_permissions').select('nav_key, is_enabled').eq('role', r),
+        supabase.from('user_nav_permissions').select('nav_key, is_enabled').eq('user_id', user.id)
+      ]);
+
+      const perms: Record<string, boolean> = {};
+      (rolePermsRes.data || []).forEach(row => { perms[row.nav_key] = row.is_enabled; });
+      (userPermsRes.data || []).forEach(row => { perms[row.nav_key] = row.is_enabled; });
+
+      setNavPermissions(perms);
     }
   };
 
@@ -234,7 +326,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUp,
     signOut,
     refreshProfile,
-  }), [user, session, profile, role, roles, activeRole, loading]);
+    navPermissions
+  }), [user, session, profile, role, roles, activeRole, loading, navPermissions]);
 
   return (
     <AuthContext.Provider value={authValue}>

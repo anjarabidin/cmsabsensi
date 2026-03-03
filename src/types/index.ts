@@ -1,4 +1,4 @@
-export type AppRole = 'super_admin' | 'admin_hr' | 'manager' | 'employee';
+export type AppRole = 'super_admin' | 'admin_hr' | 'manager' | 'employee' | 'driver';
 export type WorkMode = 'wfo' | 'wfh' | 'field';
 export type AttendanceStatus = 'present' | 'late' | 'absent' | 'leave' | 'sick';
 export type RequestStatus = 'pending' | 'approved' | 'rejected';
@@ -508,4 +508,18 @@ export interface AlbumItem {
   file_name: string | null;
   file_size: number | null;
   created_at: string;
+}
+
+export interface SalarySlip {
+  id: string;
+  user_id: string;
+  month: number;
+  year: number;
+  file_path: string;
+  file_name: string;
+  status: 'published' | 'draft';
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
 }

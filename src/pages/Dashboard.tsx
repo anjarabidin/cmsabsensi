@@ -40,7 +40,10 @@ import {
   UserX,
   Image as ImageIcon,
   Bell,
-  Loader2
+  Loader2,
+  Car,
+  Smartphone,
+  Navigation
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -93,6 +96,19 @@ export default function Dashboard() {
   const [agendaPopupOpen, setAgendaPopupOpen] = useState(false);
   const [todayAgendas, setTodayAgendas] = useState<UpcomingActivity[]>([]);
   const [deptManager, setDeptManager] = useState<any>(null);
+  const [driverAssignment, setDriverAssignment] = useState<any>(null);
+  const [pendingAccountsCount, setPendingAccountsCount] = useState(0);
+  const [approvalPopupOpen, setApprovalPopupOpen] = useState(false);
+  const [hasSkippedApproval, setHasSkippedApproval] = useState(false);
+  const [announcementPopupOpen, setAnnouncementPopupOpen] = useState(false);
+  const [activeAnnouncement, setActiveAnnouncement] = useState<Announcement | null>(null);
+
+  // Modular Loading States
+  const [loadingAttendance, setLoadingAttendance] = useState(true);
+  const [loadingAnnouncements, setLoadingAnnouncements] = useState(true);
+  const [loadingActivities, setLoadingActivities] = useState(true);
+  const [loadingDriver, setLoadingDriver] = useState(true);
+  const [loadingStats, setLoadingStats] = useState(true);
 
   // Announcement Form State
   const [announcementOpen, setAnnouncementOpen] = useState(false);
@@ -108,84 +124,278 @@ export default function Dashboard() {
   const push = usePushNotifications();
   const [reliabilityModalOpen, setReliabilityModalOpen] = useState(false);
   const [testSuccess, setTestSuccess] = useState<boolean | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
   // Check if push is ready
   const isPushActive = push.permission === 'granted';
   const isPushOptimized = push.isOptimized;
 
   // Allow admin_hr OR any email containing 'admin' (for dev convenience)
-  // Allow admin_hr, manager OR any email containing 'admin' (for dev convenience)
-  // Allow admin_hr, manager OR any email containing 'admin' (for dev convenience)
   const currentRole = activeRole || role;
   const isAdmin = currentRole === 'super_admin' || currentRole === 'admin_hr' || currentRole === 'manager' || profile?.email?.includes('admin');
 
+  // Initial load
   useEffect(() => {
+    console.log('🔵 [Dashboard] useEffect triggered:', { userId: user?.id, activeRole, profileId: profile?.id, departmentId: profile?.department_id });
     if (user?.id) {
       fetchDashboardData();
     }
-  }, [user?.id, activeRole]);
+  }, [user?.id, activeRole, profile?.id, profile?.department_id]);
+
+  // Auto-refresh every 5 minutes
+  useEffect(() => {
+    if (!user?.id) return;
+    const autoRefreshInterval = setInterval(() => {
+      console.log('[Dashboard] Auto-refresh triggered');
+      fetchDashboardData();
+    }, 5 * 60 * 1000); // 5 minutes
+    return () => clearInterval(autoRefreshInterval);
+  }, [user?.id]);
+
+  // Realtime subscription: attendance changes
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel('dashboard-attendance-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'attendances',
+      }, (payload) => {
+        console.log('[Dashboard] Realtime attendance change:', payload.eventType);
+        // Silently refresh core data on change
+        fetchDashboardData();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id]);
+
+  const handleManualRefresh = async () => {
+    setIsManualRefreshing(true);
+    await fetchDashboardData();
+    setLastRefreshed(new Date());
+    setIsManualRefreshing(false);
+  };
+
 
   const fetchDashboardData = async () => {
-    try {
-      if (!user) return;
-      const today = format(new Date(), 'yyyy-MM-dd');
-      const startOfMonth = format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd');
+    if (!user) {
+      console.warn('⚠️ [Dashboard] fetchDashboardData called but user is null, skipping.');
+      return;
+    }
+    console.log('🟢 [Dashboard] fetchDashboardData START — setting loading=true');
+    setLoading(true);
 
-      let announcementQuery = supabase.from('announcements')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(10);
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const startOfMonth = format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd');
+    const now = new Date().toISOString();
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+    const endOfTodayISO = endOfToday.toISOString();
 
-      if (!isAdmin) {
-        announcementQuery = announcementQuery.eq('is_active', true);
+    // 1. CRITICAL DATA (Attendance & Schedule)
+    const fetchCoreData = async () => {
+      console.log('🟡 [Dashboard] fetchCoreData START');
+      try {
+        const [todayRes, scheduleRes] = await Promise.all([
+          supabase.from('attendances').select('*').eq('user_id', user.id).eq('date', today).maybeSingle(),
+          (supabase.from('employee_schedules') as any).select('*, shift:shifts(*)').eq('user_id', user.id).eq('date', today).maybeSingle()
+        ]);
+        console.log('✅ [Dashboard] fetchCoreData resolved. Att error:', todayRes.error, '| Sched error:', scheduleRes.error);
+        setTodayAttendance(todayRes.data as Attendance | null);
+        setTodaySchedule(scheduleRes.data);
+        setLastRefreshed(new Date());
+      } catch (err) {
+        console.error('❌ [Dashboard] fetchCoreData EXCEPTION:', err);
+      } finally {
+        console.log('🔓 [Dashboard] fetchCoreData finally — setLoading(false) called');
+        setLoadingAttendance(false);
+        setLoading(false); // Hide main loader once core tools are ready
       }
+    };
 
-      const [todayRes, scheduleRes, monthRes, announcementsRes] = await Promise.all([
-        supabase.from('attendances').select('*').eq('user_id', user.id).eq('date', today).maybeSingle(),
-        (supabase.from('employee_schedules') as any).select('*, shift:shifts(*)').eq('user_id', user.id).eq('date', today).maybeSingle(),
-        supabase.from('attendances').select('*').eq('user_id', user.id).gte('date', startOfMonth).lte('date', today),
-        announcementQuery
-      ]);
-
-      setTodayAttendance(todayRes.data as Attendance | null);
-      setTodaySchedule(scheduleRes.data);
-
-      if (announcementsRes.data) {
-        // Dashboard should only show ACTIVE announcements for everyone (including admin)
-        // Expired and deleted ones are visible in /information History tab
-        const filteredAnnouncements = (announcementsRes.data as Announcement[]).filter(a => {
-          if (!a.is_active) return false;
-          if (a.deleted_at) return false;
-          if (a.expires_at && new Date(a.expires_at) <= new Date()) return false;
-          return true;
-        });
-        setAnnouncements(filteredAnnouncements);
+    // 2. DRIVER & ASSIGNMENT DATA (Prioritized for Driver Role)
+    const fetchDriverData = async () => {
+      try {
+        const { data } = await supabase.rpc('get_driver_assignment', { _user_id: user.id });
+        const assignmentData = data as any[];
+        setDriverAssignment(assignmentData && assignmentData.length > 0 ? assignmentData[0] : null);
+      } catch (err) {
+        console.error("Error fetching driver data:", err);
+      } finally {
+        setLoadingDriver(false);
       }
+    };
 
-      // Fetch Dept Manager for transparency
-      if (profile?.department_id) {
-        const { data: manager } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('department_id', profile.department_id)
-          .eq('role', 'manager')
-          .limit(1)
-          .maybeSingle();
-        setDeptManager(manager);
+    // 3. ANNOUNCEMENTS & MANAGER
+    const fetchInformationalData = async () => {
+      try {
+        let announcementQuery = supabase.from('announcements')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        if (!isAdmin) {
+          announcementQuery = announcementQuery.eq('is_active', true);
+        }
+
+        const [announcementsRes, managerRes] = await Promise.all([
+          announcementQuery,
+          profile?.department_id
+            ? supabase.from('profiles').select('full_name').eq('department_id', profile.department_id).eq('role', 'manager').limit(1).maybeSingle()
+            : Promise.resolve({ data: null })
+        ]);
+
+        if (announcementsRes.data) {
+          const filteredAnnouncements = (announcementsRes.data as Announcement[]).filter(a => {
+            if (!a.is_active) return false;
+            if (a.deleted_at) return false;
+            if (a.expires_at && new Date(a.expires_at) <= new Date()) return false;
+            return true;
+          });
+
+          setAnnouncements(filteredAnnouncements);
+
+          // Logic for automatic announcement popup
+          if (filteredAnnouncements.length > 0) {
+            const latest = filteredAnnouncements[0];
+            const lastSeenId = localStorage.getItem('last_seen_announcement_id');
+            if (lastSeenId !== latest.id) {
+              setActiveAnnouncement(latest);
+              setAnnouncementPopupOpen(true);
+            }
+          }
+        }
+        if (managerRes?.data) setDeptManager(managerRes.data);
+      } catch (err) {
+        console.error("Error fetching informational data:", err);
+      } finally {
+        setLoadingAnnouncements(false);
       }
+    };
 
-      if (monthRes.data) {
-        setStats({
-          present: monthRes.data.filter(a => a.status === 'present').length,
-          late: monthRes.data.filter(a => a.is_late).length,
-          leave: monthRes.data.filter(a => a.status === 'leave').length,
-          overtime: monthRes.data.reduce((acc, a) => acc + (a.work_hours_minutes && a.work_hours_minutes > 480 ? 1 : 0), 0),
-        });
+    // 4. ACTIVITIES & AGENDA
+    const fetchActivityData = async () => {
+      try {
+        const [agendaRes, notesRes] = await Promise.all([
+          supabase.from('agendas')
+            .select('*, agenda_participants!inner(user_id)')
+            .eq('agenda_participants.user_id', user.id)
+            .gte('start_time', now)
+            .lte('start_time', endOfTodayISO)
+            .order('start_time', { ascending: true }),
+          supabase.from('personal_reminders' as any)
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('is_completed', false)
+            .gte('remind_at', now)
+            .lte('remind_at', endOfTodayISO)
+            .order('remind_at', { ascending: true })
+        ]);
+
+        const agendaActivities: UpcomingActivity[] = (agendaRes.data || []).map(a => ({
+          id: a.id,
+          type: 'agenda',
+          title: a.title,
+          time: a.start_time,
+          location: a.location
+        }));
+
+        const noteActivities: UpcomingActivity[] = (notesRes.data || []).map(n => ({
+          id: n.id,
+          type: 'note',
+          title: n.title,
+          time: n.remind_at,
+          is_completed: n.is_completed
+        }));
+
+        const sortedActivities = [...agendaActivities, ...noteActivities].sort((a, b) =>
+          new Date(a.time).getTime() - new Date(b.time).getTime()
+        );
+
+        setUpcomingActivities(sortedActivities.slice(0, 3));
+        const agendasOnly = sortedActivities.filter(act => act.type === 'agenda');
+        setTodayAgendas(agendasOnly);
+
+        const popupShownKey = `agenda_popup_shown_${today}_${user.id}`;
+        if (agendasOnly.length > 0 && !sessionStorage.getItem(popupShownKey)) {
+          setAgendaPopupOpen(true);
+          sessionStorage.setItem(popupShownKey, 'true');
+        }
+      } catch (err) {
+        console.error("Error fetching activity data:", err);
+      } finally {
+        setLoadingActivities(false);
       }
+    };
 
-      // Fetch Team Stats if Manager/Admin
-      if (currentRole === 'super_admin' || currentRole === 'admin_hr' || currentRole === 'manager') {
+    // 5. PENDING ACCOUNTS (For Approvers)
+    const fetchApprovalData = async () => {
+      try {
+        const { data: settingsData } = await supabase.from('app_settings').select('key, value').in('key', ['enable_account_approval', 'account_approval_roles']);
+        const settings: Record<string, string> = {};
+        settingsData?.forEach(s => { settings[s.key] = s.value as string; });
+
+        const enabled = settings['enable_account_approval'] === 'true';
+        const allowedRoles = (settings['account_approval_roles'] || 'super_admin,admin_hr').split(',');
+
+        if (enabled && allowedRoles.includes(profile?.role as string)) {
+          const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_active', false);
+          setPendingAccountsCount(count || 0);
+
+          // Auto open if count > 0 and hasn't been skipped in this session
+          if ((count || 0) > 0 && !hasSkippedApproval) {
+            setApprovalPopupOpen(true);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching approval data:", err);
+      }
+    };
+
+    // 6. MONTHLY STATS
+    const fetchStatData = async () => {
+      try {
+        const { data: monthData } = await supabase.from('attendances')
+          .select('*')
+          .eq('user_id', user.id)
+          .gte('date', startOfMonth)
+          .lte('date', today);
+
+        if (monthData) {
+          setStats({
+            present: monthData.filter(a => a.status === 'present').length,
+            late: monthData.filter(a => a.is_late).length,
+            leave: monthData.filter(a => a.status === 'leave').length,
+            overtime: monthData.reduce((acc, a) => acc + (a.work_hours_minutes && a.work_hours_minutes > 480 ? 1 : 0), 0),
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching stats data:", err);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    // Execute fetches based on priority
+    console.log('🟢 [Dashboard] Awaiting fetchCoreData...');
+    await fetchCoreData();
+    console.log('🟢 [Dashboard] fetchCoreData DONE. Loading should now be false. Launching background fetches...');
+
+    // The rest can run concurrently without blocking each other's UI updates
+    Promise.all([
+      fetchDriverData(),
+      fetchInformationalData(),
+      fetchActivityData(),
+      fetchStatData()
+    ]).then(() => {
+      console.log('🟢 [Dashboard] All background fetches COMPLETE.');
+    });
+
+    // 6. PROCESS TEAM DATA (Admin/Manager only, already backgrounded)
+    if (currentRole === 'super_admin' || currentRole === 'admin_hr' || currentRole === 'manager') {
+      const fetchTeamData = async () => {
         let teamProfilesQuery = supabase.from('profiles').select('id').eq('is_active', true);
         if (currentRole === 'manager' && profile?.department_id) {
           teamProfilesQuery = teamProfilesQuery.eq('department_id', profile.department_id);
@@ -212,67 +422,8 @@ export default function Dashboard() {
             absent: Math.max(0, teamIds.length - presentCount - leaveCount)
           });
         }
-      }
-
-      // Fetch Upcoming Activities (Agenda & Notes)
-      const now = new Date().toISOString();
-      const endOfToday = new Date();
-      endOfToday.setHours(23, 59, 59, 999);
-      const endOfTodayISO = endOfToday.toISOString();
-
-      const [agendaRes, notesRes] = await Promise.all([
-        supabase.from('agendas')
-          .select('*, agenda_participants!inner(user_id)')
-          .eq('agenda_participants.user_id', user.id)
-          .gte('start_time', now)
-          .lte('start_time', endOfTodayISO)
-          .order('start_time', { ascending: true }),
-        supabase.from('personal_reminders' as any)
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('is_completed', false)
-          .gte('remind_at', now)
-          .lte('remind_at', endOfTodayISO)
-          .order('remind_at', { ascending: true })
-      ]);
-
-      const agendaActivities: UpcomingActivity[] = (agendaRes.data || []).map(a => ({
-        id: a.id,
-        type: 'agenda',
-        title: a.title,
-        time: a.start_time,
-        location: a.location
-      }));
-
-      const noteActivities: UpcomingActivity[] = (notesRes.data || []).map(n => ({
-        id: n.id,
-        type: 'note',
-        title: n.title,
-        time: n.remind_at,
-        is_completed: n.is_completed
-      }));
-
-      const sortedActivities = [...agendaActivities, ...noteActivities].sort((a, b) =>
-        new Date(a.time).getTime() - new Date(b.time).getTime()
-      );
-
-      setUpcomingActivities(sortedActivities.slice(0, 3));
-
-      const agendasOnly = sortedActivities.filter(act => act.type === 'agenda');
-      setTodayAgendas(agendasOnly);
-
-      // Check if we should show the popup (once per session/day)
-      const popupShownKey = `agenda_popup_shown_${today}_${user.id}`;
-      const alreadyShown = sessionStorage.getItem(popupShownKey);
-
-      if (agendasOnly.length > 0 && !alreadyShown) {
-        setAgendaPopupOpen(true);
-        sessionStorage.setItem(popupShownKey, 'true');
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
+      };
+      fetchTeamData();
     }
   };
 
@@ -322,7 +473,10 @@ export default function Dashboard() {
     }
   };
 
-  if (loading) return <DashboardLayout><div className="p-4 space-y-4"><Skeleton className="h-32 w-full" /><Skeleton className="h-64 w-full" /></div></DashboardLayout>;
+  if (loading) {
+    console.warn('⚠️ [Dashboard] Rendering SKELETON. loading=true. Jika stuck di sini, berarti setLoading(false) tidak pernah dipanggil atau ada loop re-render.');
+    return <DashboardLayout><div className="p-4 space-y-4"><Skeleton className="h-32 w-full" /><Skeleton className="h-64 w-full" /></div></DashboardLayout>;
+  }
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -455,7 +609,15 @@ export default function Dashboard() {
                 </div>
 
                 {/* Announcement Slide */}
-                {announcements.length > 0 ? (
+                {loadingAnnouncements ? (
+                  <div className="w-[85vw] md:w-full h-[140px] rounded-2xl bg-white border border-slate-200 p-4 shadow-sm flex flex-col justify-between shrink-0">
+                    <div className="space-y-3">
+                      <Skeleton className="h-5 w-24 rounded-full" />
+                      <Skeleton className="h-6 w-full rounded-lg" />
+                      <Skeleton className="h-10 w-full rounded-lg" />
+                    </div>
+                  </div>
+                ) : announcements.length > 0 ? (
                   announcements.map((ann, idx) => (
                     <div key={ann.id} className="w-[85vw] md:w-full h-[140px] rounded-2xl bg-white border border-slate-200 p-4 shadow-sm flex flex-col justify-between shrink-0 transition-all hover:shadow-md">
                       <div>
@@ -477,6 +639,67 @@ export default function Dashboard() {
                 )}
               </div>
             </div>
+
+            {/* DRIVER ASSIGNMENT CARD - MOVED OUT OF ADMIN SECTION */}
+            {(loadingDriver || driverAssignment) && (
+              <div className="mx-3 relative z-20">
+                {loadingDriver ? (
+                  <Card className="border-none shadow-xl rounded-[32px] overflow-hidden bg-white mb-6 p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Skeleton className="h-10 w-10 rounded-2xl" />
+                      <div className="space-y-2">
+                        <Skeleton className="h-3 w-20" />
+                        <Skeleton className="h-4 w-32" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-24 w-full rounded-3xl" />
+                  </Card>
+                ) : (
+                  <Card className="border-none shadow-xl rounded-[32px] overflow-hidden bg-gradient-to-br from-blue-600 to-indigo-700 text-white mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
+                            {driverAssignment.role_type === 'driver' ? <Car className="h-5 w-5" /> : <Smartphone className="h-5 w-5" />}
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-black uppercase tracking-widest opacity-80">
+                              {driverAssignment.role_type === 'driver' ? 'Penugasan Driver' : 'Driver Pribadi'}
+                            </h4>
+                            <p className="text-xs font-bold text-blue-100 italic">Antar Jemput Aktif</p>
+                          </div>
+                        </div>
+                        <Badge className="bg-white/20 text-white border-0">AKTIF</Badge>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-white/10 p-4 rounded-3xl backdrop-blur-md border border-white/10">
+                            <p className="text-[10px] font-black uppercase text-blue-100 opacity-60 mb-1">
+                              {driverAssignment.role_type === 'driver' ? 'Penumpang' : 'Driver Anda'}
+                            </p>
+                            <p className="text-sm font-black truncate">{driverAssignment.other_party_name}</p>
+                          </div>
+                          <div className="bg-white/10 p-4 rounded-3xl backdrop-blur-md border border-white/10">
+                            <p className="text-[10px] font-black uppercase text-blue-100 opacity-60 mb-1">Kendaraan</p>
+                            <p className="text-sm font-black truncate">{driverAssignment.vehicle || 'Pribadi'}</p>
+                          </div>
+                        </div>
+
+                        {driverAssignment.role_type === 'driver' && (
+                          <Button
+                            onClick={() => navigate('/driver-logbook')}
+                            className="w-full h-12 rounded-2xl bg-white text-blue-600 hover:bg-blue-50 font-black text-xs uppercase tracking-widest shadow-lg border-0 transition-all active:scale-95 flex items-center gap-2"
+                          >
+                            <Navigation className="h-4 w-4" /> Buka Logbook Driver
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
 
             {/* Main Features Grid - Grouped by Category */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-3 -mt-1 mx-3 relative z-20">
@@ -543,7 +766,7 @@ export default function Dashboard() {
                 <div className="grid grid-cols-4 md:grid-cols-8 gap-y-4 gap-x-2 text-center">
                   <MenuGridItem href="/leave" icon={FileText} label="Cuti" color="text-orange-600" bg="bg-orange-50" />
                   <MenuGridItem href="/reimbursement" icon={Receipt} label="Klaim" color="text-emerald-600" bg="bg-emerald-50" isComingSoon />
-                  <MenuGridItem href="/salary-slips" icon={Wallet} label="Gaji" color="text-teal-600" bg="bg-teal-50" isComingSoon />
+                  <MenuGridItem href="/salary-slips" icon={Wallet} label="Gaji" color="text-teal-600" bg="bg-teal-50" />
                 </div>
 
                 {/* CATEGORY 3: PRODUKTIVITAS */}
@@ -562,6 +785,7 @@ export default function Dashboard() {
                   <div className="h-1 w-3 bg-pink-500 rounded-full" /> Lainnya
                 </h3>
                 <div className="grid grid-cols-4 md:grid-cols-8 gap-y-4 gap-x-2 text-center">
+                  {activeRole === 'driver' && <MenuGridItem href="/driver-logbook" icon={Navigation} label="Logbook" color="text-blue-600" bg="bg-blue-50" />}
                   <MenuGridItem href="/albums" icon={ImageIcon} label="Album" color="text-pink-600" bg="bg-pink-50" />
                   <div data-tour="nav-profile"><MenuGridItem href="/profile" icon={SettingsIcon} label="Profil" color="text-slate-600" bg="bg-slate-50" /></div>
                 </div>
@@ -613,51 +837,55 @@ export default function Dashboard() {
             </div>
 
             {/* Admin Section - Only Visible to HR/Manager - NEW SEPARATE CARD */}
-            {(currentRole === 'super_admin' || currentRole === 'admin_hr' || currentRole === 'manager') && (
-              <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 mx-3 mt-4 relative z-20">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="p-1.5 bg-slate-200 rounded-lg">
-                    <SettingsIcon className="h-4 w-4 text-slate-700" />
-                  </div>
-                  <h2 className="font-black text-slate-800 text-sm uppercase tracking-wider">Console Admin</h2>
-                </div>
-
-                {/* 1. SUPER ADMIN SPECIAL MENU */}
-                {currentRole === 'super_admin' && (
-                  <>
-                    <h3 className="text-[10px] font-black text-slate-400 mb-3 uppercase tracking-widest">
-                      Super Access
-                    </h3>
-                    <div className="grid grid-cols-4 md:grid-cols-8 gap-y-4 gap-x-2 text-center mb-6">
-                      <MenuGridItem href="/audit-logs" icon={FileText} label="Log Audit" color="text-slate-800" bg="bg-white border border-slate-200" />
-                      <MenuGridItem href="/settings" icon={SettingsIcon} label="Pengaturan" color="text-neutral-600" bg="bg-white border border-slate-200" />
+            {
+              (currentRole === 'super_admin' || currentRole === 'admin_hr' || currentRole === 'manager') && (
+                <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 mx-3 mt-4 relative z-20">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="p-1.5 bg-slate-200 rounded-lg">
+                      <SettingsIcon className="h-4 w-4 text-slate-700" />
                     </div>
-                  </>
-                )}
+                    <h2 className="font-black text-slate-800 text-sm uppercase tracking-wider">Console Admin</h2>
+                  </div>
 
-                {/* 2. MANAJEMEN SDM */}
-                <h3 className="text-[10px] font-black text-slate-400 mb-3 uppercase tracking-widest flex items-center gap-2">
-                  Manajemen SDM
-                </h3>
-                <div className="grid grid-cols-4 md:grid-cols-8 gap-y-4 gap-x-2 text-center mb-6">
-                  <MenuGridItem href="/team-map" icon={Users} label="Pantau Tim" color="text-cyan-600" bg="bg-white border border-slate-200" />
-                  <MenuGridItem href="/employees" icon={Users} label="Data Staff" color="text-indigo-600" bg="bg-white border border-slate-200" roles={['super_admin', 'admin_hr', 'manager']} />
-                  <MenuGridItem href="/shifts" icon={Clock} label="Jadwal Shift" color="text-pink-600" bg="bg-white border border-slate-200" roles={['super_admin', 'admin_hr', 'manager']} />
-                  <MenuGridItem href="/reports" icon={BarChart3} label="Laporan" color="text-slate-600" bg="bg-white border border-slate-200" roles={['super_admin', 'admin_hr', 'manager']} />
-                  <MenuGridItem href="/locations" icon={MapPin} label="Lokasi" color="text-rose-600" bg="bg-white border border-slate-200" roles={['super_admin', 'admin_hr']} />
-                  <MenuGridItem href="/holidays" icon={CalendarDays} label="Libur" color="text-red-600" bg="bg-white border border-slate-200" roles={['super_admin', 'admin_hr']} />
-                </div>
+                  {/* 1. SUPER ADMIN SPECIAL MENU */}
+                  {currentRole === 'super_admin' && (
+                    <>
+                      <h3 className="text-[10px] font-black text-slate-400 mb-3 uppercase tracking-widest">
+                        Super Access
+                      </h3>
+                      <div className="grid grid-cols-4 md:grid-cols-8 gap-y-4 gap-x-2 text-center mb-6">
+                        <MenuGridItem href="/audit-logs" icon={FileText} label="Log Audit" color="text-slate-800" bg="bg-white border border-slate-200" />
+                        <MenuGridItem href="/settings" icon={SettingsIcon} label="Pengaturan" color="text-neutral-600" bg="bg-white border border-slate-200" />
+                      </div>
+                    </>
+                  )}
 
-                {/* 3. KEUANGAN & APPROVAL */}
-                <h3 className="text-[10px] font-black text-slate-400 mb-3 uppercase tracking-widest flex items-center gap-2">
-                  Keuangan & Approval
-                </h3>
-                <div className="grid grid-cols-4 md:grid-cols-8 gap-y-4 gap-x-2 text-center">
-                  <MenuGridItem href="/payroll" icon={DollarSign} label="Payroll" color="text-green-600" bg="bg-white border border-slate-200" roles={['super_admin', 'admin_hr']} />
-                  <MenuGridItem href="/approvals" icon={ClipboardCheck} label="Approval" color="text-amber-600" bg="bg-white border border-slate-200" />
+                  {/* 2. MANAJEMEN SDM */}
+                  <h3 className="text-[10px] font-black text-slate-400 mb-3 uppercase tracking-widest flex items-center gap-2">
+                    Manajemen SDM
+                  </h3>
+                  <div className="grid grid-cols-4 md:grid-cols-8 gap-y-4 gap-x-2 text-center mb-6">
+                    <MenuGridItem href="/team-map" icon={Users} label="Pantau Tim" color="text-cyan-600" bg="bg-white border border-slate-200" />
+                    <MenuGridItem href="/employees" icon={Users} label="Data Staff" color="text-indigo-600" bg="bg-white border border-slate-200" roles={['super_admin', 'admin_hr', 'manager']} />
+
+                    <MenuGridItem href="/driver-assignments" icon={Car} label="Tugas Driver" color="text-slate-800" bg="bg-white border border-slate-200" roles={['super_admin', 'admin_hr']} />
+                    <MenuGridItem href="/shifts" icon={Clock} label="Jadwal Shift" color="text-pink-600" bg="bg-white border border-slate-200" roles={['super_admin', 'admin_hr', 'manager']} />
+                    <MenuGridItem href="/reports" icon={BarChart3} label="Laporan" color="text-slate-600" bg="bg-white border border-slate-200" roles={['super_admin', 'admin_hr', 'manager']} />
+                    <MenuGridItem href="/locations" icon={MapPin} label="Lokasi" color="text-rose-600" bg="bg-white border border-slate-200" roles={['super_admin', 'admin_hr']} />
+                    <MenuGridItem href="/holidays" icon={CalendarDays} label="Libur" color="text-red-600" bg="bg-white border border-slate-200" roles={['super_admin', 'admin_hr']} />
+                  </div>
+
+                  {/* 3. KEUANGAN & APPROVAL */}
+                  <h3 className="text-[10px] font-black text-slate-400 mb-3 uppercase tracking-widest flex items-center gap-2">
+                    Keuangan & Approval
+                  </h3>
+                  <div className="grid grid-cols-4 md:grid-cols-8 gap-y-4 gap-x-2 text-center">
+                    <MenuGridItem href="/payroll" icon={DollarSign} label="Payroll" color="text-green-600" bg="bg-white border border-slate-200" roles={['super_admin', 'admin_hr']} />
+                    <MenuGridItem href="/approvals" icon={ClipboardCheck} label="Approval" color="text-amber-600" bg="bg-white border border-slate-200" />
+                  </div>
                 </div>
-              </div>
-            )}
+              )
+            }
 
 
             {/* Article / News Section */}
@@ -804,10 +1032,10 @@ export default function Dashboard() {
                 </DialogContent>
               </Dialog>
             </div>
-          </div>
-        </div>
+          </div >
+        </div >
         {/* TODAY'S AGENDA POPUP (Mobile) */}
-        <Dialog open={agendaPopupOpen} onOpenChange={setAgendaPopupOpen}>
+        < Dialog open={agendaPopupOpen} onOpenChange={setAgendaPopupOpen} >
           <DialogContent className="max-w-md p-0 overflow-hidden border-none rounded-[32px] bg-white shadow-2xl">
             <div className="relative">
               {/* Header with Background */}
@@ -855,10 +1083,10 @@ export default function Dashboard() {
               </div>
             </div>
           </DialogContent>
-        </Dialog>
+        </Dialog >
 
         {/* NOTIFICATION RELIABILITY WIZARD (Mobile) */}
-        <Dialog open={reliabilityModalOpen} onOpenChange={setReliabilityModalOpen}>
+        < Dialog open={reliabilityModalOpen} onOpenChange={setReliabilityModalOpen} >
           <DialogContent className="max-w-md p-0 overflow-hidden border-none rounded-[32px] bg-white shadow-2xl">
             <div className="relative">
               {/* Header */}
@@ -952,16 +1180,16 @@ export default function Dashboard() {
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled={isRefreshing}
+                      disabled={isManualRefreshing}
                       onClick={async () => {
-                        setIsRefreshing(true);
+                        setIsManualRefreshing(true);
                         const res = await push.sendTestPush();
                         setTestSuccess(res?.success || false);
-                        setIsRefreshing(false);
+                        setIsManualRefreshing(false);
                       }}
                       className="mt-2 w-full h-10 rounded-xl border-blue-200 text-blue-600 text-xs font-bold hover:bg-blue-50"
                     >
-                      {isRefreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Kirim Test Notifikasi 🚀"}
+                      {isManualRefreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Kirim Test Notifikasi 🚀"}
                     </Button>
 
                     {testSuccess === true && (
@@ -990,8 +1218,8 @@ export default function Dashboard() {
               </div>
             </div>
           </DialogContent>
-        </Dialog>
-      </DashboardLayout>
+        </Dialog >
+      </DashboardLayout >
     );
   }
 
@@ -1030,10 +1258,26 @@ export default function Dashboard() {
                 )}
               </div>
             </div>
-            <div className="hidden lg:flex items-center gap-4">
+            <div className="hidden lg:flex items-center gap-3">
               <div className="h-12 px-4 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center text-sm font-bold text-slate-600">
                 {format(new Date(), 'EEEE, d MMMM yyyy', { locale: id })}
               </div>
+              <button
+                onClick={handleManualRefresh}
+                disabled={isManualRefreshing}
+                title="Refresh data"
+                className="h-12 w-12 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center justify-center text-slate-400 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 transition-all disabled:opacity-50"
+              >
+                {isManualRefreshing
+                  ? <Loader2 className="h-5 w-5 animate-spin" />
+                  : <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M21 2v6h-6" /><path d="M3 12a9 9 0 0 1 15-6.7L21 8" /><path d="M3 22v-6h6" /><path d="M21 12a9 9 0 0 1-15 6.7L3 16" /></svg>
+                }
+              </button>
+              {lastRefreshed && (
+                <span className="text-[10px] text-slate-400 font-medium">
+                  Update: {format(lastRefreshed, 'HH:mm:ss')}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -1046,129 +1290,230 @@ export default function Dashboard() {
 
             {/* 1. Hero Card - Status & Quick Action */}
             <div data-tour="attendance-card">
-              <Card className={cn(
-                "border-none overflow-hidden relative group transition-all duration-500 hover:shadow-2xl shadow-xl",
-                todayAttendance && !todayAttendance.clock_out
-                  ? "bg-gradient-to-br from-amber-500 via-orange-500 to-red-500 shadow-orange-200"
-                  : todayAttendance?.clock_out
-                    ? "bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 shadow-teal-200"
-                    : "bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 shadow-blue-200/50"
-              )}>
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white/10 rounded-full -mr-64 -mt-64 blur-3xl" />
-                <CardContent className="p-8 relative">
+              {loadingAttendance ? (
+                <Card className="border-none shadow-xl rounded-[32px] overflow-hidden bg-white p-8">
                   <div className="flex items-center justify-between">
-                    <div className="space-y-4">
-                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md border border-white/20">
-                        <Clock className="h-3.5 w-3.5 text-white" />
-                        <span className="text-[11px] font-black text-white uppercase tracking-widest">
-                          {todaySchedule?.is_day_off ? 'Hari Libur' : 'Status Absensi'}
-                        </span>
+                    <div className="space-y-6 flex-1">
+                      <Skeleton className="h-6 w-32 rounded-full" />
+                      <div className="space-y-2">
+                        <Skeleton className="h-12 w-3/4 rounded-xl" />
+                        <Skeleton className="h-6 w-1/2 rounded-lg" />
                       </div>
-
-                      <div>
-                        <h2 className="text-4xl font-black text-white mb-2 tracking-tight">
-                          {todaySchedule?.is_day_off
-                            ? 'Selamat Berlibur! 🏖️'
-                            : todayAttendance
-                              ? (todayAttendance.clock_out ? 'Kerja Bagus Hari Ini!' : 'Selamat Bekerja!') // Custom greeting based on state
-                              : 'Jangan Lupa Absen!'}
-                        </h2>
-                        <p className="text-blue-100 font-medium text-lg">
-                          {todaySchedule?.is_day_off
-                            ? 'Nikmati waktu istirahat Anda.'
-                            : todayAttendance
-                              ? (todayAttendance.clock_out ? 'Anda sudah menyelesaikan jam kerja hari ini.' : 'Waktu terus berjalan, semangat produktif!')
-                              : 'Silakan lakukan Clock In untuk memulai hari.'}
-                        </p>
+                      <div className="flex gap-6">
+                        <Skeleton className="h-16 w-32 rounded-2xl" />
+                        <Skeleton className="h-16 w-32 rounded-2xl" />
                       </div>
+                    </div>
+                    <Skeleton className="h-24 w-64 rounded-3xl" />
+                  </div>
+                </Card>
+              ) : (
+                <Card className={cn(
+                  "border-none overflow-hidden relative group transition-all duration-500 hover:shadow-2xl shadow-xl",
+                  todayAttendance && !todayAttendance.clock_out
+                    ? "bg-gradient-to-br from-amber-500 via-orange-500 to-red-500 shadow-orange-200"
+                    : todayAttendance?.clock_out
+                      ? "bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 shadow-teal-200"
+                      : "bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 shadow-blue-200/50"
+                )}>
+                  <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white/10 rounded-full -mr-64 -mt-64 blur-3xl" />
+                  <CardContent className="p-8 relative">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-4">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md border border-white/20">
+                          <Clock className="h-3.5 w-3.5 text-white" />
+                          <span className="text-[11px] font-black text-white uppercase tracking-widest">
+                            {todaySchedule?.is_day_off ? 'Hari Libur' : 'Status Absensi'}
+                          </span>
+                        </div>
 
-                      {todayAttendance && !todaySchedule?.is_day_off && (
-                        <div className="flex items-center gap-6 pt-2">
-                          <div>
-                            <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest mb-1">Waktu Masuk</p>
-                            <div className="text-2xl font-black text-white font-mono bg-white/10 px-3 py-1 rounded-lg backdrop-blur-sm inline-block">
-                              {format(new Date(todayAttendance.clock_in), 'HH:mm')}
-                            </div>
-                          </div>
-                          {todayAttendance.clock_out && (
+                        <div>
+                          <h2 className="text-4xl font-black text-white mb-2 tracking-tight">
+                            {todaySchedule?.is_day_off
+                              ? 'Selamat Berlibur! 🏖️'
+                              : todayAttendance
+                                ? (todayAttendance.clock_out ? 'Kerja Bagus Hari Ini!' : 'Selamat Bekerja!') // Custom greeting based on state
+                                : 'Jangan Lupa Absen!'}
+                          </h2>
+                          <p className="text-blue-100 font-medium text-lg">
+                            {todaySchedule?.is_day_off
+                              ? 'Nikmati waktu istirahat Anda.'
+                              : todayAttendance
+                                ? (todayAttendance.clock_out ? 'Anda sudah menyelesaikan jam kerja hari ini.' : 'Waktu terus berjalan, semangat produktif!')
+                                : 'Silakan lakukan Clock In untuk memulai hari.'}
+                          </p>
+                        </div>
+
+                        {todayAttendance && !todaySchedule?.is_day_off && (
+                          <div className="flex items-center gap-6 pt-2">
                             <div>
-                              <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest mb-1">Waktu Pulang</p>
+                              <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest mb-1">Waktu Masuk</p>
                               <div className="text-2xl font-black text-white font-mono bg-white/10 px-3 py-1 rounded-lg backdrop-blur-sm inline-block">
-                                {format(new Date(todayAttendance.clock_out), 'HH:mm')}
+                                {format(new Date(todayAttendance.clock_in), 'HH:mm')}
                               </div>
                             </div>
-                          )}
+                            {todayAttendance.clock_out && (
+                              <div>
+                                <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest mb-1">Waktu Pulang</p>
+                                <div className="text-2xl font-black text-white font-mono bg-white/10 px-3 py-1 rounded-lg backdrop-blur-sm inline-block">
+                                  {format(new Date(todayAttendance.clock_out), 'HH:mm')}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {!todaySchedule?.is_day_off && (
+                        <div className="flex flex-col items-center gap-3">
+                          <Button
+                            size="lg"
+                            onClick={() => navigate('/attendance')}
+                            className="h-16 px-8 bg-white hover:bg-slate-50 text-slate-900 border-none rounded-2xl font-black text-lg shadow-xl hover:shadow-2xl hover:scale-105 transition-all"
+                          >
+                            <Fingerprint className="h-6 w-6 mr-3 text-blue-600" />
+                            {todayAttendance && !todayAttendance.clock_out ? 'Clock Out Status' : 'Absen Sekarang'}
+                          </Button>
+                          <p className="text-xs text-white/60 font-medium">Lokasi Anda Terpantau</p>
                         </div>
                       )}
                     </div>
-
-                    {!todaySchedule?.is_day_off && (
-                      <div className="flex flex-col items-center gap-3">
-                        <Button
-                          size="lg"
-                          onClick={() => navigate('/attendance')}
-                          className="h-16 px-8 bg-white hover:bg-slate-50 text-slate-900 border-none rounded-2xl font-black text-lg shadow-xl hover:shadow-2xl hover:scale-105 transition-all"
-                        >
-                          <Fingerprint className="h-6 w-6 mr-3 text-blue-600" />
-                          {todayAttendance && !todayAttendance.clock_out ? 'Clock Out Status' : 'Absen Sekarang'}
-                        </Button>
-                        <p className="text-xs text-white/60 font-medium">Lokasi Anda Terpantau</p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
             </div>
+
+            {/* DRIVER ASSIGNMENT CARD (Desktop) */}
+            {(loadingDriver || driverAssignment) && (
+              loadingDriver ? (
+                <Card className="border-none shadow-xl rounded-[32px] overflow-hidden bg-white p-8">
+                  <div className="flex items-center gap-4 mb-6">
+                    <Skeleton className="h-12 w-12 rounded-2xl" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-40" />
+                      <Skeleton className="h-3 w-48" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-6">
+                    <Skeleton className="h-24 rounded-[28px]" />
+                    <Skeleton className="h-24 rounded-[28px]" />
+                    <Skeleton className="h-24 rounded-[28px]" />
+                  </div>
+                </Card>
+              ) : (
+                <Card className="border-none shadow-xl rounded-[32px] overflow-hidden bg-gradient-to-br from-blue-600 to-indigo-700 text-white mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <CardContent className="p-8">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
+                          {driverAssignment.role_type === 'driver' ? <Car className="h-6 w-6" /> : <Smartphone className="h-6 w-6" />}
+                        </div>
+                        <div>
+                          <h4 className="text-base font-black uppercase tracking-widest opacity-80">
+                            {driverAssignment.role_type === 'driver' ? 'Penugasan Driver Aktif' : 'Driver Pribadi Terdaftar'}
+                          </h4>
+                          <p className="text-sm font-bold text-blue-100 italic">Sistem Monitoring Kendaraan</p>
+                        </div>
+                      </div>
+                      <Badge className="bg-white/30 text-white border-none px-4 py-1 text-xs font-black">ACTIVE MONITORING</Badge>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-6">
+                      <div className="bg-white/10 p-6 rounded-[28px] backdrop-blur-md border border-white/10 flex flex-col justify-center">
+                        <p className="text-[10px] font-black uppercase text-blue-100 opacity-60 mb-1">
+                          {driverAssignment.role_type === 'driver' ? 'Penumpang Utama' : 'Nama Driver'}
+                        </p>
+                        <p className="text-lg font-black truncate">{driverAssignment.other_party_name}</p>
+                      </div>
+                      <div className="bg-white/10 p-6 rounded-[28px] backdrop-blur-md border border-white/10 flex flex-col justify-center">
+                        <p className="text-[10px] font-black uppercase text-blue-100 opacity-60 mb-1">Unit Kendaraan</p>
+                        <p className="text-lg font-black truncate">{driverAssignment.vehicle || 'Pribadi'}</p>
+                      </div>
+                      <div className="flex flex-col justify-center">
+                        {driverAssignment.role_type === 'driver' ? (
+                          <Button
+                            onClick={() => navigate('/driver-logbook')}
+                            className="w-full h-full rounded-[28px] bg-white text-blue-600 hover:bg-blue-50 font-black text-sm uppercase tracking-wider shadow-xl border-0 transition-all active:scale-95 flex items-center justify-center gap-3"
+                          >
+                            <Navigation className="h-5 w-5" /> Isi Logbook Driver
+                          </Button>
+                        ) : (
+                          <div className="bg-white/10 p-6 rounded-[28px] backdrop-blur-md border border-white/10 flex flex-col justify-center">
+                            <p className="text-[10px] font-black uppercase text-blue-100 opacity-60 mb-1">Status Keamanan</p>
+                            <p className="text-lg font-black truncate text-emerald-300">Terpantau GPS</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            )}
 
             {/* 2. Stats Grid - Clean & Big */}
             <div data-tour="main-menu-grid">
               <div className="grid grid-cols-4 gap-6">
-                {[
-                  {
-                    label: isAdmin ? 'Hadir (Tim)' : 'Hadir',
-                    value: isAdmin ? teamStats.present : stats.present,
-                    icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50', ring: 'ring-emerald-100',
-                    sub: isAdmin ? `${teamStats.total_employees} Total` : 'Bulan Ini'
-                  },
-                  {
-                    label: isAdmin ? 'Terlambat (Tim)' : 'Terlambat',
-                    value: isAdmin ? teamStats.late : stats.late,
-                    icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50', ring: 'ring-red-100',
-                    sub: isAdmin ? 'Hari Ini' : 'Bulan Ini'
-                  },
-                  {
-                    label: isAdmin ? 'Cuti (Tim)' : 'Cuti / Izin',
-                    value: isAdmin ? teamStats.leave : stats.leave,
-                    icon: Calendar, color: 'text-blue-600', bg: 'bg-blue-50', ring: 'ring-blue-100',
-                    sub: isAdmin ? 'Hari Ini' : 'Bulan Ini'
-                  },
-                  {
-                    label: isAdmin ? 'Mangkir (Tim)' : 'Lembur',
-                    value: isAdmin ? teamStats.absent : stats.overtime,
-                    icon: isAdmin ? UserX : Briefcase,
-                    color: isAdmin ? 'text-slate-600' : 'text-orange-600',
-                    bg: isAdmin ? 'bg-slate-100' : 'bg-orange-50',
-                    ring: isAdmin ? 'ring-slate-200' : 'ring-orange-100',
-                    sub: isAdmin ? 'Hari Ini' : 'Bulan Ini'
-                  }
-                ].map((stat, i) => (
-                  <Card key={i} className="border-none shadow-lg shadow-slate-200/40 hover:shadow-xl transition-all hover:-translate-y-1 group bg-white ring-1 ring-slate-100/50">
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 shadow-sm", stat.bg, stat.color)}>
-                          <stat.icon className="h-6 w-6" />
-                        </div>
-                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter bg-slate-50 px-2 py-1 rounded-lg">
-                          {stat.sub}
-                        </div>
+                {loadingStats ? (
+                  Array(4).fill(0).map((_, i) => (
+                    <Card key={i} className="border-none shadow-lg bg-white p-6">
+                      <div className="flex justify-between items-start mb-4">
+                        <Skeleton className="h-12 w-12 rounded-2xl" />
+                        <Skeleton className="h-5 w-16" />
                       </div>
-                      <div>
-                        <div className="text-4xl font-black text-slate-900 tracking-tight">{stat.value}</div>
-                        <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-wider">{stat.label}</p>
+                      <div className="space-y-2">
+                        <Skeleton className="h-10 w-20" />
+                        <Skeleton className="h-4 w-24" />
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                    </Card>
+                  ))
+                ) : (
+                  [
+                    {
+                      label: isAdmin ? 'Hadir (Tim)' : 'Hadir',
+                      value: isAdmin ? teamStats.present : stats.present,
+                      icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50', ring: 'ring-emerald-100',
+                      sub: isAdmin ? `${teamStats.total_employees} Total` : 'Bulan Ini'
+                    },
+                    {
+                      label: isAdmin ? 'Terlambat (Tim)' : 'Terlambat',
+                      value: isAdmin ? teamStats.late : stats.late,
+                      icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50', ring: 'ring-red-100',
+                      sub: isAdmin ? 'Hari Ini' : 'Bulan Ini'
+                    },
+                    {
+                      label: isAdmin ? 'Cuti (Tim)' : 'Cuti / Izin',
+                      value: isAdmin ? teamStats.leave : stats.leave,
+                      icon: Calendar, color: 'text-blue-600', bg: 'bg-blue-50', ring: 'ring-blue-100',
+                      sub: isAdmin ? 'Hari Ini' : 'Bulan Ini'
+                    },
+                    {
+                      label: isAdmin ? 'Mangkir (Tim)' : 'Lembur',
+                      value: isAdmin ? teamStats.absent : stats.overtime,
+                      icon: isAdmin ? UserX : Briefcase,
+                      color: isAdmin ? 'text-slate-600' : 'text-orange-600',
+                      bg: isAdmin ? 'bg-slate-100' : 'bg-orange-50',
+                      ring: isAdmin ? 'ring-slate-200' : 'ring-orange-100',
+                      sub: isAdmin ? 'Hari Ini' : 'Bulan Ini'
+                    }
+                  ].map((stat, i) => (
+                    <Card key={i} className="border-none shadow-lg shadow-slate-200/40 hover:shadow-xl transition-all hover:-translate-y-1 group bg-white ring-1 ring-slate-100/50">
+                      <CardContent className="p-6">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 shadow-sm", stat.bg, stat.color)}>
+                            <stat.icon className="h-6 w-6" />
+                          </div>
+                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter bg-slate-50 px-2 py-1 rounded-lg">
+                            {stat.sub}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-4xl font-black text-slate-900 tracking-tight">{stat.value}</div>
+                          <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-wider">{stat.label}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
               </div>
             </div>
 
@@ -1235,29 +1580,33 @@ export default function Dashboard() {
             )}
 
             {/* Announcements Widget */}
-            <Card className="border-none shadow-xl shadow-slate-200/40 rounded-[32px] overflow-hidden bg-white ring-1 ring-slate-100">
+            <Card className="border-none shadow-xl shadow-slate-200/40 rounded-[32px] overflow-hidden bg-white ring-1 ring-slate-100 h-fit">
               <CardHeader className="flex flex-row items-center justify-between border-b border-slate-50 p-6">
                 <CardTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
-                  <Megaphone className="h-5 w-5 text-orange-500" /> Info Terbaru
+                  <Megaphone className="h-5 w-5 text-orange-500" /> Pengumuman
                 </CardTitle>
                 <Button variant="ghost" size="sm" className="text-blue-600 font-bold" onClick={() => navigate('/information')}>Lihat Semua</Button>
               </CardHeader>
               <CardContent className="p-0">
-                {announcements.length > 0 ? (
+                {loadingAnnouncements ? (
+                  <div className="p-6 space-y-4">
+                    <Skeleton className="h-16 w-full rounded-2xl" />
+                    <Skeleton className="h-16 w-full rounded-2xl" />
+                  </div>
+                ) : announcements.length > 0 ? (
                   <div className="divide-y divide-slate-50">
-                    {announcements.slice(0, 3).map((ann) => (
-                      <div key={ann.id} className="p-5 hover:bg-slate-50 transition-colors cursor-pointer group" onClick={() => navigate('/information')}>
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge className="bg-orange-50 text-orange-700 hover:bg-orange-100 border-none text-[10px] font-black px-2 py-0.5">TERBARU</Badge>
-                          <span className="text-[10px] font-bold text-slate-400">{format(new Date(ann.created_at), 'd MMM')}</span>
+                    {announcements.map((ann) => (
+                      <div key={ann.id} className="p-6 group relative hover:bg-slate-50 transition-all cursor-pointer" onClick={() => navigate('/information')}>
+                        <div className="flex justify-between items-start mb-1">
+                          <h4 className="text-sm font-bold text-slate-800 line-clamp-1 group-hover:text-blue-600 transition-colors">{ann.title}</h4>
+                          <span className="text-[10px] text-slate-400 font-medium shrink-0 ml-2">{format(new Date(ann.created_at), 'd MMM')}</span>
                         </div>
-                        <h4 className="text-sm font-bold text-slate-800 line-clamp-2 mb-1 group-hover:text-blue-600 transition-colors">{ann.title}</h4>
                         <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{ann.content}</p>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="p-8 text-center bg-slate-50/50">
+                  <div className="p-12 text-center bg-slate-50/50">
                     <Info className="h-8 w-8 text-slate-300 mx-auto mb-3" />
                     <p className="text-sm font-bold text-slate-500">Belum ada pengumuman</p>
                   </div>
@@ -1280,7 +1629,12 @@ export default function Dashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                {upcomingActivities.length > 0 ? (
+                {loadingActivities ? (
+                  <div className="p-6 space-y-4">
+                    <Skeleton className="h-12 w-full rounded-xl" />
+                    <Skeleton className="h-12 w-full rounded-xl" />
+                  </div>
+                ) : upcomingActivities.length > 0 ? (
                   <div className="divide-y divide-slate-50">
                     {upcomingActivities.map((act) => (
                       <div key={act.id} className="p-5 hover:bg-slate-50 transition-colors cursor-pointer group flex items-center justify-between" onClick={() => navigate(act.type === 'agenda' ? '/agenda' : '/notes')}>
@@ -1395,48 +1749,177 @@ export default function Dashboard() {
         <Dialog open={agendaPopupOpen} onOpenChange={setAgendaPopupOpen}>
           <DialogContent className="max-w-md p-0 overflow-hidden border-none rounded-[32px] bg-white shadow-2xl">
             <div className="relative">
-              {/* Header with Background */}
-              <div className="bg-indigo-600 p-8 text-white relative overflow-hidden">
-                <div className="absolute right-0 top-0 h-32 w-32 bg-white/10 rounded-full -mr-16 -mt-16" />
+              {/* Header with Premium Gradient */}
+              <div className="bg-gradient-to-br from-indigo-600 to-violet-700 p-10 text-white relative overflow-hidden">
+                <div className="absolute right-0 top-0 h-48 w-48 bg-white/10 rounded-full -mr-24 -mt-24 blur-3xl opacity-50" />
+                <div className="absolute left-0 bottom-0 h-24 w-24 bg-indigo-400/20 rounded-full -ml-12 -mb-12 blur-2xl" />
+
                 <div className="relative z-10 flex flex-col items-center text-center">
-                  <div className="h-20 w-20 bg-white/20 rounded-3xl flex items-center justify-center backdrop-blur-md mb-4 shadow-xl">
+                  <div className="h-20 w-20 bg-white/20 rounded-[24px] flex items-center justify-center backdrop-blur-md mb-6 shadow-2xl ring-2 ring-white/30 animate-pulse-slow">
                     <Calendar className="h-10 w-10 text-white" />
                   </div>
-                  <h2 className="text-2xl font-black tracking-tight mb-2">Jangan Lupa Agenda Hari Ini!</h2>
-                  <p className="text-indigo-100 text-sm font-medium">Anda memiliki {todayAgendas.length} agenda yang harus dihadiri hari ini.</p>
+                  <h2 className="text-2xl font-black tracking-tight mb-2 leading-tight">Agenda Anda Hari Ini</h2>
+                  <div className="flex items-center gap-2 bg-black/10 px-4 py-1.5 rounded-full backdrop-blur-sm border border-white/5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <p className="text-indigo-50 text-[11px] font-bold uppercase tracking-widest">{todayAgendas.length} Jadwal Tersedia</p>
+                  </div>
                 </div>
               </div>
 
               {/* Content List */}
-              <div className="p-6 space-y-4 max-h-[350px] overflow-y-auto scrollbar-hide bg-slate-50/50">
+              <div className="p-8 space-y-4 max-h-[380px] overflow-y-auto scrollbar-hide bg-slate-50/30">
                 {todayAgendas.map((act) => (
-                  <Card key={act.id} className="border-none shadow-sm rounded-2xl overflow-hidden hover:shadow-md transition-all cursor-pointer group" onClick={() => { setAgendaPopupOpen(false); navigate('/agenda'); }}>
-                    <CardContent className="p-4 flex items-center gap-4">
-                      <div className="h-12 w-12 rounded-xl bg-indigo-50 text-indigo-600 flex flex-col items-center justify-center shrink-0 border border-indigo-100">
-                        <span className="text-xs font-black tabular-nums">{format(new Date(act.time), 'HH:mm')}</span>
-                        <span className="text-[8px] font-bold uppercase tracking-tighter">WIB</span>
+                  <Card key={act.id} className="border-none shadow-sm rounded-[24px] overflow-hidden hover:shadow-lg transition-all cursor-pointer group hover:-translate-y-1 bg-white ring-1 ring-slate-100/50" onClick={() => { setAgendaPopupOpen(false); navigate('/agenda'); }}>
+                    <CardContent className="p-5 flex items-center gap-5">
+                      <div className="h-14 w-14 rounded-2xl bg-indigo-50 text-indigo-600 flex flex-col items-center justify-center shrink-0 border border-indigo-100 group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
+                        <span className="text-sm font-black tabular-nums leading-none mb-0.5">{format(new Date(act.time), 'HH:mm')}</span>
+                        <span className="text-[8px] font-black uppercase tracking-widest opacity-70">WIB</span>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h4 className="font-bold text-slate-800 line-clamp-1 group-hover:text-indigo-600 transition-colors">{act.title}</h4>
-                        <p className="text-xs text-slate-400 font-medium flex items-center gap-1 mt-0.5">
-                          <MapPin className="h-3 w-3" />
-                          <span className="truncate">{act.location || 'Lokasi tidak ditentukan'}</span>
-                        </p>
+                        <h4 className="font-bold text-slate-800 line-clamp-1 group-hover:text-indigo-600 transition-colors text-base">{act.title}</h4>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <MapPin className="h-3 w-3 text-slate-400" />
+                          <span className="text-xs text-slate-500 font-medium truncate">{act.location || 'Lokasi tidak ditentukan'}</span>
+                        </div>
                       </div>
-                      <ChevronRight className="h-4 w-4 text-slate-300 group-hover:translate-x-1 transition-all" />
+                      <div className="h-8 w-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-indigo-50 group-hover:text-indigo-400 transition-all">
+                        <ChevronRight className="h-5 w-5 group-hover:translate-x-0.5 transition-transform" />
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
               </div>
 
               {/* Footer */}
-              <div className="p-6 bg-white border-t border-slate-100">
+              <div className="p-8 bg-white border-t border-slate-50">
                 <Button
-                  className="w-full h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-base shadow-xl shadow-indigo-200 transition-all active:scale-95"
+                  className="w-full h-14 rounded-[20px] bg-indigo-600 hover:bg-indigo-700 text-white font-black text-base shadow-xl shadow-indigo-200 transition-all active:scale-95 flex items-center justify-center gap-2 group"
                   onClick={() => setAgendaPopupOpen(false)}
                 >
-                  SIAP, SAYA MENGERTI
+                  MENGERTI, SIAP!
+                  <div className="h-1.5 w-1.5 rounded-full bg-white/40 group-hover:bg-white transition-colors" />
                 </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* PENDING ACCOUNTS APPROVAL ALERT POPUP */}
+        <Dialog open={approvalPopupOpen} onOpenChange={(open) => {
+          if (!open) { setApprovalPopupOpen(false); setHasSkippedApproval(true); }
+        }}>
+          <DialogContent className="max-w-md p-0 overflow-hidden border-none rounded-[32px] bg-white shadow-2xl">
+            <div className="relative">
+              {/* Vibrant & Energizing Header */}
+              <div className="bg-gradient-to-br from-purple-600 via-fuchsia-600 to-pink-600 p-10 text-white relative overflow-hidden">
+                <div className="absolute top-0 right-0 h-64 w-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl" />
+                <div className="absolute bottom-0 left-0 h-32 w-32 bg-purple-400/20 rounded-full -ml-16 -mb-16 blur-2xl" />
+
+                <div className="relative z-10 flex flex-col items-center text-center">
+                  <div className="relative mb-6">
+                    <div className="h-20 w-20 bg-white/20 rounded-[28px] flex items-center justify-center backdrop-blur-md shadow-2xl ring-2 ring-white/30 relative z-10">
+                      <UserCheck className="h-10 w-10 text-white" />
+                    </div>
+                    <div className="absolute -top-2 -right-2 h-8 w-8 bg-white text-purple-600 rounded-full flex items-center justify-center font-black text-sm shadow-xl z-20 animate-bounce">
+                      {pendingAccountsCount}
+                    </div>
+                  </div>
+                  <h2 className="text-2xl font-black tracking-tight mb-2">Persetujuan Akun Pending!</h2>
+                  <p className="text-purple-50 text-sm font-medium opacity-90 max-w-[280px]">Dibutuhkan tindakan segera untuk aktivasi akun karyawan baru.</p>
+                </div>
+              </div>
+
+              {/* Action Area */}
+              <div className="p-8 space-y-4 bg-white">
+                <Button
+                  className="w-full h-16 rounded-[22px] bg-purple-600 hover:bg-purple-700 text-white font-black text-base shadow-2xl shadow-purple-200 transition-all active:scale-95 flex items-center justify-center gap-3 group"
+                  onClick={() => {
+                    setApprovalPopupOpen(false);
+                    navigate('/approvals');
+                  }}
+                >
+                  <ClipboardCheck className="h-6 w-6 group-hover:scale-110 transition-transform" />
+                  KELOLA SEKARANG
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  className="w-full h-12 rounded-xl text-slate-400 font-bold hover:text-purple-600 hover:bg-purple-50 transition-all"
+                  onClick={() => {
+                    setApprovalPopupOpen(false);
+                    setHasSkippedApproval(true);
+                  }}
+                >
+                  Nanti Saja
+                </Button>
+              </div>
+
+              {/* Enhanced Info Box */}
+              <div className="px-8 pb-10 bg-white">
+                <div className="p-5 rounded-[24px] bg-slate-50 border border-slate-100 flex gap-4">
+                  <div className="h-10 w-10 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm border border-slate-100">
+                    <Info className="h-5 w-5 text-purple-500" />
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-semibold leading-relaxed">
+                    Kami akan mengingatkan Anda secara berkala sampai pendaftaran baru ini diselesaikan (Disetujui/Ditolak).
+                  </p>
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* AUTOMATIC ANNOUNCEMENT POPUP */}
+        <Dialog open={announcementPopupOpen} onOpenChange={setAnnouncementPopupOpen}>
+          <DialogContent className="max-w-md p-0 overflow-hidden border-none rounded-[32px] bg-white shadow-2xl">
+            <div className="relative">
+              {/* High-Impact Visual Header */}
+              <div className="bg-gradient-to-br from-orange-400 via-orange-500 to-amber-600 p-12 text-white relative overflow-hidden">
+                <div className="absolute top-0 right-0 h-64 w-64 bg-white/20 rounded-full -mr-32 -mt-32 blur-3xl opacity-60" />
+                <div className="absolute left-0 bottom-0 h-32 w-32 bg-amber-300/20 rounded-full -ml-16 -mb-16 blur-2xl" />
+
+                <div className="relative z-10 flex flex-col items-center text-center">
+                  <div className="h-24 w-24 bg-white/20 rounded-[30px] flex items-center justify-center backdrop-blur-md mb-8 shadow-2xl ring-2 ring-white/30 group animate-pulse-slow">
+                    <Megaphone className="h-12 w-12 text-white group-hover:rotate-12 transition-transform duration-500" />
+                  </div>
+                  <h2 className="text-3xl font-black tracking-tight mb-2 leading-tight">Wajib Dibaca!</h2>
+                  <div className="h-1 w-12 bg-white/30 rounded-full mb-2" />
+                  <p className="text-orange-50 text-xs font-bold uppercase tracking-[0.2em] opacity-80">Pengumuman Penting Pekan Ini</p>
+                </div>
+              </div>
+
+              {/* Content with Enhanced Typography */}
+              <div className="p-10 bg-white">
+                <div className="mb-8">
+                  <h3 className="text-2xl font-black text-slate-900 mb-4 leading-tight tracking-tight border-l-4 border-orange-500 pl-4">{activeAnnouncement?.title}</h3>
+                  <div className="prose prose-sm prose-slate text-slate-600 leading-relaxed max-h-[220px] overflow-y-auto pr-3 scrollbar-thin scrollbar-thumb-orange-100 scrollbar-track-transparent">
+                    <p className="text-[15px] font-medium leading-[1.6]">
+                      {activeAnnouncement?.content}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <Button
+                    className="w-full h-16 rounded-[22px] bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white font-black text-base shadow-2xl shadow-orange-200 transition-all active:scale-95 flex items-center justify-center gap-3"
+                    onClick={() => {
+                      if (activeAnnouncement) {
+                        localStorage.setItem('last_seen_announcement_id', activeAnnouncement.id);
+                      }
+                      setAnnouncementPopupOpen(false);
+                    }}
+                  >
+                    SAYA PAHAM & MENGERTI
+                    <CheckCircle2 className="h-5 w-5" />
+                  </Button>
+
+                  <div className="flex items-center justify-center gap-2 py-2 border-t border-slate-50 italic">
+                    <Clock className="h-3 w-3 text-slate-300" />
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">
+                      Diterbitkan pada {activeAnnouncement?.created_at ? format(new Date(activeAnnouncement.created_at), 'd MMM yyyy', { locale: id }) : '-'}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </DialogContent>

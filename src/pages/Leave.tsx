@@ -58,6 +58,18 @@ export default function LeavePage() {
     const [loadingHistory, setLoadingHistory] = useState(true);
     const [leaveHistory, setLeaveHistory] = useState<LeaveRequest[]>([]);
     const [deptName, setDeptName] = useState<string>('');
+    const [annualQuota, setAnnualQuota] = useState(12);
+    const [usedQuota, setUsedQuota] = useState(0);
+    const [isHalfDay, setIsHalfDay] = useState(false);
+    const [halfDayType, setHalfDayType] = useState<'morning' | 'afternoon'>('morning');
+
+    // Global Settings
+    const [leaveSettings, setLeaveSettings] = useState({
+        maxDays: 12,
+        minNotice: 1,
+        requireApproval: true,
+        allowHalfDay: true
+    });
 
     // For Desktop Form Dialog
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -66,8 +78,53 @@ export default function LeavePage() {
         if (user) {
             fetchLeaveHistory();
             fetchDeptName();
+            fetchQuotaAndSettings();
         }
     }, [user]);
+
+    const fetchQuotaAndSettings = async () => {
+        try {
+            // 1. Fetch User Profile Quota
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('annual_leave_quota')
+                .eq('id', user?.id)
+                .single();
+            if (profile) setAnnualQuota(profile.annual_leave_quota || 12);
+
+            // 2. Fetch Used Quota (Approved Annual Leave this year)
+            const currentYear = new Date().getFullYear();
+            const { data: usedData } = await supabase
+                .from('leave_requests')
+                .select('total_days')
+                .eq('user_id', user?.id)
+                .eq('leave_type', 'annual')
+                .eq('status', 'approved')
+                .gte('start_date', `${currentYear}-01-01`)
+                .lte('start_date', `${currentYear}-12-31`);
+
+            const totalUsed = (usedData || []).reduce((acc, curr) => acc + (curr.total_days || 0), 0);
+            setUsedQuota(totalUsed);
+
+            // 3. Fetch App Settings
+            const { data: appSettings } = await supabase
+                .from('app_settings')
+                .select('key, value')
+                .filter('key', 'ilike', 'leave_%');
+
+            const settings = { ...leaveSettings };
+            appSettings?.forEach(s => {
+                if (s.key === 'leave_max_days_per_year') settings.maxDays = Number(s.value);
+                if (s.key === 'leave_min_notice_days') settings.minNotice = Number(s.value);
+                if (s.key === 'leave_require_approval') settings.requireApproval = s.value === 'true' || s.value === true;
+                if (s.key === 'leave_allow_half_day') settings.allowHalfDay = s.value === 'true' || s.value === true;
+            });
+            setLeaveSettings(settings);
+
+        } catch (error) {
+            console.error('Error fetching settings/quota:', error);
+        }
+    };
 
     const fetchDeptName = async () => {
         const { data } = await supabase
@@ -135,6 +192,23 @@ export default function LeavePage() {
             return;
         }
 
+        // 1. Validate Notice Days (unless it's sick leave)
+        if (leaveType !== 'sick') {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const noticeDate = new Date(today);
+            noticeDate.setDate(today.getDate() + leaveSettings.minNotice);
+
+            if (startDate < noticeDate) {
+                toast({
+                    title: 'Batas Pengajuan',
+                    description: `Pengajuan ${getLeaveTypeLabel(leaveType)} minimal ${leaveSettings.minNotice} hari sebelumnya.`,
+                    variant: 'destructive',
+                });
+                return;
+            }
+        }
+
         setLoading(true);
         try {
             let attachmentUrl = null;
@@ -173,6 +247,8 @@ export default function LeavePage() {
             }
 
             const calculateWorkingDays = (startDate: Date, endDate: Date) => {
+                if (isHalfDay) return 0.5; // Half day is always 0.5
+
                 let count = 0;
                 let curDate = new Date(startDate);
                 while (curDate <= endDate) {
@@ -191,16 +267,34 @@ export default function LeavePage() {
 
             const workingDays = calculateWorkingDays(startDate, endDate);
 
-            // Insert leave request (No quota validation - unlimited leave)
+            // 2. Validate Quota for Annual Leave
+            if (leaveType === 'annual') {
+                const remaining = annualQuota - usedQuota;
+                if (workingDays > remaining) {
+                    toast({
+                        title: 'Kuota Tidak Mencukupi',
+                        description: `Sisa kuota cuti tahunan Anda adalah ${remaining} hari.`,
+                        variant: 'destructive',
+                    });
+                    setLoading(false);
+                    return;
+                }
+            }
+
+            // 3. Determine Initial Status
+            const initialStatus = leaveSettings.requireApproval ? 'pending' : 'approved';
+
+            // Insert leave request
             const { error } = await supabase.from('leave_requests').insert({
                 user_id: user?.id,
                 leave_type: leaveType,
                 start_date: format(startDate, 'yyyy-MM-dd'),
-                end_date: format(endDate, 'yyyy-MM-dd'),
-                total_days: workingDays, // Use the smart calculation
+                end_date: isHalfDay ? format(startDate, 'yyyy-MM-dd') : format(endDate, 'yyyy-MM-dd'),
+                total_days: workingDays,
                 reason: reason.trim(),
                 attachment_url: attachmentUrl,
-                status: 'pending',
+                status: initialStatus,
+                notes: isHalfDay ? `Setengah Hari (${halfDayType === 'morning' ? 'Pagi' : 'Siang'})` : null
             });
 
             if (error) throw error;
@@ -229,9 +323,10 @@ export default function LeavePage() {
             }
 
             toast({
-
-                title: 'Berhasil!',
-                description: 'Pengajuan cuti telah dikirim dan menunggu persetujuan.',
+                title: initialStatus === 'approved' ? 'Berhasil Disetujui!' : 'Berhasil!',
+                description: initialStatus === 'approved'
+                    ? 'Pengajuan cuti Anda telah otomatis disetujui.'
+                    : 'Pengajuan cuti telah dikirim dan menunggu persetujuan.',
             });
 
             // Reset form
@@ -240,10 +335,12 @@ export default function LeavePage() {
             setEndDate(undefined);
             setReason('');
             setAttachment(null);
+            setIsHalfDay(false);
             setDialogOpen(false); // Close dialog if on desktop
 
-            // Refresh history
+            // Refresh history & quota
             fetchLeaveHistory();
+            fetchQuotaAndSettings();
             if (!isMobile) setActiveTab('history');
         } catch (error: any) {
             console.error('Error submitting leave:', error);
@@ -299,6 +396,18 @@ export default function LeavePage() {
                             </div>
                         </div>
 
+                        {/* Quota Info Mobile */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <Card className="bg-white/95 backdrop-blur-sm border-none shadow-md rounded-2xl p-4">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Jatah Cuti</p>
+                                <p className="text-xl font-black text-slate-900 mt-1">{annualQuota} <span className="text-[10px] font-bold text-slate-400">HARI</span></p>
+                            </Card>
+                            <Card className="bg-white/95 backdrop-blur-sm border-none shadow-md rounded-2xl p-4">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sisa Kuota</p>
+                                <p className="text-xl font-black text-blue-600 mt-1">{annualQuota - usedQuota} <span className="text-[10px] font-bold text-slate-400">HARI</span></p>
+                            </Card>
+                        </div>
+
                         <Tabs defaultValue="request" className="space-y-4">
                             <TabsList className="bg-slate-200/50 backdrop-blur-md p-1 rounded-2xl border border-white/20 w-fit">
                                 <TabsTrigger
@@ -333,7 +442,10 @@ export default function LeavePage() {
                                             loading={loading}
                                             id={id}
                                             deptName={deptName}
-                                            userRole={activeRole || role} // Use role from AuthContext
+                                            userRole={activeRole || role}
+                                            isHalfDay={isHalfDay} setIsHalfDay={setIsHalfDay}
+                                            halfDayType={halfDayType} setHalfDayType={setHalfDayType}
+                                            allowHalfDay={leaveSettings.allowHalfDay}
                                         />
                                     </CardContent>
                                 </Card>
@@ -455,6 +567,34 @@ export default function LeavePage() {
                                             </Select>
                                         </div>
 
+                                        {/* Half-Day Option */}
+                                        {leaveSettings.allowHalfDay && (
+                                            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                                <div className="space-y-0.5">
+                                                    <label className="text-xs font-bold text-slate-700">Setengah Hari</label>
+                                                    <p className="text-[10px] text-slate-400">Cuti pagi atau siang (0.5 hari)</p>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    {isHalfDay && (
+                                                        <select
+                                                            value={halfDayType}
+                                                            onChange={(e) => setHalfDayType(e.target.value as any)}
+                                                            className="text-xs font-bold h-8 rounded-lg border-slate-200 bg-white px-2 focus:ring-1 focus:ring-blue-500 outline-none"
+                                                        >
+                                                            <option value="morning">Sesi Pagi</option>
+                                                            <option value="afternoon">Sesi Siang</option>
+                                                        </select>
+                                                    )}
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isHalfDay}
+                                                        onChange={(e) => setIsHalfDay(e.target.checked)}
+                                                        className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {/* Tanggal Mulai & Selesai */}
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
@@ -475,9 +615,9 @@ export default function LeavePage() {
                                                 <Label className="uppercase text-[10px] font-black text-slate-500 tracking-widest">Tanggal Selesai</Label>
                                                 <Popover>
                                                     <PopoverTrigger asChild>
-                                                        <Button variant="outline" className={cn("w-full justify-start text-left font-medium h-12 rounded-xl bg-slate-50 border-slate-200", !endDate && "text-muted-foreground")}>
+                                                        <Button variant="outline" disabled={isHalfDay} className={cn("w-full justify-start text-left font-medium h-12 rounded-xl bg-slate-50 border-slate-200", !endDate && "text-muted-foreground", isHalfDay && "opacity-60")}>
                                                             <CalendarIcon className="mr-2 h-4 w-4" />
-                                                            {endDate ? format(endDate, "dd MMM yy", { locale: id }) : <span>Pilih</span>}
+                                                            {isHalfDay ? (startDate ? format(startDate, "dd MMM yy", { locale: id }) : <span>Mengikuti Tgl Mulai</span>) : (endDate ? format(endDate, "dd MMM yy", { locale: id }) : <span>Pilih</span>)}
                                                         </Button>
                                                     </PopoverTrigger>
                                                     <PopoverContent className="w-auto p-0 rounded-2xl shadow-xl">
@@ -539,33 +679,26 @@ export default function LeavePage() {
 
                     {/* RIGHT COLUMN: History List (7 cols) */}
                     <div className="lg:col-span-7 space-y-6">
-                        <div className="grid grid-cols-3 gap-4">
-                            <Card className="rounded-[24px] border-none shadow-md bg-white p-6 flex items-center gap-4">
-                                <div className="h-12 w-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
-                                    <FileText className="h-6 w-6" />
-                                </div>
-                                <div>
-                                    <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Total</p>
-                                    <p className="text-2xl font-black text-slate-900">{leaveHistory.length}</p>
-                                </div>
+                        <div className="grid grid-cols-4 gap-4">
+                            <Card className="rounded-[24px] border-none shadow-md bg-white p-6 flex flex-col gap-1 items-center md:items-start">
+                                <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Tahun Ini</p>
+                                <p className="text-2xl font-black text-slate-900">{annualQuota}</p>
+                                <p className="text-[10px] text-slate-400">Jatah Tahunan</p>
                             </Card>
-                            <Card className="rounded-[24px] border-none shadow-md bg-white p-6 flex items-center gap-4">
-                                <div className="h-12 w-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center">
-                                    <Clock className="h-6 w-6" />
-                                </div>
-                                <div>
-                                    <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Menunggu</p>
-                                    <p className="text-2xl font-black text-slate-900">{leaveHistory.filter(l => l.status === 'pending').length}</p>
-                                </div>
+                            <Card className="rounded-[24px] border-none shadow-md bg-white p-6 flex flex-col gap-1 items-center md:items-start text-blue-600">
+                                <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Sisa</p>
+                                <p className="text-2xl font-black">{annualQuota - usedQuota}</p>
+                                <p className="text-[10px] text-slate-400">Kuota Tersisa</p>
                             </Card>
-                            <Card className="rounded-[24px] border-none shadow-md bg-white p-6 flex items-center gap-4">
-                                <div className="h-12 w-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
-                                    <CheckCircle2 className="h-6 w-6" />
-                                </div>
-                                <div>
-                                    <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Disetujui</p>
-                                    <p className="text-2xl font-black text-slate-900">{leaveHistory.filter(l => l.status === 'approved').length}</p>
-                                </div>
+                            <Card className="rounded-[24px] border-none shadow-md bg-white p-6 flex flex-col gap-1 items-center md:items-start text-orange-600">
+                                <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Pending</p>
+                                <p className="text-2xl font-black">{leaveHistory.filter(l => l.status === 'pending').length}</p>
+                                <p className="text-[10px] text-slate-400">Menunggu</p>
+                            </Card>
+                            <Card className="rounded-[24px] border-none shadow-md bg-white p-6 flex flex-col gap-1 items-center md:items-start text-green-600">
+                                <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Terpakai</p>
+                                <p className="text-2xl font-black">{usedQuota}</p>
+                                <p className="text-[10px] text-slate-400">Sudah Approved</p>
                             </Card>
                         </div>
 
@@ -648,7 +781,7 @@ export default function LeavePage() {
 }
 
 // Sub-component for reuse
-function LeaveForm({ leaveType, setLeaveType, startDate, setStartDate, endDate, setEndDate, reason, setReason, attachment, setAttachment, handleFileChange, handleSubmit, loading, id, deptName, userRole }: any) {
+function LeaveForm({ leaveType, setLeaveType, startDate, setStartDate, endDate, setEndDate, reason, setReason, attachment, setAttachment, handleFileChange, handleSubmit, loading, id, deptName, userRole, isHalfDay, setIsHalfDay, halfDayType, setHalfDayType, allowHalfDay }: any) {
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             {/* Approval Info */}
@@ -682,6 +815,33 @@ function LeaveForm({ leaveType, setLeaveType, startDate, setStartDate, endDate, 
                     </SelectContent>
                 </Select>
             </div>
+
+            {allowHalfDay && (
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <div className="space-y-0.5">
+                        <Label className="text-xs font-bold text-slate-700">Setengah Hari</Label>
+                        <p className="text-[10px] text-slate-400">Centang untuk cuti 0.5 hari</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        {isHalfDay && (
+                            <select
+                                value={halfDayType}
+                                onChange={(e) => setHalfDayType(e.target.value as any)}
+                                className="text-[10px] font-bold h-7 rounded-lg border-slate-200 bg-white px-2 focus:ring-1 focus:ring-blue-500 outline-none"
+                            >
+                                <option value="morning">Pagi</option>
+                                <option value="afternoon">Siang</option>
+                            </select>
+                        )}
+                        <input
+                            type="checkbox"
+                            checked={isHalfDay}
+                            onChange={(e) => setIsHalfDay(e.target.checked)}
+                            className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -717,9 +877,9 @@ function LeaveForm({ leaveType, setLeaveType, startDate, setStartDate, endDate, 
                     <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Tanggal Selesai *</Label>
                     <Popover>
                         <PopoverTrigger asChild>
-                            <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-11 rounded-xl border-slate-200", !endDate && "text-muted-foreground")}>
+                            <Button variant="outline" disabled={isHalfDay} className={cn("w-full justify-start text-left font-normal h-11 rounded-xl border-slate-200", !endDate && "text-muted-foreground", isHalfDay && "bg-slate-100 opacity-60")}>
                                 <CalendarIcon className="mr-2 h-4 w-4" />
-                                {endDate ? format(endDate, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
+                                {isHalfDay ? (startDate ? format(startDate, "PPP", { locale: id }) : <span>Pilih tanggal mulai dulu</span>) : (endDate ? format(endDate, "PPP", { locale: id }) : <span>Pilih tanggal</span>)}
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0 rounded-2xl shadow-xl">

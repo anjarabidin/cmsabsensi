@@ -1,6 +1,7 @@
 import { ReactNode, useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { Button } from '@/components/ui/button';
@@ -44,7 +45,10 @@ import {
   Settings,
   Camera,
   BellRing,
-  Info as InfoIcon
+  Shield,
+  Info as InfoIcon,
+  UserCheck,
+  Car
 } from 'lucide-react';
 import { AppLogo } from '@/components/AppLogo';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
@@ -54,10 +58,10 @@ interface DashboardLayoutProps {
 }
 
 interface NavItem {
+  key: string;
   title: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
-  roles?: ('super_admin' | 'admin_hr' | 'manager' | 'employee')[];
 }
 
 // Role-specific Navigation Configurations
@@ -65,28 +69,28 @@ const employeeNavGroups = [
   {
     title: 'Utama',
     items: [
-      { title: 'Dashboard', href: '/dashboard', icon: Home },
-      { title: 'Absensi', href: '/attendance', icon: Clock },
-      { title: 'Agenda Kerja', href: '/agenda', icon: ClipboardCheck },
+      { key: 'dashboard', title: 'Dashboard', href: '/dashboard', icon: Home },
+      { key: 'attendance', title: 'Absensi', href: '/attendance', icon: Clock },
+      { key: 'agenda', title: 'Agenda Kerja', href: '/agenda', icon: ClipboardCheck },
     ]
   },
   {
     title: 'Permohonan',
     items: [
-      { title: 'Cuti / Izin', href: '/leave', icon: Briefcase },
-      { title: 'Lembur', href: '/overtime', icon: Timer },
-      { title: 'Reimbursement', href: '/reimbursement', icon: Receipt },
-      { title: 'Koreksi Absen', href: '/corrections', icon: Check },
+      { key: 'leave', title: 'Cuti / Izin', href: '/leave', icon: Briefcase },
+      { key: 'overtime', title: 'Lembur', href: '/overtime', icon: Timer },
+      { key: 'reimbursement', title: 'Reimbursement', href: '/reimbursement', icon: Receipt },
+      { key: 'corrections', title: 'Koreksi Absen', href: '/corrections', icon: Check },
     ]
   },
   {
     title: 'Info & Riwayat',
     items: [
-      { title: 'Riwayat', href: '/history', icon: Calendar },
-      { title: 'Catatan', href: '/notes', icon: StickyNote },
-      { title: 'Berita & Info', href: '/information', icon: Newspaper },
-      { title: 'Album Kenangan', href: '/albums', icon: Camera },
-      { title: 'Pengaturan', href: '/profile', icon: Settings },
+      { key: 'history', title: 'Riwayat', href: '/history', icon: Calendar },
+      { key: 'notes', title: 'Catatan', href: '/notes', icon: StickyNote },
+      { key: 'information', title: 'Berita & Info', href: '/information', icon: Newspaper },
+      { key: 'albums', title: 'Album Kenangan', href: '/albums', icon: Camera },
+      { key: 'profile', title: 'Pengaturan', href: '/profile', icon: Settings },
     ]
   }
 ];
@@ -95,43 +99,54 @@ const adminNavGroups = [
   {
     title: 'Overview',
     items: [
-      { title: 'Dashboard', href: '/dashboard', icon: Home },
-      { title: 'Pusat Persetujuan', href: '/approvals', icon: ClipboardCheck },
+      { key: 'dashboard', title: 'Dashboard', href: '/dashboard', icon: Home },
+      { key: 'approvals', title: 'Pusat Persetujuan', href: '/approvals', icon: ClipboardCheck },
     ]
   },
   {
     title: 'Manajemen SDM',
     items: [
-      { title: 'Data Karyawan', href: '/employees', icon: Users },
-      { title: 'Jadwal & Shift', href: '/shifts', icon: Clock },
-      { title: 'Lokasi Kantor', href: '/locations', icon: MapPin },
-      { title: 'Pantau Tim', href: '/team-map', icon: Navigation },
-      { title: 'Laporan Kehadiran', href: '/reports', icon: BarChart3 },
+      { key: 'employees', title: 'Data Karyawan', href: '/employees', icon: Users },
+      { key: 'shifts', title: 'Jadwal & Shift', href: '/shifts', icon: Clock },
+      { key: 'locations', title: 'Lokasi Kantor', href: '/locations', icon: MapPin },
+      { key: 'team_map', title: 'Pantau Tim', href: '/team-map', icon: Navigation },
+
+      { key: 'reports', title: 'Laporan Kehadiran', href: '/reports', icon: BarChart3 },
+    ]
+  },
+  {
+    title: 'Operasional Driver',
+    items: [
+      { key: 'driver_assignments', title: 'Tugas Driver', href: '/driver-assignments', icon: UserCheck },
+      { key: 'vehicles', title: 'Kendaraan', href: '/vehicles', icon: Car },
+      { key: 'driver_logbook', title: 'Logbook Driver', href: '/driver-logbook', icon: Navigation },
+      { key: 'driver_receipts', title: 'Nota & Biaya', href: '/driver-receipts', icon: Camera },
+      { key: 'driver_reports', title: 'Monitoring Driver', href: '/driver-reports', icon: ClipboardCheck },
     ]
   },
   {
     title: 'Keuangan',
     items: [
-      { title: 'Gaji & Payroll', href: '/payroll', icon: DollarSign },
-      { title: 'Laporan Gaji', href: '/payroll-report', icon: FileText },
-      { title: 'Reimbursement', href: '/reimbursement', icon: Receipt },
+      { key: 'payroll', title: 'Gaji & Payroll', href: '/payroll', icon: DollarSign },
+      { key: 'payroll_report', title: 'Laporan Gaji', href: '/payroll-report', icon: FileText },
+      { key: 'reimbursement', title: 'Reimbursement', href: '/reimbursement', icon: Receipt },
     ]
   },
   {
     title: 'Perusahaan',
     items: [
-      { title: 'Berita & Info', href: '/information', icon: Newspaper },
-      { title: 'Album Kenangan', href: '/albums', icon: Camera },
+      { key: 'information', title: 'Berita & Info', href: '/information', icon: Newspaper },
+      { key: 'albums', title: 'Album Kenangan', href: '/albums', icon: Camera },
     ]
   },
   {
     title: 'Menu Saya',
     items: [
-      { title: 'Absensi', href: '/attendance', icon: Clock },
-      { title: 'Riwayat Saya', href: '/history', icon: Calendar },
-      { title: 'Cuti & Izin', href: '/leave', icon: Briefcase },
-      { title: 'Agenda', href: '/agenda', icon: ClipboardCheck },
-      { title: 'Pengaturan', href: '/profile', icon: Settings },
+      { key: 'attendance', title: 'Absensi', href: '/attendance', icon: Clock },
+      { key: 'history', title: 'Riwayat Saya', href: '/history', icon: Calendar },
+      { key: 'leave', title: 'Cuti & Izin', href: '/leave', icon: Briefcase },
+      { key: 'agenda', title: 'Agenda', href: '/agenda', icon: ClipboardCheck },
+      { key: 'profile', title: 'Pengaturan', href: '/profile', icon: Settings },
     ]
   }
 ];
@@ -140,42 +155,55 @@ const superAdminNavGroups = [
   {
     title: 'Super Admin',
     items: [
-      { title: 'Dashboard', href: '/dashboard', icon: Home },
-      { title: 'Log Audit', href: '/audit-logs', icon: FileText },
-      { title: 'Pengaturan Sistem', href: '/settings', icon: Settings },
+      { key: 'dashboard', title: 'Dashboard', href: '/dashboard', icon: Home },
+      { key: 'audit_logs', title: 'Log Audit', href: '/audit-logs', icon: FileText },
+      { key: 'device_management', title: 'Manajemen Perangkat', href: '/device-management', icon: Smartphone },
+      { key: 'role_management', title: 'Role & Akses', href: '/role-management', icon: Shield },
+      { key: 'settings', title: 'Pengaturan Sistem', href: '/settings', icon: Settings },
     ]
   },
   {
     title: 'Manajemen SDM',
     items: [
-      { title: 'Data Karyawan', href: '/employees', icon: Users },
-      { title: 'Jadwal & Shift', href: '/shifts', icon: Clock },
-      { title: 'Lokasi Kantor', href: '/locations', icon: MapPin },
-      { title: 'Pantau Tim', href: '/team-map', icon: Navigation },
-      { title: 'Laporan', href: '/reports', icon: BarChart3 },
+      { key: 'employees', title: 'Data Karyawan', href: '/employees', icon: Users },
+      { key: 'shifts', title: 'Jadwal & Shift', href: '/shifts', icon: Clock },
+      { key: 'locations', title: 'Lokasi Kantor', href: '/locations', icon: MapPin },
+      { key: 'team_map', title: 'Pantau Tim', href: '/team-map', icon: Navigation },
+
+      { key: 'reports', title: 'Laporan', href: '/reports', icon: BarChart3 },
+    ]
+  },
+  {
+    title: 'Operasional Driver',
+    items: [
+      { key: 'driver_assignments', title: 'Tugas Driver', href: '/driver-assignments', icon: UserCheck },
+      { key: 'vehicles', title: 'Kendaraan', href: '/vehicles', icon: Car },
+      { key: 'driver_logbook', title: 'Logbook Driver', href: '/driver-logbook', icon: Navigation },
+      { key: 'driver_receipts', title: 'Nota & Biaya', href: '/driver-receipts', icon: Camera },
+      { key: 'driver_reports', title: 'Monitoring Driver', href: '/driver-reports', icon: ClipboardCheck },
     ]
   },
   {
     title: 'Keuangan',
     items: [
-      { title: 'Gaji & Payroll', href: '/payroll', icon: DollarSign },
-      { title: 'Laporan Gaji', href: '/payroll-report', icon: FileText },
+      { key: 'payroll', title: 'Gaji & Payroll', href: '/payroll', icon: DollarSign },
+      { key: 'payroll_report', title: 'Laporan Gaji', href: '/payroll-report', icon: FileText },
     ]
   },
   {
     title: 'Pusat Approval',
     items: [
-      { title: 'Daftar Persetujuan', href: '/approvals', icon: ClipboardCheck },
+      { key: 'approvals', title: 'Daftar Persetujuan', href: '/approvals', icon: ClipboardCheck },
     ]
   },
   {
     title: 'Menu Saya',
     items: [
-      { title: 'Absensi ', href: '/attendance', icon: Clock },
-      { title: 'Riwayat Saya', href: '/history', icon: Calendar },
-      { title: 'Cuti & Izin', href: '/leave', icon: Briefcase },
-      { title: 'Agenda Saya', href: '/agenda', icon: ClipboardCheck },
-      { title: 'Profil Saya', href: '/profile', icon: Settings },
+      { key: 'attendance', title: 'Absensi ', href: '/attendance', icon: Clock },
+      { key: 'history', title: 'Riwayat Saya', href: '/history', icon: Calendar },
+      { key: 'leave', title: 'Cuti & Izin', href: '/leave', icon: Briefcase },
+      { key: 'agenda', title: 'Agenda Saya', href: '/agenda', icon: ClipboardCheck },
+      { key: 'profile', title: 'Profil Saya', href: '/profile', icon: Settings },
     ]
   }
 ];
@@ -184,47 +212,142 @@ const managerNavGroups = [
   {
     title: 'Overview',
     items: [
-      { title: 'Dashboard', href: '/dashboard', icon: Home },
-      { title: 'Pusat Persetujuan', href: '/approvals', icon: ClipboardCheck },
+      { key: 'dashboard', title: 'Dashboard', href: '/dashboard', icon: Home },
+      { key: 'approvals', title: 'Pusat Persetujuan', href: '/approvals', icon: ClipboardCheck },
     ]
   },
   {
     title: 'Kelola Tim',
     items: [
-      { title: 'Jadwal Tim', href: '/shifts', icon: Clock },
-      { title: 'Lokasi Tim', href: '/team-map', icon: Navigation },
-      { title: 'Anggota Tim', href: '/employees', icon: Users },
-      { title: 'Album', href: '/albums', icon: Camera },
-      { title: 'Evaluasi Tim', href: '/reports', icon: BarChart3 },
+      { key: 'shifts', title: 'Jadwal Tim', href: '/shifts', icon: Clock },
+      { key: 'team_map', title: 'Lokasi Tim', href: '/team-map', icon: Navigation },
+      { key: 'employees', title: 'Anggota Tim', href: '/employees', icon: Users },
+      { key: 'albums', title: 'Album', href: '/albums', icon: Camera },
+      { key: 'reports', title: 'Evaluasi Tim', href: '/reports', icon: BarChart3 },
+    ]
+  },
+  {
+    title: 'Operasional Driver',
+    items: [
+      { key: 'driver_logbook', title: 'Logbook Driver', href: '/driver-logbook', icon: Navigation },
+      { key: 'driver_receipts', title: 'Nota & Biaya', href: '/driver-receipts', icon: Camera },
+      { key: 'driver_reports', title: 'Monitoring Driver', href: '/driver-reports', icon: ClipboardCheck },
     ]
   },
   {
     title: 'Pribadi',
     items: [
-      { title: 'Absensi Saya', href: '/attendance', icon: Clock },
-      { title: 'Riwayat Saya', href: '/history', icon: Calendar },
-      { title: 'Cuti Saya', href: '/leave', icon: Briefcase },
-      { title: 'Agenda Saya', href: '/agenda', icon: ClipboardCheck },
-      { title: 'Pengaturan', href: '/profile', icon: Settings },
+      { key: 'attendance', title: 'Absensi Saya', href: '/attendance', icon: Clock },
+      { key: 'history', title: 'Riwayat Saya', href: '/history', icon: Calendar },
+      { key: 'leave', title: 'Cuti Saya', href: '/leave', icon: Briefcase },
+      { key: 'agenda', title: 'Agenda Saya', href: '/agenda', icon: ClipboardCheck },
+      { key: 'profile', title: 'Pengaturan', href: '/profile', icon: Settings },
     ]
   }
 ];
 
-const getNavGroups = (role: string) => {
-  if (role === 'super_admin') return superAdminNavGroups;
-  if (role === 'admin_hr') return adminNavGroups;
-  if (role === 'manager') return managerNavGroups;
-  return employeeNavGroups;
+const driverNavGroups = [
+  {
+    title: 'Driver',
+    items: [
+      { key: 'dashboard', title: 'Dashboard', href: '/dashboard', icon: Home },
+      { key: 'driver_logbook', title: 'Logbook Driver', href: '/driver-logbook', icon: Navigation },
+      { key: 'driver_receipts', title: 'Nota & Biaya', href: '/driver-receipts', icon: Camera },
+      { key: 'attendance', title: 'Absensi', href: '/attendance', icon: Clock },
+    ]
+  },
+  {
+    title: 'Pribadi',
+    items: [
+      { key: 'history', title: 'Riwayat Saya', href: '/history', icon: Calendar },
+      { key: 'information', title: 'Berita & Info', href: '/information', icon: Newspaper },
+      { key: 'profile', title: 'Pengaturan', href: '/profile', icon: Settings },
+    ]
+  }
+];
+
+const getNavGroups = (role: string, perms: Record<string, boolean>) => {
+  let groups;
+  if (role === 'super_admin') groups = superAdminNavGroups;
+  else if (role === 'admin_hr') groups = adminNavGroups;
+  else if (role === 'manager') groups = managerNavGroups;
+  else if (role === 'driver') groups = driverNavGroups;
+  else groups = employeeNavGroups;
+
+  // Filter based on perms from DB
+  return groups.map(group => ({
+    ...group,
+    items: group.items.filter(item => perms[item.key] === true) // Strict whitelist: only show if explicitly enabled in DB
+  })).filter(group => group.items.length > 0);
 };
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { permission, isIOS, isStandalone, register } = usePushNotifications();
-  const { profile, roles, activeRole, switchRole, signOut } = useAuth();
+  const { profile, roles, activeRole, navPermissions, switchRole, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
+
+  // --- SYSTEM KEEP-ALIVE LOGIC ---
+  useEffect(() => {
+    let pingInterval: NodeJS.Timeout;
+
+    const startKeepAlive = async () => {
+      try {
+        // Fetch Keep-Alive Settings (Align with Settings.tsx keys)
+        const { data: settings } = await supabase
+          .from('app_settings')
+          .select('key, value')
+          .in('key', [
+            'enable_keepalive_ping',
+            'keepalive_interval_minutes',
+            'keepalive_start_hour',
+            'keepalive_end_hour'
+          ]);
+
+        let enabled = false;
+        let interval = 5;
+        let startH = 6;
+        let endH = 22;
+
+        settings?.forEach(s => {
+          if (s.key === 'enable_keepalive_ping') enabled = s.value === 'true' || s.value === true || s.value === '1';
+          if (s.key === 'keepalive_interval_minutes') interval = Number(s.value) || 5;
+          if (s.key === 'keepalive_start_hour') startH = Number(s.value) || 6;
+          if (s.key === 'keepalive_end_hour') endH = Number(s.value) || 22;
+        });
+
+        if (!enabled) return;
+
+        const performPing = async () => {
+          const now = new Date();
+          const hour = now.getHours();
+
+          // Only ping during operational hours to be efficient
+          if (hour >= startH && hour <= endH) {
+            console.log(`[System] Keep-Alive Ping at ${now.toLocaleTimeString()}`);
+            // Simple lightweight query to keep connection warm
+            await supabase.from('app_settings').select('key').limit(1);
+          }
+        };
+
+        // Initial ping
+        performPing();
+
+        // Setup interval
+        pingInterval = setInterval(performPing, interval * 60000);
+      } catch (err) {
+        console.error('[System] Keep-Alive Error:', err);
+      }
+    };
+
+    startKeepAlive();
+    return () => {
+      if (pingInterval) clearInterval(pingInterval);
+    };
+  }, []);
 
   // Ref to store sidebar scroll position
   const sidebarNavRef = useRef<HTMLElement>(null);
@@ -301,6 +424,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       case 'admin_hr': return 'HRD';
       case 'manager': return 'Manager';
       case 'employee': return 'Staff';
+      case 'driver': return 'Driver';
       default: return '';
     }
   };
@@ -311,6 +435,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       case 'admin_hr': return 'Administrator';
       case 'manager': return 'Manajer';
       case 'employee': return 'Karyawan';
+      case 'driver': return 'Pengemudi';
       default: return '';
     }
   };
@@ -373,21 +498,27 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <span className="text-[9px] font-bold">Absen</span>
           </Link>
 
-          {/* Floating Scan Button (Compact) - COMING SOON */}
-          <div className="relative -top-6">
-            <button
-              onClick={() => {
-                toast({
-                  title: "Fitur Segera Hadir",
-                  description: "Dashboard Scan Wajah masih dalam tahap pengembangan.",
-                  duration: 3000,
-                });
-              }}
-              className="h-14 w-14 rounded-full bg-slate-100 text-slate-400 shadow-lg flex items-center justify-center transform transition-all active:scale-90 border-[4px] border-white ring-2 ring-slate-100"
-            >
-              <ScanFace className="h-7 w-7 opacity-50" />
-            </button>
-          </div>
+          {activeRole === 'driver' ? (
+            <Link to="/driver-logbook" className={cn("flex flex-1 flex-col items-center justify-center gap-0.5 h-full transition-all", location.pathname === '/driver-logbook' ? "text-blue-600" : "text-slate-400 hover:text-slate-600")}>
+              <Navigation className={cn("h-5 w-5", location.pathname === '/driver-logbook' ? "fill-blue-600/10" : "")} />
+              <span className="text-[9px] font-bold">Logbook</span>
+            </Link>
+          ) : (
+            <div className="relative -top-6">
+              <button
+                onClick={() => {
+                  toast({
+                    title: "Fitur Segera Hadir",
+                    description: "Dashboard Scan Wajah masih dalam tahap pengembangan.",
+                    duration: 3000,
+                  });
+                }}
+                className="h-14 w-14 rounded-full bg-slate-100 text-slate-400 shadow-lg flex items-center justify-center transform transition-all active:scale-90 border-[4px] border-white ring-2 ring-slate-100"
+              >
+                <ScanFace className="h-7 w-7 opacity-50" />
+              </button>
+            </div>
+          )}
 
           <Link to="/history" className={cn("flex flex-1 flex-col items-center justify-center gap-0.5 h-full transition-all", location.pathname === '/history' ? "text-blue-600" : "text-slate-400 hover:text-slate-600")}>
             <Calendar className="h-5 w-5" />
@@ -433,7 +564,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           {/* Navigation Items - Scrollable */}
           <nav ref={sidebarNavRef} className={cn("flex-1 overflow-y-auto overscroll-contain scroll-auto py-2 custom-scrollbar", collapsed ? "px-2" : "px-4")}>
             <div className="space-y-8">
-              {getNavGroups(activeRole || 'employee').map((group) => {
+              {getNavGroups(activeRole || 'employee', navPermissions).map((group) => {
                 const visibleItems = group.items;
                 if (visibleItems.length === 0) return null;
 
@@ -556,7 +687,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </DropdownMenu>
           </div>
         </header>
-        <main className="p-8">
+        <main className="">
           {children}
         </main>
       </div>

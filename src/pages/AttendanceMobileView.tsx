@@ -115,10 +115,12 @@ interface AttendanceMobileViewProps {
     openCameraForPhoto?: () => void;
     capturedPhoto?: Blob | null;
     isFaceRequired?: boolean;
+    isSelfieRequired?: boolean;
     photoPreview?: string | null;
     verifying?: boolean;
     stopCamera?: () => void;
     setPhotoPreview?: (val: string | null) => void;
+    allowWfh?: boolean;
 }
 
 export default function AttendanceMobileView({
@@ -153,8 +155,18 @@ export default function AttendanceMobileView({
     stopCamera,
     capturedPhoto,
     isFaceRequired,
+    isSelfieRequired,
     openCameraForPhoto,
+    allowWfh = true,
 }: AttendanceMobileViewProps) {
+    const needsPhoto = isSelfieRequired || isFaceRequired;
+
+    // Force WFO if WFH not allowed
+    useEffect(() => {
+        if (!allowWfh && workMode === 'wfh') {
+            setWorkMode('wfo');
+        }
+    }, [allowWfh, workMode]);
     return (
         <DashboardLayout>
             <AttendanceTour />
@@ -277,7 +289,7 @@ export default function AttendanceMobileView({
                                         <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-blue-100 text-slate-900 dark:text-slate-900"><SelectValue /></SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="wfo">Work From Office</SelectItem>
-                                            <SelectItem value="wfh">Work From Home</SelectItem>
+                                            {allowWfh && <SelectItem value="wfh">Work From Home</SelectItem>}
                                             <SelectItem value="field">Dinas Luar</SelectItem>
                                         </SelectContent>
                                     </Select>
@@ -337,24 +349,75 @@ export default function AttendanceMobileView({
                                     )}
                                 </div>
 
-                                {/* Camera / Photo Trigger Section - PLACED BELOW MAP */}
+                                {/* Camera / Selfie Section */}
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between px-1">
                                         <label className="text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest ml-1">
-                                            Foto Wajah (Bukti Fisik)
+                                            {needsPhoto
+                                                ? isFaceRequired ? 'Verifikasi Wajah (AI)' : 'Foto Selfie'
+                                                : 'Foto Wajah (Opsional)'}
                                         </label>
-                                        <span className="bg-amber-100 text-amber-700 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border border-amber-200">
-                                            Segera Hadir
-                                        </span>
+                                        {needsPhoto && (
+                                            <span className="bg-blue-100 text-blue-700 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border border-blue-200">
+                                                Wajib
+                                            </span>
+                                        )}
                                     </div>
 
                                     <div data-tour="face-photo">
-                                        <div className="relative w-full h-24 bg-slate-50 border border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center p-4 group transition-colors hover:bg-slate-100/50">
-                                            <div className="h-10 w-10 bg-white rounded-full flex items-center justify-center shadow-sm mb-2 group-hover:scale-110 transition-transform">
-                                                <Camera className="h-5 w-5 text-slate-300" />
+                                        {needsPhoto ? (
+                                            photoPreview ? (
+                                                /* Preview foto yang sudah diambil */
+                                                <div className="relative w-full rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
+                                                    <img
+                                                        src={photoPreview}
+                                                        alt="Foto selfie"
+                                                        className="w-full h-40 object-cover"
+                                                    />
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                                                    <div className="absolute bottom-3 left-0 right-0 flex items-center justify-between px-3">
+                                                        <div className="flex items-center gap-1.5 bg-green-500/90 backdrop-blur-sm px-2.5 py-1 rounded-full">
+                                                            <CheckCircle2 className="h-3.5 w-3.5 text-white" />
+                                                            <span className="text-white text-[10px] font-black">Foto Diambil</span>
+                                                        </div>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={() => {
+                                                                setPhotoPreview?.(null);
+                                                                openCameraForPhoto?.();
+                                                            }}
+                                                            className="h-7 px-3 rounded-full bg-white/20 text-white text-[10px] font-black backdrop-blur-sm hover:bg-white/30 border border-white/20"
+                                                        >
+                                                            <Camera className="h-3 w-3 mr-1" />Ulangi
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                /* Tombol ambil foto */
+                                                <button
+                                                    type="button"
+                                                    onClick={openCameraForPhoto}
+                                                    className="relative w-full h-28 bg-blue-50 border-2 border-dashed border-blue-200 rounded-2xl flex flex-col items-center justify-center gap-2 group hover:bg-blue-100/50 active:scale-[0.98] transition-all"
+                                                >
+                                                    <div className="h-12 w-12 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-600/30 group-hover:scale-105 transition-transform">
+                                                        <Camera className="h-6 w-6 text-white" />
+                                                    </div>
+                                                    <span className="text-xs font-black text-blue-600 uppercase tracking-wide">
+                                                        {isFaceRequired ? 'Scan Wajah' : 'Ambil Foto Selfie'}
+                                                    </span>
+                                                    <span className="text-[9px] text-blue-400 font-medium">Ketuk untuk membuka kamera</span>
+                                                </button>
+                                            )
+                                        ) : (
+                                            /* Placeholder jika foto tidak diwajibkan */
+                                            <div className="relative w-full h-24 bg-slate-50 border border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center p-4 group">
+                                                <div className="h-10 w-10 bg-white rounded-full flex items-center justify-center shadow-sm mb-2">
+                                                    <Camera className="h-5 w-5 text-slate-300" />
+                                                </div>
+                                                <p className="text-[10px] text-slate-400 font-bold text-center uppercase tracking-tight">Foto tidak diwajibkan</p>
                                             </div>
-                                            <p className="text-[10px] text-slate-400 font-bold text-center uppercase tracking-tight">Kamera akan tersedia pada pembaruan mendatang</p>
-                                        </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -381,7 +444,13 @@ export default function AttendanceMobileView({
                                             }
                                             handleSubmit();
                                         }}
-                                        disabled={loading || submitting || !!todaySchedule?.is_day_off || !latitude || !longitude || (workMode === 'wfo' && !isLocationValid)}
+                                        disabled={
+                                            loading || submitting ||
+                                            !!todaySchedule?.is_day_off ||
+                                            !latitude || !longitude ||
+                                            (workMode === 'wfo' && !isLocationValid) ||
+                                            (needsPhoto && !capturedPhoto)
+                                        }
                                     >
                                         {loading ? (
                                             <Loader2 className="h-5 w-5 animate-spin mr-2" />
@@ -393,6 +462,8 @@ export default function AttendanceMobileView({
                                                     "LOKASI TIDAK VALID"
                                                 ) : todaySchedule?.is_day_off ? (
                                                     "HARI LIBUR"
+                                                ) : needsPhoto && !capturedPhoto ? (
+                                                    "AMBIL FOTO DULU"
                                                 ) : (
                                                     <>{!todayAttendance ? "ABSEN MASUK" : "ABSEN PULANG"}</>
                                                 )}
@@ -420,7 +491,7 @@ export default function AttendanceMobileView({
                         <div className="w-full h-full flex flex-col justify-between p-6">
                             <div className="flex justify-between items-start pt-safe">
                                 <div className="bg-black/40 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-bold border border-white/10">
-                                    Face Verification
+                                    {isFaceRequired ? 'Face Verification' : 'Selfie Mode'}
                                 </div>
                                 <Button
                                     size="icon"

@@ -39,8 +39,14 @@ import Albums from "./pages/Albums";
 import AlbumDetail from "./pages/AlbumDetail";
 import AuditLogs from './pages/AuditLogs';
 import Settings from "./pages/Settings";
-import { CallOverlay } from "@/components/voice-call/CallOverlay";
-import { VoiceCallProvider } from "@/contexts/VoiceCallContext";
+import DeviceManagement from "./pages/DeviceManagement";
+import DriverLogbook from "./pages/DriverLogbook";
+import DriverReports from "./pages/DriverReports";
+import ManagerAssignments from "./pages/ManagerAssignments";
+import DriverAssignments from "./pages/DriverAssignments";
+import RoleManagement from "./pages/RoleManagement";
+import Vehicles from "./pages/Vehicles";
+import DriverReceipts from "./pages/DriverReceipts";
 
 const queryClient = new QueryClient();
 
@@ -93,66 +99,70 @@ const BackButtonHandler = () => {
 import { SplashScreen } from "@/components/layout/SplashScreen";
 import { useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
-
 const App = () => {
   const [showSplash, setShowSplash] = useState(true);
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
-        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <AuthProvider>
-            <VoiceCallProvider>
-              <RouteScrollHandler />
-              <BackButtonHandler />
-              <CallOverlay />
-              <ErrorBoundary>
-                <Routes>
-                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                  <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
-                  <Route path="/information" element={<ProtectedRoute><InformationPage /></ProtectedRoute>} />
-                  <Route path="/reimbursement" element={<ProtectedRoute><Reimbursement /></ProtectedRoute>} />
-                  <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
-                  <Route path="/quick-attendance" element={<ProtectedRoute><QuickAttendancePage /></ProtectedRoute>} />
-                  <Route path="/face-registration" element={<ProtectedRoute><FaceRegistrationPage /></ProtectedRoute>} />
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <RouteScrollHandler />
+            <BackButtonHandler />
+            <ErrorBoundary>
+              <Routes>
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+                <Route path="/information" element={<ProtectedRoute><InformationPage /></ProtectedRoute>} />
+                <Route path="/reimbursement" element={<ProtectedRoute><Reimbursement /></ProtectedRoute>} />
+                <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
+                <Route path="/quick-attendance" element={<ProtectedRoute><QuickAttendancePage /></ProtectedRoute>} />
+                <Route path="/face-registration" element={<ProtectedRoute><FaceRegistrationPage /></ProtectedRoute>} />
 
-                  <Route path="/leave" element={<ProtectedRoute><LeavePage /></ProtectedRoute>} />
-                  <Route path="/overtime" element={<ProtectedRoute><OvertimePage /></ProtectedRoute>} />
-                  <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
-                  <Route path="/corrections" element={<ProtectedRoute><Corrections /></ProtectedRoute>} />
-                  <Route path="/salary-slips" element={<ProtectedRoute><SalarySlips /></ProtectedRoute>} />
-                  <Route path="/employees/:id/salary" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><EmployeeSalary /></ProtectedRoute>} />
-                  <Route path="/team-map" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr', 'manager']}><TeamMap /></ProtectedRoute>} />
-                  <Route path="/locations" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><Locations /></ProtectedRoute>} />
-                  <Route path="/reports" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr', 'manager']}><Reports /></ProtectedRoute>} />
-                  <Route path="/payroll-report" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><PayrollReport /></ProtectedRoute>} />
-                  <Route path="/payroll" element={<ProtectedRoute><Payroll /></ProtectedRoute>} />
-                  <Route path="/employees" element={<ProtectedRoute><Employees /></ProtectedRoute>} />
-                  <Route path="/approvals" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr', 'manager']}><Approvals /></ProtectedRoute>} />
-                  <Route path="/payroll/:id" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><PayrollDetail /></ProtectedRoute>} />
-                  <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-                  <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
-                  <Route path="/shifts" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr', 'manager']}><Shifts /></ProtectedRoute>} />
-                  <Route path="/holidays" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><Holidays /></ProtectedRoute>} />
-                  <Route path="/agenda" element={<ProtectedRoute><AgendaPage /></ProtectedRoute>} />
-                  <Route path="/notes" element={<ProtectedRoute><Notes /></ProtectedRoute>} />
-                  <Route path="/albums" element={<ProtectedRoute><Albums /></ProtectedRoute>} />
-                  <Route path="/albums/:id" element={<ProtectedRoute><AlbumDetail /></ProtectedRoute>} />
-                  <Route path="/settings" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><Settings /></ProtectedRoute>} />
-                  <Route path="/coming-soon" element={<ProtectedRoute><ComingSoon /></ProtectedRoute>} />
-                  <Route path="/audit-logs" element={<ProtectedRoute allowedRoles={['super_admin']}><AuditLogs /></ProtectedRoute>} />
-                  <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                </Routes>
-              </ErrorBoundary>
-            </VoiceCallProvider>
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider >
+                <Route path="/leave" element={<ProtectedRoute><LeavePage /></ProtectedRoute>} />
+                <Route path="/overtime" element={<ProtectedRoute><OvertimePage /></ProtectedRoute>} />
+                <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
+                <Route path="/corrections" element={<ProtectedRoute><Corrections /></ProtectedRoute>} />
+                <Route path="/salary-slips" element={<ProtectedRoute><SalarySlips /></ProtectedRoute>} />
+                <Route path="/employees/:id/salary" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><EmployeeSalary /></ProtectedRoute>} />
+                <Route path="/team-map" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr', 'manager']}><TeamMap /></ProtectedRoute>} />
+                <Route path="/locations" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><Locations /></ProtectedRoute>} />
+                <Route path="/reports" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr', 'manager']}><Reports /></ProtectedRoute>} />
+                <Route path="/payroll-report" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><PayrollReport /></ProtectedRoute>} />
+                <Route path="/payroll" element={<ProtectedRoute><Payroll /></ProtectedRoute>} />
+                <Route path="/employees" element={<ProtectedRoute><Employees /></ProtectedRoute>} />
+                <Route path="/approvals" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr', 'manager']}><Approvals /></ProtectedRoute>} />
+                <Route path="/payroll/:id" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><PayrollDetail /></ProtectedRoute>} />
+                <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
+                <Route path="/shifts" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr', 'manager']}><Shifts /></ProtectedRoute>} />
+                <Route path="/holidays" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><Holidays /></ProtectedRoute>} />
+                <Route path="/agenda" element={<ProtectedRoute><AgendaPage /></ProtectedRoute>} />
+                <Route path="/notes" element={<ProtectedRoute><Notes /></ProtectedRoute>} />
+                <Route path="/albums" element={<ProtectedRoute><Albums /></ProtectedRoute>} />
+                <Route path="/albums/:id" element={<ProtectedRoute><AlbumDetail /></ProtectedRoute>} />
+                <Route path="/settings" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><Settings /></ProtectedRoute>} />
+                <Route path="/coming-soon" element={<ProtectedRoute><ComingSoon /></ProtectedRoute>} />
+                <Route path="/audit-logs" element={<ProtectedRoute allowedRoles={['super_admin']}><AuditLogs /></ProtectedRoute>} />
+                <Route path="/device-management" element={<ProtectedRoute allowedRoles={['super_admin']}><DeviceManagement /></ProtectedRoute>} />
+                <Route path="/driver-logbook" element={<ProtectedRoute><DriverLogbook /></ProtectedRoute>} />
+                <Route path="/driver-receipts" element={<ProtectedRoute><DriverReceipts /></ProtectedRoute>} />
+                <Route path="/driver-reports" element={<ProtectedRoute><DriverReports /></ProtectedRoute>} />
+                <Route path="/manager-assignments" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><ManagerAssignments /></ProtectedRoute>} />
+                <Route path="/driver-assignments" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><DriverAssignments /></ProtectedRoute>} />
+                <Route path="/vehicles" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><Vehicles /></ProtectedRoute>} />
+                <Route path="/role-management" element={<ProtectedRoute allowedRoles={['super_admin']}><RoleManagement /></ProtectedRoute>} />
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              </Routes>
+            </ErrorBoundary>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 };
 

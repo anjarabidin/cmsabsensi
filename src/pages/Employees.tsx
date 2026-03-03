@@ -76,7 +76,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { downloadExcel } from '@/utils/csvExport';
-import { useVoiceCall } from '@/hooks/useVoiceCall';
 
 import { MasterDataDialog } from '@/components/employees/MasterDataDialog';
 
@@ -107,7 +106,6 @@ export default function EmployeesPage() {
     // Removed unused Master Data state variables
 
 
-    const { startCall } = useVoiceCall();
 
     const handleExportExcel = () => {
         const headers = ['No', 'Nama Lengkap', 'ID Karyawan', 'NIK KTP', 'Email', 'Telepon', 'Departemen', 'Posisi', 'Status Akun'];
@@ -714,11 +712,10 @@ export default function EmployeesPage() {
                                                                     if (!ds) return null;
                                                                     return (
                                                                         <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-slate-100 border-dashed w-fit">
-                                                                            <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider flex items-center gap-1 leading-none ${
-                                                                                ds.is_night_shift 
-                                                                                    ? 'bg-violet-50 text-violet-600 border border-violet-100' 
-                                                                                    : 'bg-amber-50 text-amber-600 border border-amber-100'
-                                                                            }`}>
+                                                                            <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider flex items-center gap-1 leading-none ${ds.is_night_shift
+                                                                                ? 'bg-violet-50 text-violet-600 border border-violet-100'
+                                                                                : 'bg-amber-50 text-amber-600 border border-amber-100'
+                                                                                }`}>
                                                                                 {ds.is_night_shift ? '🌙' : '☀️'} {ds.name}
                                                                             </span>
                                                                         </div>
@@ -935,10 +932,9 @@ export default function EmployeesPage() {
 
                     <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
                         <Tabs defaultValue="profile" className="w-full">
-                            <TabsList className="grid w-full grid-cols-3 bg-slate-100 p-1 rounded-xl mb-6">
+                            <TabsList className="grid w-full grid-cols-2 bg-slate-100 p-1 rounded-xl mb-6">
                                 <TabsTrigger value="profile" className="rounded-lg font-bold text-xs uppercase tracking-wider">Profil</TabsTrigger>
                                 <TabsTrigger value="job" className="rounded-lg font-bold text-xs uppercase tracking-wider">Pekerjaan</TabsTrigger>
-                                <TabsTrigger value="account" className="rounded-lg font-bold text-xs uppercase tracking-wider">Akun</TabsTrigger>
                             </TabsList>
 
                             <TabsContent value="profile" className="space-y-4">
@@ -1025,7 +1021,7 @@ export default function EmployeesPage() {
                                     </div>
                                 </div>
 
-                            {/* Shift Tetap — per Karyawan */}
+                                {/* Shift Tetap — per Karyawan */}
                                 <div className="pt-5 border-t border-slate-100">
                                     <div className="flex items-start justify-between mb-4">
                                         <div>
@@ -1051,17 +1047,15 @@ export default function EmployeesPage() {
                                         <button
                                             type="button"
                                             onClick={() => setEditForm({ ...editForm, default_shift_id: null } as any)}
-                                            className={`group flex items-center gap-3 w-full text-left px-4 py-3 rounded-2xl border-2 transition-all duration-150 ${
-                                                !(editForm as any).default_shift_id
-                                                    ? 'border-slate-400 bg-slate-50 shadow-sm'
-                                                    : 'border-slate-100 bg-white hover:border-slate-200 hover:bg-slate-50'
-                                            }`}
+                                            className={`group flex items-center gap-3 w-full text-left px-4 py-3 rounded-2xl border-2 transition-all duration-150 ${!(editForm as any).default_shift_id
+                                                ? 'border-slate-400 bg-slate-50 shadow-sm'
+                                                : 'border-slate-100 bg-white hover:border-slate-200 hover:bg-slate-50'
+                                                }`}
                                         >
-                                            <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
-                                                !(editForm as any).default_shift_id
-                                                    ? 'bg-slate-200'
-                                                    : 'bg-slate-100 group-hover:bg-slate-200'
-                                            }`}>
+                                            <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${!(editForm as any).default_shift_id
+                                                ? 'bg-slate-200'
+                                                : 'bg-slate-100 group-hover:bg-slate-200'
+                                                }`}>
                                                 <span className="text-sm font-black text-slate-500">—</span>
                                             </div>
                                             <div className="flex-1 min-w-0">
@@ -1082,19 +1076,17 @@ export default function EmployeesPage() {
                                                     key={s.id}
                                                     type="button"
                                                     onClick={() => setEditForm({ ...editForm, default_shift_id: s.id } as any)}
-                                                    className={`group flex items-center gap-3 w-full text-left px-4 py-3 rounded-2xl border-2 transition-all duration-150 ${
-                                                        selected
-                                                            ? night
-                                                                ? 'border-violet-400 bg-violet-50 shadow-sm shadow-violet-100'
-                                                                : 'border-amber-400 bg-amber-50 shadow-sm shadow-amber-100'
-                                                            : 'border-slate-100 bg-white hover:border-slate-200 hover:bg-slate-50'
-                                                    }`}
+                                                    className={`group flex items-center gap-3 w-full text-left px-4 py-3 rounded-2xl border-2 transition-all duration-150 ${selected
+                                                        ? night
+                                                            ? 'border-violet-400 bg-violet-50 shadow-sm shadow-violet-100'
+                                                            : 'border-amber-400 bg-amber-50 shadow-sm shadow-amber-100'
+                                                        : 'border-slate-100 bg-white hover:border-slate-200 hover:bg-slate-50'
+                                                        }`}
                                                 >
-                                                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-base shrink-0 transition-colors ${
-                                                        selected
-                                                            ? night ? 'bg-violet-100' : 'bg-amber-100'
-                                                            : night ? 'bg-violet-50 group-hover:bg-violet-100' : 'bg-amber-50 group-hover:bg-amber-100'
-                                                    }`}>
+                                                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-base shrink-0 transition-colors ${selected
+                                                        ? night ? 'bg-violet-100' : 'bg-amber-100'
+                                                        : night ? 'bg-violet-50 group-hover:bg-violet-100' : 'bg-amber-50 group-hover:bg-amber-100'
+                                                        }`}>
                                                         {night ? '🌙' : '☀️'}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
@@ -1121,106 +1113,59 @@ export default function EmployeesPage() {
                                     </div>
                                 </div>
                             </TabsContent>
+                        </Tabs>
+                    </div>
 
-                        <TabsContent value="account" className="space-y-4">
-                            <div className="space-y-2">
-                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Role Akses</Label>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                    {(() => {
-                                        const availableRoles = ['employee', 'manager', 'admin_hr', 'super_admin'];
+                    <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                        <Button variant="ghost" onClick={() => setIsEditOpen(false)} className="rounded-xl font-bold text-slate-500 hover:bg-white">Batal</Button>
+                        <Button onClick={handleSaveEdit} disabled={actionLoading} className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 shadow-lg shadow-blue-200">
+                            {actionLoading ? <Loader2 className="animate-spin" /> : <><Save className="mr-2 h-4 w-4" /> Simpan Perubahan</>}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
 
-                                        // Filter roles based on permissions
-                                        const displayedRoles = availableRoles.filter(r => {
-                                            // Only Super Admin can assign Super Admin role
-                                            if (r === 'super_admin') {
-                                                return profile?.role === 'super_admin' || editForm.role === 'super_admin';
-                                            }
-                                            return true;
-                                        });
-
-                                        return displayedRoles.map((role) => (
-                                            <div
-                                                key={role}
-                                                onClick={() => setEditForm({ ...editForm, role: role as any })}
-                                                className={`cursor-pointer border-2 rounded-xl p-3 text-center transition-all flex flex-col items-center justify-center min-h-[60px] ${editForm.role === role
-                                                    ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm'
-                                                    : 'border-slate-100 bg-white text-slate-500 hover:border-blue-200 hover:bg-slate-50'
-                                                    }`}
-                                            >
-                                                <p className="text-[10px] font-black uppercase tracking-wide leading-tight">
-                                                    {role === 'admin_hr' ? 'HRD / Admin' : role.replace('_', ' ')}
-                                                </p>
-                                            </div>
-                                        ));
-                                    })()}
-                                </div>
-                                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 mt-3">
-                                    <p className="text-[10px] text-slate-500 leading-relaxed">
-                                        <span className="font-bold text-slate-700">• Employee:</span> Akses standar (Absen, Cuti, Lihat Jadwal).<br />
-                                        <span className="font-bold text-slate-700">• Manager:</span> Approval cuti tim, pantau lokasi tim, lihat laporan operasional.<br />
-                                        <span className="font-bold text-slate-700">• HRD / Admin:</span> Akses pengelolaan data karyawan, payroll, dan pengaturan shift.<br />
-                                        {profile?.role === 'super_admin' && (
-                                            <>
-                                                <span className="font-bold text-red-600">• Super Admin:</span> Akses mutlak ke seluruh sistem, audit log, dan konfigurasi kritis.<br />
-                                            </>
-                                        )}
-                                    </p>
-                                </div>
-                            </div>
-                        </TabsContent>
-                    </Tabs>
-                </div>
-
-                <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-                    <Button variant="ghost" onClick={() => setIsEditOpen(false)} className="rounded-xl font-bold text-slate-500 hover:bg-white">Batal</Button>
-                    <Button onClick={handleSaveEdit} disabled={actionLoading} className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 shadow-lg shadow-blue-200">
-                        {actionLoading ? <Loader2 className="animate-spin" /> : <><Save className="mr-2 h-4 w-4" /> Simpan Perubahan</>}
-                    </Button>
-                </div>
-            </DialogContent>
-        </Dialog>
-
-            {/* Reused Confirmation Dialog from Mobile for Consistency */ }
-    <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
-            <AlertDialogHeader>
-                <AlertDialogTitle className="text-2xl font-black text-slate-900">Konfirmasi Status Akun</AlertDialogTitle>
-                <AlertDialogDescription className="text-base">
-                    {selectedEmployee?.is_active ? (
-                        <span>
-                            Apakah Anda yakin ingin <strong>menonaktifkan</strong> akun <strong>{selectedEmployee.full_name}</strong>?
-                            <br /><br />
-                            Akun yang dinonaktifkan tidak akan bisa login, namun data riwayat (absensi, cuti, dll) akan <strong>tetap tersimpan</strong>.
-                        </span>
-                    ) : (
-                        <span>
-                            Aktifkan kembali akun <strong>{selectedEmployee?.full_name}</strong>? Pengguna akan dapat login kembali.
-                        </span>
-                    )}
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="mt-4">
-                <AlertDialogCancel className="rounded-xl border-slate-200 font-bold">Batal</AlertDialogCancel>
-                <AlertDialogAction
-                    onClick={confirmToggleStatus}
-                    className={`rounded-xl font-bold shadow-lg ${selectedEmployee?.is_active ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-200' : 'bg-green-600 hover:bg-green-700 text-white shadow-green-200'}`}
-                    disabled={actionLoading}
-                >
-                    {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {selectedEmployee?.is_active ? 'Nonaktifkan Akun' : 'Aktifkan Akun'}
-                </AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-    </AlertDialog>
-    {/* Master Data Dialog - Refactored */ }
-    <MasterDataDialog
-        open={isMasterDataOpen}
-        onOpenChange={setIsMasterDataOpen}
-        onSuccess={fetchData}
-        tab={masterTab}
-        onTabChange={setMasterTab}
-        userRole={profile?.role}
-    />
+            {/* Reused Confirmation Dialog from Mobile for Consistency */}
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-2xl font-black text-slate-900">Konfirmasi Status Akun</AlertDialogTitle>
+                        <AlertDialogDescription className="text-base">
+                            {selectedEmployee?.is_active ? (
+                                <span>
+                                    Apakah Anda yakin ingin <strong>menonaktifkan</strong> akun <strong>{selectedEmployee.full_name}</strong>?
+                                    <br /><br />
+                                    Akun yang dinonaktifkan tidak akan bisa login, namun data riwayat (absensi, cuti, dll) akan <strong>tetap tersimpan</strong>.
+                                </span>
+                            ) : (
+                                <span>
+                                    Aktifkan kembali akun <strong>{selectedEmployee?.full_name}</strong>? Pengguna akan dapat login kembali.
+                                </span>
+                            )}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="mt-4">
+                        <AlertDialogCancel className="rounded-xl border-slate-200 font-bold">Batal</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmToggleStatus}
+                            className={`rounded-xl font-bold shadow-lg ${selectedEmployee?.is_active ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-200' : 'bg-green-600 hover:bg-green-700 text-white shadow-green-200'}`}
+                            disabled={actionLoading}
+                        >
+                            {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {selectedEmployee?.is_active ? 'Nonaktifkan Akun' : 'Aktifkan Akun'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+            {/* Master Data Dialog - Refactored */}
+            <MasterDataDialog
+                open={isMasterDataOpen}
+                onOpenChange={setIsMasterDataOpen}
+                onSuccess={fetchData}
+                tab={masterTab}
+                onTabChange={setMasterTab}
+                userRole={profile?.role}
+            />
         </DashboardLayout >
     );
 }

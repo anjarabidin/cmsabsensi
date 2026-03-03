@@ -119,6 +119,21 @@ export default function NotificationsPage() {
         }
     };
 
+    const deleteAllNotifications = async () => {
+        if (!confirm('Hapus semua notifikasi? Tindakan ini tidak bisa dibatalkan.')) return;
+        try {
+            const { error } = await supabase
+                .from('notifications')
+                .delete()
+                .eq('user_id', user?.id);
+            if (error) throw error;
+            setNotifications([]);
+            toast({ title: 'Semua notifikasi dihapus' });
+        } catch {
+            toast({ title: 'Gagal', description: 'Tidak dapat menghapus notifikasi', variant: 'destructive' });
+        }
+    };
+
     const getIcon = (type: string) => {
         switch (type) {
             case 'leave': return <Clock className="h-5 w-5 text-amber-500" />;
@@ -168,7 +183,7 @@ export default function NotificationsPage() {
                                 </Button>
                                 <h1 className="text-xl font-bold">Notifikasi</h1>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
                                 {notifications.some(n => !n.read) && (
                                     <Button
                                         variant="ghost"
@@ -176,8 +191,19 @@ export default function NotificationsPage() {
                                         onClick={markAllAsRead}
                                         className="text-white hover:bg-white/20 text-xs font-bold"
                                     >
-                                        <MailOpen className="h-4 w-4 mr-2" />
-                                        Baca Semua
+                                        <MailOpen className="h-4 w-4 mr-1" />
+                                        Baca
+                                    </Button>
+                                )}
+                                {notifications.length > 0 && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={deleteAllNotifications}
+                                        className="text-white/80 hover:bg-white/20 hover:text-white text-xs font-bold"
+                                    >
+                                        <Trash2 className="h-4 w-4 mr-1" />
+                                        Hapus
                                     </Button>
                                 )}
                             </div>
@@ -337,15 +363,27 @@ export default function NotificationsPage() {
                         <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Pusat Notifikasi</h1>
                         <p className="text-slate-500 dark:text-slate-400 text-lg">Kelola semua pemberitahuan dan informasi penting Anda.</p>
                     </div>
-                    {notifications.some(n => !n.read) && (
-                        <Button
-                            onClick={markAllAsRead}
-                            className="bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 shadow-sm font-bold gap-2 rounded-xl h-12 px-6"
-                        >
-                            <MailOpen className="h-5 w-5 text-blue-500" />
-                            Tandai Semua Dibaca
-                        </Button>
-                    )}
+                    <div className="flex items-center gap-3">
+                        {notifications.some(n => !n.read) && (
+                            <Button
+                                onClick={markAllAsRead}
+                                className="bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 shadow-sm font-bold gap-2 rounded-xl h-12 px-6"
+                            >
+                                <MailOpen className="h-5 w-5 text-blue-500" />
+                                Tandai Semua Dibaca
+                            </Button>
+                        )}
+                        {notifications.length > 0 && (
+                            <Button
+                                onClick={deleteAllNotifications}
+                                variant="ghost"
+                                className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 border border-red-100 dark:border-red-900/30 font-bold gap-2 rounded-xl h-12 px-6"
+                            >
+                                <Trash2 className="h-5 w-5" />
+                                Hapus Semua
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
                 <div className="grid lg:grid-cols-12 gap-8 items-start">

@@ -86,9 +86,9 @@ export default function AttendancePage() {
   const [lateMinutesPopup, setLateMinutesPopup] = useState(0);
 
   // NEW: Face Verification Setting
-  // Default changed to FALSE as per user request (temporary dev convenience).
-  // Will be overwritten by DB setting if row exists.
   const [isFaceRequired, setIsFaceRequired] = useState(false);
+  // NEW: Simple selfie setting (no face scan, just photo proof)
+  const [isSelfieRequired, setIsSelfieRequired] = useState(false);
 
   // Debug: Monitor isFaceRequired changes
   useEffect(() => {
@@ -96,7 +96,12 @@ export default function AttendancePage() {
   }, [isFaceRequired]);
 
   // GPS validation - Use database radius instead of hardcoded
-  const MIN_GPS_ACCURACY = 50; // Require accuracy better than 50 meters (more realistic)
+  // GPS settings (loaded from DB)
+  const [minGpsAccuracy, setMinGpsAccuracy] = useState(50);
+  const [allowWfh, setAllowWfh] = useState(true);
+  const [blockFakeGps, setBlockFakeGps] = useState(true);
+  const [companyTimezone, setCompanyTimezone] = useState('Asia/Jakarta');
+  const [clockInLimit, setClockInLimit] = useState<{ h: number, m: number } | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -140,9 +145,9 @@ export default function AttendancePage() {
     }
 
     // GPS ACCURACY CHECK
-    if (accuracy && accuracy > MIN_GPS_ACCURACY) {
+    if (accuracy && accuracy > minGpsAccuracy) {
       setIsLocationValid(false);
-      setLocationErrorMsg(`Akurasi GPS tidak cukup (${Math.round(accuracy)}m). Diperlukan akurasi < ${MIN_GPS_ACCURACY}m. Mohon gunakan GPS di area terbuka.`);
+      setLocationErrorMsg(`Akurasi GPS tidak cukup (${Math.round(accuracy)}m). Diperlukan akurasi <${minGpsAccuracy}m. Mohon gunakan GPS di area terbuka.`);
       return;
     }
 
@@ -172,7 +177,7 @@ export default function AttendancePage() {
         if (dist > office.radius_meters) {
           setIsLocationValid(false);
           setLocationErrorMsg(`Berada di luar jangkauan kantor (${Math.round(dist)}m). Maksimal ${office.radius_meters}m.`);
-        } else if (isMocked) {
+        } else if (blockFakeGps && isMocked) {
           setIsLocationValid(false);
           setLocationErrorMsg("Fake GPS Terdeteksi! Mohon gunakan lokasi asli.");
         } else {
@@ -184,7 +189,7 @@ export default function AttendancePage() {
         setLocationErrorMsg("Pilih lokasi kantor terlebih dahulu.");
       }
     } else if (workMode === 'wfh') {
-      if (isMocked) {
+      if (blockFakeGps && isMocked) {
         setIsLocationValid(false);
         setLocationErrorMsg("Fake GPS Terdeteksi! Mohon gunakan lokasi asli.");
       } else {
@@ -192,22 +197,57 @@ export default function AttendancePage() {
         setLocationErrorMsg(null);
       }
     } else {
-      if (isMocked) {
-        setIsLocationValid(false);
-        setLocationErrorMsg("Fake GPS Terdeteksi! Mohon gunakan lokasi asli.");
-      } else {
-        setIsLocationValid(true);
-        setLocationErrorMsg(null);
-      }
+      setIsLocationValid(true);
+      setLocationErrorMsg(null);
     }
-  }, [latitude, longitude, selectedLocationId, workMode, officeLocations, isMocked, locationError, locationLoading, accuracy]);
+  }, [latitude, longitude, selectedLocationId, workMode, officeLocations, isMocked, locationError, locationLoading, accuracy, minGpsAccuracy, blockFakeGps]);
+
+  // NEW: Auto-select nearest office when GPS fixes
+  useEffect(() => {
+    if (latitude && longitude && officeLocations.length > 0 && !selectedLocationId) {
+      let nearest = officeLocations[0];
+      let minDist = getDistanceFromLatLonInM(latitude, longitude, nearest.latitude, nearest.longitude);
+
+      officeLocations.forEach(office => {
+        const d = getDistanceFromLatLonInM(latitude, longitude, office.latitude, office.longitude);
+        if (d < minDist) {
+          minDist = d;
+          nearest = office;
+        }
+      });
+
+      setSelectedLocationId(nearest.id);
+      console.log('Nearest office auto-selected:', nearest.name);
+    }
+  }, [latitude, longitude, officeLocations]);
 
   const fetchData = async () => {
     try {
       if (!user) return;
-      // Use Jakarta timezone for fetching today's data
-      const TIMEZONE = 'Asia/Jakarta';
-      const today = formatTz(new Date(), 'yyyy-MM-dd', { timeZone: TIMEZONE });
+      // INITIAL FETCH: Get core dynamic settings first to affect the rest of calculations
+      const { data: globalSettings } = await supabase
+        .from('app_settings')
+        .select('key, value')
+        .in('key', [
+          'company_timezone',
+          'attendance_clock_in_latest_hour',
+          'attendance_clock_in_latest_minute'
+        ]);
+
+      let tz = 'Asia/Jakarta';
+      let limitH = 10;
+      let limitM = 0;
+
+      (globalSettings || []).forEach(s => {
+        if (s.key === 'company_timezone' && s.value) tz = String(s.value);
+        if (s.key === 'attendance_clock_in_latest_hour' && s.value) limitH = Number(s.value);
+        if (s.key === 'attendance_clock_in_latest_minute' && s.value) limitM = Number(s.value);
+      });
+
+      setCompanyTimezone(tz);
+      setClockInLimit({ h: limitH, m: limitM });
+
+      const today = formatTz(new Date(), 'yyyy-MM-dd', { timeZone: tz });
 
       // 1. Fetch Setting: Face Verification Required?
       const { data: settingData } = await supabase
@@ -217,11 +257,27 @@ export default function AttendancePage() {
         .maybeSingle();
 
       if (settingData) {
-        console.log('App settings raw value:', settingData.value, 'type:', typeof settingData.value);
-        console.log('App settings parsed to boolean:', Boolean(settingData.value));
         setIsFaceRequired(Boolean(settingData.value));
-        console.log('Attendance - isFaceRequired set to:', Boolean(settingData.value));
       }
+
+      // Fetch selfie setting
+      const { data: selfieData } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'require_selfie_photo')
+        .maybeSingle();
+      if (selfieData) setIsSelfieRequired(Boolean(selfieData.value));
+
+      // Fetch GPS settings
+      const { data: gpsSettings } = await supabase
+        .from('app_settings')
+        .select('key, value')
+        .in('key', ['gps_min_accuracy_meters', 'allow_wfh_mode', 'block_fake_gps']);
+      (gpsSettings || []).forEach(s => {
+        if (s.key === 'gps_min_accuracy_meters') setMinGpsAccuracy(Number(s.value) || 50);
+        if (s.key === 'allow_wfh_mode') setAllowWfh(s.value === true || s.value === 'true');
+        if (s.key === 'block_fake_gps') setBlockFakeGps(s.value === true || s.value === 'true');
+      });
 
       // Fetch Attendance
       const { data: attendanceData } = await supabase
@@ -256,10 +312,6 @@ export default function AttendancePage() {
         coords: `${office.latitude}, ${office.longitude}`
       })));
       setOfficeLocations((locationData as OfficeLocation[]) || []);
-      if (locationData && locationData.length > 0) {
-        setSelectedLocationId(locationData[0].id);
-        console.log('Auto-selected office:', locationData[0].name, 'ID:', locationData[0].id);
-      }
 
       // Fetch Face Enrollment (For PWA Verification)
       const { data: enrollmentData } = await supabase
@@ -289,27 +341,8 @@ export default function AttendancePage() {
         return;
       }
 
-      // If validation NOT REQUIRED, skip camera
-      if (!isFaceRequired) {
-        // Bypass logic handled in button click or handleSubmit
-        return;
-      }
-
-      // Check for day off
-      if (todaySchedule?.is_day_off) {
-        toast({ title: 'Hari Libur', description: 'Hari ini adalah hari libur.', });
-      }
-
-      // PWA: Check enrollment only if Required
-      if (isFaceRequired && !Capacitor.isNativePlatform() && !enrolledDescriptor) {
-        toast({
-          title: 'Wajah Belum Terdaftar',
-          description: 'Mohon daftarkan wajah Anda terlebih dahulu di menu Profil.',
-          variant: 'destructive',
-          duration: 4000
-        });
-        // Allow opening camera anyway, but they won't pass verification later
-      }
+      // Open camera if face recognition required OR simple selfie required
+      if (!isFaceRequired && !isSelfieRequired) return;
 
       setCameraOpen(true);
       await startCamera();
@@ -373,9 +406,10 @@ export default function AttendancePage() {
           return;
         }
       } else {
-        // PWA/WEB: Use Face Recognition via Camera
-        // Skip if not required (redundant check but safe)
-        if (isFaceRequired) {
+        // PWA/WEB: simple selfie OR face recognition
+        if (isSelfieRequired && !isFaceRequired) {
+          // no face scan needed — photo is captured below
+        } else if (isFaceRequired) {
           if (!enrolledDescriptor) {
             toast({ title: 'Gagal', description: 'Anda belum mendaftarkan wajah. Silakan ke menu Profil > Registrasi Wajah.', variant: 'destructive' });
             setVerifying(false);
@@ -424,8 +458,10 @@ export default function AttendancePage() {
       setVerifying(false);
 
       toast({
-        title: '✓ Verifikasi Berhasil',
-        description: Capacitor.isNativePlatform() ? 'Identitas terverifikasi dengan sidik jari' : 'Wajah terverifikasi',
+        title: 'Foto Diambil',
+        description: Capacitor.isNativePlatform()
+          ? 'Identitas terverifikasi dengan sidik jari'
+          : isFaceRequired ? 'Wajah terverifikasi' : 'Foto selfie berhasil diambil',
         className: 'bg-green-600 text-white border-none',
         duration: 3000,
       });
@@ -444,9 +480,9 @@ export default function AttendancePage() {
       return;
     }
 
-    // 2. Photo Validation (Conditiona)
-    if (isFaceRequired && !capturedPhoto) {
-      toast({ title: 'Foto Wajib', description: 'Pastikan Anda telah mengambil foto wajah.', variant: 'destructive' });
+    // 2. Photo Validation
+    if ((isFaceRequired || isSelfieRequired) && !capturedPhoto) {
+      toast({ title: 'Foto Wajib', description: 'Pastikan Anda telah mengambil foto selfie.', variant: 'destructive' });
       return;
     }
 
@@ -496,10 +532,10 @@ export default function AttendancePage() {
       // const today = format(now, 'yyyy-MM-dd');
 
       // TIMEZONE FIX: Force everything to be calculated in WIB (Asia/Jakarta)
-      const TIMEZONE = 'Asia/Jakarta';
+      const tz = companyTimezone || 'Asia/Jakarta';
       const now = new Date(); // UTC Timestamp (Single Source of Truth)
-      // Ensure 'today' is based on Jakarta Date
-      const today = formatTz(now, 'yyyy-MM-dd', { timeZone: TIMEZONE });
+      // Ensure 'today' is based on Dynamic Date
+      const today = formatTz(now, 'yyyy-MM-dd', { timeZone: tz });
 
       if (type === 'clock_in') {
         // Determine Shift Start
@@ -513,10 +549,10 @@ export default function AttendancePage() {
           advanceMinutes = todaySchedule.shift.clock_in_advance_minutes ?? 30;
         }
 
-        // FIXED: Construct shift date based on Jakarta Timezone
+        // FIXED: Construct shift date based on Dynamic Timezone
         // "2023-10-27T08:00:00" -> UTC Date of that Jakarta time
         const shiftStartString = `${today}T${scheduleStartStr}`;
-        const shiftStartDate = fromZonedTime(shiftStartString, TIMEZONE);
+        const shiftStartDate = fromZonedTime(shiftStartString, tz);
 
         // Check Early Clock-in Barrier
         const earliestAllowed = new Date(shiftStartDate.getTime() - (advanceMinutes * 60000));
@@ -524,8 +560,8 @@ export default function AttendancePage() {
         if (now < earliestAllowed) {
           toast({
             title: 'Terlalu Awal!',
-            // Show the allowed time in WIB
-            description: `Anda baru bisa absen masuk jam ${formatTz(earliestAllowed, 'HH:mm', { timeZone: TIMEZONE })} WIB.`,
+            // Show the allowed time in Timezone
+            description: `Anda baru bisa absen masuk jam ${formatTz(earliestAllowed, 'HH:mm', { timeZone: tz })}.`,
             variant: 'destructive'
           });
           setSubmitting(false);
@@ -537,7 +573,7 @@ export default function AttendancePage() {
         let shiftEndTime = null;
         if (todaySchedule?.shift?.end_time && todaySchedule?.shift?.start_time) {
           const shiftEndString = `${today}T${todaySchedule.shift.end_time}`;
-          shiftEndTime = fromZonedTime(shiftEndString, TIMEZONE);
+          shiftEndTime = fromZonedTime(shiftEndString, tz);
 
           // Handle Overnight Shifts (e.g. 22:00 - 06:00)
           // If end_time is numerically smaller than start_time, it means it ends usually the next day.
@@ -546,20 +582,22 @@ export default function AttendancePage() {
           }
         }
 
-        // BARRIER: Cannot Clock In AFTER Shift Ends!
-        if (shiftEndTime && now > shiftEndTime) {
-          toast({
-            title: 'Absen Masuk Ditolak!',
-            description: `Jam kerja telah berakhir (${todaySchedule?.shift?.end_time.slice(0, 5)} WIB). Anda tidak bisa absen masuk setelah jam pulang.`,
-            variant: 'destructive',
-            duration: 4000
-          });
-          setSubmitting(false);
-          return;
+        // BARRIER: Dynamic Global Clock-in Limit (e.g. 10:00 AM)
+        if (clockInLimit) {
+          const limitTime = fromZonedTime(`${today}T${String(clockInLimit.h).padStart(2, '0')}:${String(clockInLimit.m).padStart(2, '0')}:00`, tz);
+          if (now > limitTime) {
+            toast({
+              title: 'Batas Absen Terlewati!',
+              description: `Batas akhir absen masuk adalah pukul ${String(clockInLimit.h).padStart(2, '0')}:${String(clockInLimit.m).padStart(2, '0')}. Anda terlambat.`,
+              variant: 'destructive'
+            });
+            setSubmitting(false);
+            return;
+          }
         }
 
-        // Check Late Clock-in Warning (after 6 PM Jakarta time) - Fallback Warning only
-        const lateClockInThreshold = fromZonedTime(`${today}T18:00:00`, TIMEZONE);
+        // Check Late Clock-in Warning - Fallback Warning only
+        const lateClockInThreshold = fromZonedTime(`${today}T18:00:00`, tz);
 
         if (now > lateClockInThreshold && !shiftEndTime) {
           if (!window.confirm("Ini sudah di luar jam kerja normal (lewat jam 18:00 WIB). Apakah Anda yakin ingin melakukan absen masuk?")) {
@@ -655,6 +693,8 @@ export default function AttendancePage() {
     capturedPhoto,
     verifying,
     isFaceRequired,
+    isSelfieRequired,
+    allowWfh,
     MAX_RADIUS_M: 50
   };
 

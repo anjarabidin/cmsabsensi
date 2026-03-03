@@ -147,7 +147,6 @@ export const usePushNotifications = () => {
 
                         toast({
                             title: "PWA Push Aktif",
-                            description: "Perangkat ini sekarang terdaftar untuk notifikasi.",
                         });
                     }
 

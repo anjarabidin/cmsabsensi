@@ -9,9 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { Search, Megaphone, Calendar, ChevronRight, Plus, Loader2, Info, Edit, Trash2, MoreVertical, ArrowLeft, Phone, PhoneIncoming, PhoneOutgoing, PhoneMissed, Clock } from 'lucide-react';
+import { Search, Megaphone, Calendar, ChevronRight, Plus, Loader2, Info, Edit, Trash2, MoreVertical, ArrowLeft, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { useVoiceCall } from '@/hooks/useVoiceCall';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
     DropdownMenu,
@@ -70,8 +69,6 @@ export default function InformationPage() {
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
-    const [callHistory, setCallHistory] = useState<any[]>([]);
-    const { startCall } = useVoiceCall();
 
     // Create/Edit Announcement State
     const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -84,7 +81,7 @@ export default function InformationPage() {
     const [sendNotification, setSendNotification] = useState(true);
 
     // Filtering State
-    const [activeTab, setActiveTab] = useState<'active' | 'history' | 'calls'>('active');
+    const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
     const [selectedMonth, setSelectedMonth] = useState<string>(format(new Date(), 'MM'));
     const [selectedYear, setSelectedYear] = useState<string>(format(new Date(), 'yyyy'));
 
@@ -96,26 +93,8 @@ export default function InformationPage() {
 
     useEffect(() => {
         fetchAnnouncements();
-        fetchCalls();
-    }, [user?.id, activeTab === 'calls']);
+    }, [user?.id]);
 
-    const fetchCalls = async () => {
-        if (!user?.id) return;
-        const { data, error } = await supabase
-            .from('calls' as any)
-            .select(`
-                *,
-                caller:profiles!caller_id(id, full_name, avatar_url),
-                receiver:profiles!receiver_id(id, full_name, avatar_url)
-            `)
-            .or(`caller_id.eq.${user.id},receiver_id.eq.${user.id}`)
-            .order('created_at', { ascending: false })
-            .limit(20);
-
-        if (!error && data) {
-            setCallHistory(data);
-        }
-    };
 
     const fetchAnnouncements = async () => {
         setLoading(true);
@@ -313,73 +292,10 @@ export default function InformationPage() {
                                 >
                                     Riwayat
                                 </button>
-                                <button
-                                    onClick={() => setActiveTab('calls')}
-                                    className={cn(
-                                        "flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-                                        activeTab === 'calls' ? "bg-white text-blue-600 shadow-lg" : "text-white/70 hover:text-white"
-                                    )}
-                                >
-                                    Telepon
-                                </button>
                             </div>
                         </div>
 
-                        {activeTab === 'calls' ? (
-                            <div className="space-y-3 pb-24">
-                                {callHistory.length > 0 ? (
-                                    callHistory.map((call) => {
-                                        const isOutgoing = call.caller_id === user?.id;
-                                        const peer = isOutgoing ? call.receiver : call.caller;
-                                        const status = call.status;
-
-                                        return (
-                                            <Card key={call.id} className="border-none shadow-sm rounded-2xl bg-white overflow-hidden">
-                                                <CardContent className="p-4 flex items-center justify-between">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="relative">
-                                                            <Avatar className="h-12 w-12 border border-slate-100">
-                                                                <AvatarImage src={peer?.avatar_url} />
-                                                                <AvatarFallback className="bg-slate-100 text-slate-500 font-bold uppercase">
-                                                                    {peer?.full_name?.substring(0, 2)}
-                                                                </AvatarFallback>
-                                                            </Avatar>
-                                                            <div className={cn(
-                                                                "absolute -bottom-1 -right-1 h-5 w-5 rounded-full flex items-center justify-center border-2 border-white",
-                                                                status === 'missed' ? "bg-red-50 text-red-600" : (isOutgoing ? "bg-blue-50 text-blue-600" : "bg-green-50 text-green-600")
-                                                            )}>
-                                                                {status === 'missed' ? <PhoneMissed className="h-2.5 w-2.5" /> : (isOutgoing ? <PhoneOutgoing className="h-2.5 w-2.5" /> : <PhoneIncoming className="h-2.5 w-2.5" />)}
-                                                            </div>
-                                                        </div>
-                                                        <div>
-                                                            <h4 className="font-bold text-slate-900 text-sm">{peer?.full_name || 'User'}</h4>
-                                                            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-medium">
-                                                                <Clock className="h-3 w-3" />
-                                                                {format(new Date(call.created_at), 'd MMM, HH:mm', { locale: id })}
-                                                                <span className="capitalize">• {status}</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-10 w-10 rounded-full text-blue-600 bg-blue-50 hover:bg-blue-100"
-                                                        onClick={() => peer?.id && startCall(peer.id, peer.full_name)}
-                                                    >
-                                                        <Phone className="h-4 w-4 fill-blue-600" />
-                                                    </Button>
-                                                </CardContent>
-                                            </Card>
-                                        );
-                                    })
-                                ) : (
-                                    <div className="text-center py-20 bg-white rounded-[32px] border border-slate-100">
-                                        <Phone className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-                                        <p className="text-slate-400 text-sm font-bold">Belum ada riwayat telepon.</p>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
+                        {activeTab === 'active' || activeTab === 'history' ? (
                             <>
                                 {loading ? (
                                     <div className="space-y-4">
@@ -449,7 +365,7 @@ export default function InformationPage() {
                                     </div>
                                 )}
                             </>
-                        )}
+                        ) : null}
                     </div>
                 </div>
                 <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
@@ -471,160 +387,89 @@ export default function InformationPage() {
     }
 
     return (
-        <DashboardLayout>
-            <div className="max-w-6xl mx-auto space-y-6 px-3 py-6">
-                {/* Clean Header Area */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-100 pb-8">
-                    <div className="flex items-center gap-5">
-                        <div className="h-14 w-14 bg-slate-900 rounded-[20px] flex items-center justify-center shadow-lg shadow-slate-200 uppercase text-white font-black text-xs">
-                            INFO
-                        </div>
-                        <div>
-                            <h1 className="text-3xl font-black text-slate-900 tracking-tighter">Pusat Informasi</h1>
-                            <div className="flex items-center gap-4 mt-1.5 font-bold uppercase tracking-widest text-[10px]">
-                                <span className="text-slate-400">Total Data: {announcements.length}</span>
-                                <span className="text-blue-600">Terbaru: {announcements.filter(a => new Date(a.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length}</span>
+        <>
+            <DashboardLayout>
+                <div className="max-w-6xl mx-auto space-y-6 px-3 py-6">
+                    {/* Clean Header Area */}
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-100 pb-8">
+                        <div className="flex items-center gap-5">
+                            <div className="h-14 w-14 bg-slate-900 rounded-[20px] flex items-center justify-center shadow-lg shadow-slate-200 uppercase text-white font-black text-xs">
+                                INFO
                             </div>
+                            <div>
+                                <h1 className="text-3xl font-black text-slate-900 tracking-tighter">Pusat Informasi</h1>
+                                <div className="flex items-center gap-4 mt-1.5 font-bold uppercase tracking-widest text-[10px]">
+                                    <span className="text-slate-400">Total Data: {announcements.length}</span>
+                                    <span className="text-blue-600">Terbaru: {announcements.filter(a => new Date(a.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-3">
+                            <div className="flex items-center p-1 bg-slate-100 rounded-xl mr-2">
+                                <button
+                                    onClick={() => setActiveTab('active')}
+                                    className={cn(
+                                        "px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all",
+                                        activeTab === 'active' ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                                    )}
+                                >
+                                    Aktif
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('history')}
+                                    className={cn(
+                                        "px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all",
+                                        activeTab === 'history' ? "bg-white text-red-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                                    )}
+                                >
+                                    Riwayat
+                                </button>
+                            </div>
+
+                            <div className="relative group flex-1 md:w-64">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                                <Input
+                                    placeholder="Cari informasi..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-11 h-12 rounded-2xl border-slate-200 bg-white hover:border-slate-300 focus:ring-4 focus:ring-blue-500/5 transition-all text-sm font-medium"
+                                />
+                            </div>
+
+                            {activeTab === 'history' && (
+                                <div className="flex items-center gap-2">
+                                    <select
+                                        value={selectedMonth}
+                                        onChange={(e) => setSelectedMonth(e.target.value)}
+                                        className="h-12 px-4 rounded-2xl border border-slate-200 bg-white text-xs font-bold focus:ring-4 focus:ring-blue-500/5 outline-none"
+                                    >
+                                        {months.map(m => <option key={m.v} value={m.v}>{m.l}</option>)}
+                                    </select>
+                                    <select
+                                        value={selectedYear}
+                                        onChange={(e) => setSelectedYear(e.target.value)}
+                                        className="h-12 px-4 rounded-2xl border border-slate-200 bg-white text-xs font-bold focus:ring-4 focus:ring-blue-500/5 outline-none"
+                                    >
+                                        {years.map(y => <option key={y} value={y}>{y}</option>)}
+                                    </select>
+                                </div>
+                            )}
+
+                            {isAdmin && (
+                                <Button
+                                    onClick={handleOpenCreate}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-100 h-12 px-6 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95"
+                                >
+                                    <Plus className="mr-2 h-5 w-5" />
+                                    BUAT
+                                </Button>
+                            )}
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3">
-                        <div className="flex items-center p-1 bg-slate-100 rounded-xl mr-2">
-                            <button
-                                onClick={() => setActiveTab('active')}
-                                className={cn(
-                                    "px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all",
-                                    activeTab === 'active' ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
-                                )}
-                            >
-                                Aktif
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('history')}
-                                className={cn(
-                                    "px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all",
-                                    activeTab === 'history' ? "bg-white text-red-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
-                                )}
-                            >
-                                Riwayat
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('calls')}
-                                className={cn(
-                                    "px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all",
-                                    activeTab === 'calls' ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
-                                )}
-                            >
-                                Telepon
-                            </button>
-                        </div>
-
-                        <div className="relative group flex-1 md:w-64">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
-                            <Input
-                                placeholder="Cari informasi..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-11 h-12 rounded-2xl border-slate-200 bg-white hover:border-slate-300 focus:ring-4 focus:ring-blue-500/5 transition-all text-sm font-medium"
-                            />
-                        </div>
-
-                        {activeTab === 'history' && (
-                            <div className="flex items-center gap-2">
-                                <select
-                                    value={selectedMonth}
-                                    onChange={(e) => setSelectedMonth(e.target.value)}
-                                    className="h-12 px-4 rounded-2xl border border-slate-200 bg-white text-xs font-bold focus:ring-4 focus:ring-blue-500/5 outline-none"
-                                >
-                                    {months.map(m => <option key={m.v} value={m.v}>{m.l}</option>)}
-                                </select>
-                                <select
-                                    value={selectedYear}
-                                    onChange={(e) => setSelectedYear(e.target.value)}
-                                    className="h-12 px-4 rounded-2xl border border-slate-200 bg-white text-xs font-bold focus:ring-4 focus:ring-blue-500/5 outline-none"
-                                >
-                                    {years.map(y => <option key={y} value={y}>{y}</option>)}
-                                </select>
-                            </div>
-                        )}
-
-                        {isAdmin && activeTab !== 'calls' && (
-                            <Button
-                                onClick={handleOpenCreate}
-                                className="bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-100 h-12 px-6 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95"
-                            >
-                                <Plus className="mr-2 h-5 w-5" />
-                                BUAT
-                            </Button>
-                        )}
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-                    <div className="md:col-span-8 space-y-6">
-                        {activeTab === 'calls' ? (
-                            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden divide-y divide-slate-50">
-                                {callHistory.length > 0 ? (
-                                    callHistory.map((call) => {
-                                        const isOutgoing = call.caller_id === user?.id;
-                                        const peer = isOutgoing ? call.receiver : call.caller;
-                                        const status = call.status;
-
-                                        return (
-                                            <div key={call.id} className="p-6 hover:bg-slate-50/50 transition-colors flex items-center justify-between group">
-                                                <div className="flex items-center gap-5">
-                                                    <div className="relative">
-                                                        <Avatar className="h-14 w-14 border-4 border-slate-50 shadow-sm">
-                                                            <AvatarImage src={peer?.avatar_url} />
-                                                            <AvatarFallback className="bg-gradient-to-br from-slate-100 to-slate-200 text-slate-500 font-black text-lg">
-                                                                {peer?.full_name?.substring(0, 2).toUpperCase()}
-                                                            </AvatarFallback>
-                                                        </Avatar>
-                                                        <div className={cn(
-                                                            "absolute -bottom-1 -right-1 h-7 w-7 rounded-full flex items-center justify-center border-4 border-white",
-                                                            status === 'missed' ? "bg-red-50 text-red-600" : (isOutgoing ? "bg-blue-50 text-blue-600" : "bg-green-50 text-green-600")
-                                                        )}>
-                                                            {status === 'missed' ? <PhoneMissed className="h-3.5 w-3.5" /> : (isOutgoing ? <PhoneOutgoing className="h-3.5 w-3.5" /> : <PhoneIncoming className="h-3.5 w-3.5" />)}
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <h3 className="font-black text-slate-900 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{peer?.full_name}</h3>
-                                                        <div className="flex items-center gap-3 mt-1">
-                                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                                                                <Clock className="h-3.5 w-3.5" />
-                                                                {format(new Date(call.created_at), 'eeee, d MMM yyyy - HH:mm', { locale: id })}
-                                                            </span>
-                                                            <Badge variant="outline" className={cn(
-                                                                "text-[8px] h-4 px-1.5 uppercase font-black tracking-widest border-none",
-                                                                status === 'missed' ? "bg-red-100 text-red-600" : (isOutgoing ? "bg-blue-100 text-blue-600" : "bg-green-100 text-green-600")
-                                                            )}>
-                                                                {isOutgoing ? 'Outgoing' : (status === 'missed' ? 'Missed' : 'Incoming')} • {status}
-                                                            </Badge>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => peer?.id && startCall(peer.id, peer.full_name)}
-                                                    className="h-12 w-12 rounded-2xl bg-white border border-slate-100 shadow-sm text-blue-600 hover:bg-blue-50 hover:border-blue-100 transition-all active:scale-95"
-                                                >
-                                                    <Phone className="h-5 w-5 fill-blue-600" />
-                                                </Button>
-                                            </div>
-                                        );
-                                    })
-                                ) : (
-                                    <div className="py-32 text-center">
-                                        <div className="h-20 w-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                                            <Phone className="h-8 w-8 text-slate-200" />
-                                        </div>
-                                        <h3 className="text-xl font-black text-slate-900 mb-2 tracking-tight">Belum ada Riwayat Telepon</h3>
-                                        <p className="text-slate-400 text-sm max-w-xs mx-auto">Riwayat panggilan suara Anda akan terkumpul di sini secara otomatis.</p>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+                        <div className="md:col-span-8 space-y-6">
                             <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
                                 <div className="hidden md:grid grid-cols-12 gap-4 px-8 py-4 bg-slate-50 border-b border-slate-100 uppercase tracking-[0.2em] font-black text-[9px] text-slate-400">
                                     <div className="col-span-2">Waktu</div>
@@ -676,105 +521,105 @@ export default function InformationPage() {
                                     )}
                                 </div>
                             </div>
-                        )}
-                    </div>
+                        </div>
 
-                    <div className="md:col-span-4 space-y-6">
-                        <Card className="border-none shadow-xl shadow-blue-900/5 rounded-[41px] bg-gradient-to-br from-blue-600 to-indigo-700 text-white overflow-hidden relative">
-                            <CardContent className="p-10 relative z-10">
-                                <h3 className="font-black text-lg mb-2 tracking-tight">SDM & Karyawan</h3>
-                                <p className="text-blue-100 text-xs font-medium mb-8 leading-relaxed">
-                                    Butuh menghubungi rekan kerja? Gunakan fitur panggilan suara langsung dari daftar karyawan.
-                                </p>
-                                <Button
-                                    variant="secondary"
-                                    className="w-full rounded-2xl h-14 font-black uppercase tracking-widest text-xs bg-white text-blue-600 hover:bg-white/90"
-                                    onClick={() => navigate('/employees')}
-                                >
-                                    Lihat Tim Kami
-                                </Button>
-                            </CardContent>
-                        </Card>
+                        <div className="md:col-span-4 space-y-6">
+                            <Card className="border-none shadow-xl shadow-blue-900/5 rounded-[41px] bg-gradient-to-br from-blue-600 to-indigo-700 text-white overflow-hidden relative">
+                                <CardContent className="p-10 relative z-10">
+                                    <h3 className="font-black text-lg mb-2 tracking-tight">SDM & Karyawan</h3>
+                                    <p className="text-blue-100 text-xs font-medium mb-8 leading-relaxed">
+                                        Butuh informasi lebih lanjut? Silakan hubungi tim SDM atau sampaikan melalui unit terkait.
+                                    </p>
+                                    <Button
+                                        variant="secondary"
+                                        className="w-full rounded-2xl h-14 font-black uppercase tracking-widest text-xs bg-white text-blue-600 hover:bg-white/90"
+                                        onClick={() => navigate('/employees')}
+                                    >
+                                        Lihat Tim Kami
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-                <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-[40px] border-none shadow-2xl">
-                    <div className="bg-slate-900 p-8 text-white flex justify-between items-center">
-                        <div>
-                            <DialogTitle className="text-2xl font-black uppercase tracking-tighter">{isEditing ? 'Update Informasi' : 'Buat Pengumuman Baru'}</DialogTitle>
-                            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 opacity-70">Publikasikan pesan ke seluruh staff LPK.</p>
-                        </div>
-                        <div className="h-14 w-14 bg-white/10 rounded-2xl flex items-center justify-center">
-                            <Megaphone className="h-7 w-7 text-blue-400" />
-                        </div>
-                    </div>
-                    <div className="p-10 space-y-8">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] pl-1">Judul Informasi</Label>
-                            <Input
-                                value={newTitle}
-                                onChange={(e) => setNewTitle(e.target.value)}
-                                className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold focus:bg-white text-slate-900 px-5 focus:ring-8 focus:ring-blue-500/5 transition-all outline-none"
-                                placeholder="Judul yang singkat dan jelas..."
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] pl-1">Isi Pesan Lengkap</Label>
-                            <Textarea
-                                value={newContent}
-                                onChange={(e) => setNewContent(e.target.value)}
-                                className="min-h-[180px] rounded-2xl bg-slate-50 border-slate-200 p-5 resize-none transition-all text-sm leading-relaxed"
-                                placeholder="Detail informasi..."
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] pl-1">Tampil Sampai (Opsional)</Label>
-                            <Input
-                                type="datetime-local"
-                                value={newExpiresAt}
-                                onChange={(e) => setNewExpiresAt(e.target.value)}
-                                className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold focus:bg-white text-slate-900 px-5 focus:ring-8 focus:ring-blue-500/5 transition-all outline-none"
-                            />
-                            <p className="text-[10px] text-slate-400 font-medium pl-1">Jika dikosongkan, pengumuman tampil selamanya.</p>
-                        </div>
-                        <div className="flex items-center gap-5 bg-blue-50/50 p-6 rounded-3xl border border-blue-100 shadow-inner">
-                            <Checkbox
-                                id="notify-modern"
-                                checked={sendNotification}
-                                onCheckedChange={(checked) => setSendNotification(checked as boolean)}
-                                className="h-6 w-6 border-blue-200 data-[state=checked]:bg-blue-600"
-                            />
+                <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+                    <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-[40px] border-none shadow-2xl">
+                        <div className="bg-slate-900 p-8 text-white flex justify-between items-center">
                             <div>
-                                <Label htmlFor="notify-modern" className="text-base font-black text-blue-900 cursor-pointer block leading-none">Broadcasting Notifikasi</Label>
-                                <p className="text-[10px] text-blue-600 font-bold opacity-70 mt-1 uppercase tracking-wider">Kirim ke seluruh perangkat aktif.</p>
+                                <DialogTitle className="text-2xl font-black uppercase tracking-tighter">{isEditing ? 'Update Informasi' : 'Buat Pengumuman Baru'}</DialogTitle>
+                                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 opacity-70">Publikasikan pesan ke seluruh staff LPK.</p>
+                            </div>
+                            <div className="h-14 w-14 bg-white/10 rounded-2xl flex items-center justify-center">
+                                <Megaphone className="h-7 w-7 text-blue-400" />
                             </div>
                         </div>
-                    </div>
-                    <div className="p-8 bg-slate-50 flex gap-4 border-t border-slate-100">
-                        <Button variant="ghost" onClick={() => setIsCreateOpen(false)} className="flex-1 h-14 font-black rounded-2xl text-slate-300 hover:bg-white transition-all uppercase tracking-widest text-[10px]">Batal</Button>
-                        <Button onClick={handleSaveAnnouncement} disabled={isSubmitting} className="flex-[2] h-14 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl shadow-2xl shadow-blue-200 transition-all active:scale-95 uppercase tracking-widest text-[10px]">
-                            {isSubmitting ? <Loader2 className="animate-spin h-5 w-5" /> : (isEditing ? 'Simpan Update' : 'Publikasikan')}
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
+                        <div className="p-10 space-y-8">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] pl-1">Judul Informasi</Label>
+                                <Input
+                                    value={newTitle}
+                                    onChange={(e) => setNewTitle(e.target.value)}
+                                    className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold focus:bg-white text-slate-900 px-5 focus:ring-8 focus:ring-blue-500/5 transition-all outline-none"
+                                    placeholder="Judul yang singkat dan jelas..."
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] pl-1">Isi Pesan Lengkap</Label>
+                                <Textarea
+                                    value={newContent}
+                                    onChange={(e) => setNewContent(e.target.value)}
+                                    className="min-h-[180px] rounded-2xl bg-slate-50 border-slate-200 p-5 resize-none transition-all text-sm leading-relaxed"
+                                    placeholder="Detail informasi..."
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] pl-1">Tampil Sampai (Opsional)</Label>
+                                <Input
+                                    type="datetime-local"
+                                    value={newExpiresAt}
+                                    onChange={(e) => setNewExpiresAt(e.target.value)}
+                                    className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold focus:bg-white text-slate-900 px-5 focus:ring-8 focus:ring-blue-500/5 transition-all outline-none"
+                                />
+                                <p className="text-[10px] text-slate-400 font-medium pl-1">Jika dikosongkan, pengumuman tampil selamanya.</p>
+                            </div>
+                            <div className="flex items-center gap-5 bg-blue-50/50 p-6 rounded-3xl border border-blue-100 shadow-inner">
+                                <Checkbox
+                                    id="notify-modern"
+                                    checked={sendNotification}
+                                    onCheckedChange={(checked) => setSendNotification(checked as boolean)}
+                                    className="h-6 w-6 border-blue-200 data-[state=checked]:bg-blue-600"
+                                />
+                                <div>
+                                    <Label htmlFor="notify-modern" className="text-base font-black text-blue-900 cursor-pointer block leading-none">Broadcasting Notifikasi</Label>
+                                    <p className="text-[10px] text-blue-600 font-bold opacity-70 mt-1 uppercase tracking-wider">Kirim ke seluruh perangkat aktif.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="p-8 bg-slate-50 flex gap-4 border-t border-slate-100">
+                            <Button variant="ghost" onClick={() => setIsCreateOpen(false)} className="flex-1 h-14 font-black rounded-2xl text-slate-300 hover:bg-white transition-all uppercase tracking-widest text-[10px]">Batal</Button>
+                            <Button onClick={handleSaveAnnouncement} disabled={isSubmitting} className="flex-[2] h-14 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl shadow-2xl shadow-blue-200 transition-all active:scale-95 uppercase tracking-widest text-[10px]">
+                                {isSubmitting ? <Loader2 className="animate-spin h-5 w-5" /> : (isEditing ? 'Simpan Update' : 'Publikasikan')}
+                            </Button>
+                        </div>
+                    </DialogContent>
+                </Dialog>
 
-            <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-                <AlertDialogContent className="rounded-3xl border-none shadow-2xl p-8">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-black">Hapus Pengumuman?</AlertDialogTitle>
-                        <AlertDialogDescription className="text-sm font-medium text-slate-500">
-                            Anda yakin ingin menghapus <b>"{itemToDelete?.title}"</b>? Tindakan ini permanen.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter className="mt-6 gap-3">
-                        <AlertDialogCancel className="rounded-xl h-12 px-6 font-bold">Batal</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmDelete} className="rounded-xl h-12 px-8 bg-red-600 hover:bg-red-700 font-bold text-white shadow-lg">Hapus</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        </DashboardLayout>
+                <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+                    <AlertDialogContent className="rounded-3xl border-none shadow-2xl p-8">
+                        <AlertDialogHeader>
+                            <AlertDialogTitle className="text-xl font-black">Hapus Pengumuman?</AlertDialogTitle>
+                            <AlertDialogDescription className="text-sm font-medium text-slate-500">
+                                Anda yakin ingin menghapus <b>"{itemToDelete?.title}"</b>? Tindakan ini permanen.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter className="mt-6 gap-3">
+                            <AlertDialogCancel className="rounded-xl h-12 px-6 font-bold">Batal</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleConfirmDelete} className="rounded-xl h-12 px-8 bg-red-600 hover:bg-red-700 font-bold text-white shadow-lg">Hapus</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </DashboardLayout>
+        </>
     );
 }

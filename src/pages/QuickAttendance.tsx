@@ -40,8 +40,8 @@ export default function QuickAttendancePage() {
     const [nearestOfficeDist, setNearestOfficeDist] = useState<number | null>(null);
     const [isLocationValid, setIsLocationValid] = useState(false);
 
-    // GPS VALIDATION - Use database radius instead of hardcoded
-    const MIN_GPS_ACCURACY = 50; // Require accuracy better than 50 meters (more realistic)
+    // GPS VALIDATION - loaded from DB (default 50m)
+    const [minGpsAccuracy, setMinGpsAccuracy] = useState(50);
 
     // Helper functions for distance
     function getDistanceFromLatLonInM(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -76,13 +76,17 @@ export default function QuickAttendancePage() {
         };
 
         fetchOffices();
+
+        // Fetch GPS accuracy setting
+        supabase.from('app_settings').select('value').eq('key', 'gps_min_accuracy_meters').maybeSingle()
+            .then(({ data }) => { if (data) setMinGpsAccuracy(Number(data.value) || 50); });
     }, []);
 
     // Real-time Distance Check with GPS Accuracy
     useEffect(() => {
         if (latitude !== null && longitude !== null) {
             // GPS ACCURACY CHECK - STRICTER for WFO
-            if (accuracy && accuracy > MIN_GPS_ACCURACY) {
+            if (accuracy && accuracy > minGpsAccuracy) {
                 setIsLocationValid(false);
                 return;
             }
@@ -110,7 +114,7 @@ export default function QuickAttendancePage() {
                 setIsLocationValid(true); // Allow if no offices set
             }
         }
-    }, [latitude, longitude, officeLocations, accuracy]);
+    }, [latitude, longitude, officeLocations, accuracy, minGpsAccuracy]);
 
     // Simple submit handler
     const handleSubmit = async () => {

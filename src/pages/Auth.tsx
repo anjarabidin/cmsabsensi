@@ -322,29 +322,39 @@ export default function Auth() {
           description: 'Akun Anda telah dibuat. Mengalihkan ke Dashboard...',
           variant: 'default',
         });
-        // Tidak perlu apa-apa, AuthContext listener akan mendeteksi session baru dan redirect otomatis
       } else {
-        // Fallback: Jika tidak auto-login (misal karena config server), arahkan ke login manual
-        toast({
-          title: 'Registrasi Berhasil! 🎉',
-          description: 'Akun berhasil dibuat. Silakan Login.',
-          duration: 3000,
-          variant: 'default',
-        });
+        // Cek jika akun butuh approval
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_active')
+          .eq('id', authData.user?.id)
+          .single();
 
-        // Pindah ke tab login
-        setTimeout(() => {
-          setActiveTab('login');
-          setJustRegistered(false);
-        }, 1500);
+        if (profile && !profile.is_active) {
+          toast({
+            title: 'Pendaftaran Terkirim! ⏳',
+            description: 'Akun Anda sedang dalam proses peninjauan oleh Admin. Mohon tunggu notifikasi selanjutnya.',
+            duration: 8000,
+          });
+          setJustRegistered(true);
+        } else {
+          toast({
+            title: 'Registrasi Berhasil! 🎉',
+            description: 'Akun berhasil dibuat. Silakan Login.',
+            duration: 3000,
+            variant: 'default',
+          });
+          setTimeout(() => {
+            setActiveTab('login');
+            setJustRegistered(false);
+          }, 1500);
+        }
       }
 
-      // Clear form
       setRegisterName('');
       setRegisterEmail('');
       setRegisterPassword('');
       setRegisterPhone('');
-      setJustRegistered(true);
       setIsLoading(false);
     }
   };

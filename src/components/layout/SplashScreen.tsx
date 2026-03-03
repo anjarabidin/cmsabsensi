@@ -7,8 +7,8 @@ export const SplashScreen = ({ onFinish }: { onFinish: () => void }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsVisible(false);
-      setTimeout(onFinish, 600);
-    }, 2000); // Optimized: 3.2s → 2s for faster loading
+      setTimeout(onFinish, 500);
+    }, 700); // ⚡ Fast splash: max 1.2s total (700ms display + 500ms fade)
 
     return () => clearTimeout(timer);
   }, [onFinish]);

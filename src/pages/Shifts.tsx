@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 
 export default function ShiftsPage() {
     const { toast } = useToast();
@@ -435,6 +436,7 @@ export default function ShiftsPage() {
                                                         <TableHead>Toleransi</TableHead>
                                                         <TableHead>Batas Awal</TableHead>
                                                         <TableHead>Tipe</TableHead>
+                                                        <TableHead className="text-center">Jadikan Default</TableHead>
                                                         <TableHead className="text-right">Aksi</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
@@ -456,6 +458,16 @@ export default function ShiftsPage() {
                                                                     <div className="flex items-center text-purple-600 gap-1 text-[10px] font-bold"><Moon className="h-3 w-3" /> Malam</div> :
                                                                     <div className="flex items-center text-orange-600 gap-1 text-[10px] font-bold"><Sun className="h-3 w-3" /> Siang</div>
                                                                 }
+                                                                {(shift as any).is_default && (
+                                                                    <div className="mt-1 text-[9px] text-emerald-600 font-bold max-w-min flex items-center gap-0.5"><Star className="h-2.5 w-2.5 fill-emerald-600" /> DEFAULT</div>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell className="text-center">
+                                                                <Switch
+                                                                    checked={!!(shift as any).is_default}
+                                                                    onCheckedChange={() => handleSetDefault(shift.id, !!(shift as any).is_default)}
+                                                                    className="data-[state=checked]:bg-emerald-500 scale-75"
+                                                                />
                                                             </TableCell>
                                                             <TableCell className="text-right">
                                                                 <div className="flex justify-end gap-1">
@@ -601,14 +613,6 @@ export default function ShiftsPage() {
                                                         )}
                                                     </div>
                                                     <div className="flex gap-1 -mr-2 -mt-2">
-                                                        <Button
-                                                            variant="ghost" size="icon"
-                                                            onClick={() => handleSetDefault(shift.id, !!(shift as any).is_default)}
-                                                            title={(shift as any).is_default ? 'Hapus shift default' : 'Set sebagai shift default untuk pengingat otomatis'}
-                                                            className={cn("h-8 w-8", (shift as any).is_default ? "text-emerald-500 hover:text-emerald-700" : "text-slate-300 hover:text-emerald-500")}
-                                                        >
-                                                            <Star className={cn("h-4 w-4", (shift as any).is_default && "fill-emerald-500")} />
-                                                        </Button>
                                                         <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(shift)} className="h-8 w-8 text-slate-300 hover:text-blue-600">
                                                             <Edit className="h-4 w-4" />
                                                         </Button>
@@ -643,11 +647,22 @@ export default function ShiftsPage() {
                                                     </div>
                                                 </div>
 
-                                                {(shift as any).is_default && (
-                                                    <div className="mt-3 p-2 bg-emerald-50 rounded-xl border border-emerald-100 text-[10px] text-emerald-700 font-semibold text-center">
-                                                        ⭐ Pengingat otomatis fallback untuk semua karyawan tanpa jadwal
+                                                <div className={cn("mt-4 flex items-center justify-between p-3.5 rounded-xl border transition-colors", (shift as any).is_default ? "bg-emerald-50 border-emerald-200" : "bg-slate-50 border-slate-100")}>
+                                                    <div>
+                                                        <Label className={cn("text-sm font-bold cursor-pointer flex items-center gap-1.5", (shift as any).is_default ? "text-emerald-700" : "text-slate-600")} onClick={() => handleSetDefault(shift.id, !!(shift as any).is_default)}>
+                                                            <Star className={cn("h-4 w-4", (shift as any).is_default ? "fill-emerald-600" : "text-slate-400")} />
+                                                            Shift Default
+                                                        </Label>
+                                                        <p className={cn("text-[10px] mt-0.5 max-w-[160px] leading-tight", (shift as any).is_default ? "text-emerald-600" : "text-slate-500")}>
+                                                            Berlaku otomatis jika karyawan tidak dijadwalkan.
+                                                        </p>
                                                     </div>
-                                                )}
+                                                    <Switch
+                                                        checked={!!(shift as any).is_default}
+                                                        onCheckedChange={() => handleSetDefault(shift.id, !!(shift as any).is_default)}
+                                                        className="data-[state=checked]:bg-emerald-500"
+                                                    />
+                                                </div>
                                             </CardContent>
                                         </Card>
                                     ))}

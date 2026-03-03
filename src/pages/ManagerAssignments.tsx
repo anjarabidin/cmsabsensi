@@ -9,9 +9,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { ChevronLeft, Loader2, Plus, Trash2, Users, UserCheck, Zap } from 'lucide-react';
+import { ChevronLeft, Loader2, Plus, Trash2, Users, UserCheck, Zap, ShieldCheck, Mail, Building2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
 
 interface Profile {
     id: string;
@@ -31,9 +32,10 @@ interface Assignment {
 }
 
 export default function ManagerAssignments() {
-    const { role } = useAuth();
+    const { role, activeRole } = useAuth();
     const navigate = useNavigate();
     const { toast } = useToast();
+    const isMobile = useIsMobile();
 
     const [assignments, setAssignments] = useState<Assignment[]>([]);
     const [managers, setManagers] = useState<Profile[]>([]);
@@ -45,19 +47,19 @@ export default function ManagerAssignments() {
     const [selectedManager, setSelectedManager] = useState<string>('');
     const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
 
-    // Redirect if not admin
+    const canManage = activeRole === 'super_admin' || activeRole === 'admin_hr';
+
     useEffect(() => {
-        if (role && role !== 'admin_hr' && role !== 'super_admin') {
+        if (!canManage && role !== 'admin_hr' && role !== 'super_admin') {
             navigate('/dashboard');
         } else {
             fetchData();
         }
-    }, [role]);
+    }, [role, activeRole]);
 
     const fetchData = async () => {
         setLoading(true);
         try {
-            // Fetch assignments
             const { data: assignData, error: assignError } = await supabase
                 .from('manager_assignments')
                 .select(`
@@ -70,7 +72,6 @@ export default function ManagerAssignments() {
             if (assignError) throw assignError;
             setAssignments(assignData || []);
 
-            // Fetch all managers
             const { data: managerData, error: managerError } = await supabase
                 .from('profiles')
                 .select('id, full_name, email, avatar_url, department_id, departments(name)')
@@ -81,7 +82,6 @@ export default function ManagerAssignments() {
             if (managerError) throw managerError;
             setManagers(managerData || []);
 
-            // Fetch all employees (non-manager)
             const { data: empData, error: empError } = await supabase
                 .from('profiles')
                 .select('id, full_name, email, avatar_url, department_id, departments(name)')
@@ -94,18 +94,20 @@ export default function ManagerAssignments() {
 
         } catch (error) {
             console.error('Error fetching data:', error);
-            toast({
-                title: 'Gagal Memuat Data',
-                description: 'Terjadi kesalahan saat mengambil data.',
-                variant: 'destructive',
-            });
+            toast({ title: 'Gagal Memuat Data', description: 'Terjadi kesalahan saat mengambil data.', variant: 'destructive' });
         } finally {
             setLoading(false);
         }
     };
 
+    const toggleEmployee = (id: string) => {
+        setSelectedEmployees(prev =>
+            prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]
+        );
+    };
+
     const handleAutoAssign = async () => {
-        const confirmMsg = "Fitur ini akan otomatis memasangkan Manager dengan Karyawan yang berada di DEPARTEMEN yang sama.\n\nLanjutkan?";
+        const confirmMsg = "Otomatis memasangkan Manager dengan Karyawan di Departemen yang sama? Lanjutkan?";
         if (!confirm(confirmMsg)) return;
 
         setProcessing(true);
@@ -115,62 +117,29 @@ export default function ManagerAssignments() {
 
             managers.forEach(mgr => {
                 if (!mgr.department_id) return;
-
-                // Cari karyawan di departemen yang sama
                 const departmentStaff = employees.filter(emp => emp.department_id === mgr.department_id);
-
                 departmentStaff.forEach(staff => {
-                    // Cek apakah sudah ada assignment (hindari duplikat)
-                    const exists = assignments.some(
-                        a => a.manager_id === mgr.id && a.employee_id === staff.id
-                    );
-
-                    // Cek juga di list antrian insert (manager double di dept sama)
-                    const queued = newAssignments.some(
-                        a => a.manager_id === mgr.id && a.employee_id === staff.id
-                    );
-
-                    // Logic: Jika di departemen itu ada >1 manager, staff akan di-assign ke SEMUA manager (bisa dihapus manual nanti)
-                    // Atau kita bisa batasi 1 staff 1 manager. Untuk aman, kita assign saja, user bisa hapus.
+                    const exists = assignments.some(a => a.manager_id === mgr.id && a.employee_id === staff.id);
+                    const queued = newAssignments.some(a => a.manager_id === mgr.id && a.employee_id === staff.id);
                     if (!exists && !queued) {
-                        newAssignments.push({
-                            manager_id: mgr.id,
-                            employee_id: staff.id
-                        });
+                        newAssignments.push({ manager_id: mgr.id, employee_id: staff.id });
                         count++;
                     }
                 });
             });
 
             if (count === 0) {
-                toast({
-                    title: "Sudah Optimal",
-                    description: "Tidak ditemukan pasangan Manager-Karyawan baru berdasarkan departemen.",
-                });
+                toast({ title: "Sudah Optimal", description: "Tidak ditemukan pasangan baru." });
                 return;
             }
 
-            const { error } = await supabase
-                .from('manager_assignments')
-                .insert(newAssignments);
-
+            const { error } = await supabase.from('manager_assignments').insert(newAssignments);
             if (error) throw error;
 
-            toast({
-                title: "Auto-Assign Berhasil",
-                description: `${count} koneksi atasan-bawahan baru telah dibuat otomatis!`,
-                className: "bg-green-600 text-white border-none"
-            });
-
+            toast({ title: "Berhasil", description: `${count} koneksi baru dibuat!`, className: "bg-green-600 text-white border-none" });
             fetchData();
-
         } catch (error: any) {
-            console.error('Auto assign error:', error);
-            toast({
-                title: 'Gagal Auto-Assign',
-                description: error.message,
-                variant: 'destructive',
-            });
+            toast({ title: 'Gagal', description: error.message, variant: 'destructive' });
         } finally {
             setProcessing(false);
         }
@@ -178,11 +147,7 @@ export default function ManagerAssignments() {
 
     const handleAddAssignments = async () => {
         if (!selectedManager || selectedEmployees.length === 0) {
-            toast({
-                title: 'Data Tidak Lengkap',
-                description: 'Pilih manager dan minimal 1 karyawan.',
-                variant: 'destructive',
-            });
+            toast({ title: 'Tidak Lengkap', description: 'Pilih manager dan bawahan.', variant: 'destructive' });
             return;
         }
 
@@ -193,28 +158,16 @@ export default function ManagerAssignments() {
                 employee_id: empId,
             }));
 
-            const { error } = await supabase
-                .from('manager_assignments')
-                .insert(assignmentsToInsert);
-
+            const { error } = await supabase.from('manager_assignments').insert(assignmentsToInsert);
             if (error) throw error;
 
-            toast({
-                title: 'Berhasil!',
-                description: `${selectedEmployees.length} karyawan berhasil di-assign.`,
-            });
-
+            toast({ title: 'Berhasil!', description: `${selectedEmployees.length} bawahan ditambahkan.` });
             setDialogOpen(false);
             setSelectedManager('');
             setSelectedEmployees([]);
             fetchData();
         } catch (error: any) {
-            console.error('Error adding assignments:', error);
-            toast({
-                title: 'Gagal Menambah',
-                description: error.message || 'Terjadi kesalahan saat menambah assignment.',
-                variant: 'destructive',
-            });
+            toast({ title: 'Gagal', description: error.message, variant: 'destructive' });
         } finally {
             setProcessing(false);
         }
@@ -222,230 +175,32 @@ export default function ManagerAssignments() {
 
     const handleDeleteAssignment = async (id: string) => {
         if (!confirm('Hapus assignment ini?')) return;
-
         try {
-            const { error } = await supabase
-                .from('manager_assignments')
-                .delete()
-                .eq('id', id);
-
+            const { error } = await supabase.from('manager_assignments').delete().eq('id', id);
             if (error) throw error;
-
-            toast({
-                title: 'Berhasil Dihapus',
-                description: 'Assignment telah dihapus.',
-            });
-
+            toast({ title: 'Berhasil', description: 'Assignment dihapus.' });
             fetchData();
         } catch (error) {
-            console.error('Error deleting assignment:', error);
-            toast({
-                title: 'Gagal Menghapus',
-                description: 'Terjadi kesalahan saat menghapus assignment.',
-                variant: 'destructive',
-            });
+            toast({ title: 'Gagal', description: 'Gagal menghapus.', variant: 'destructive' });
         }
     };
 
-    const isMobile = useIsMobile();
-
-    // Group assignments by manager
     const groupedAssignments = assignments.reduce((acc, assign) => {
         const managerId = assign.manager_id;
         if (!acc[managerId]) {
-            acc[managerId] = {
-                manager: assign.manager,
-                employees: []
-            };
+            acc[managerId] = { manager: assign.manager, employees: [] };
         }
         if (assign.employee) {
-            acc[managerId].employees.push(assign.employee);
+            acc[managerId].employees.push({ ...assign.employee, assignmentId: assign.id });
         }
         return acc;
-    }, {} as Record<string, { manager?: Profile; employees: Profile[] }>);
+    }, {} as Record<string, { manager?: Profile; employees: (Profile & { assignmentId: string })[] }>);
 
     if (loading) {
         return (
             <DashboardLayout>
-                <div className="flex justify-center items-center min-h-screen">
-                    <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
-                </div>
-            </DashboardLayout>
-        );
-    }
-
-    if (isMobile) {
-        return (
-            <DashboardLayout>
-                <div className="min-h-screen bg-slate-50 pb-24">
-                    {/* Unique Mobile Header Background */}
-                    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white pb-6 pt-[calc(1rem+env(safe-area-inset-top))] px-4 rounded-b-[32px] shadow-lg mb-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                                <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')} className="text-white hover:bg-white/20 -ml-2 h-8 w-8 rounded-full">
-                                    <ChevronLeft className="h-5 w-5" />
-                                </Button>
-                                <h1 className="text-lg font-bold">Struktur Atasan</h1>
-                            </div>
-                            <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={handleAutoAssign}
-                                className="bg-white/20 hover:bg-white/30 text-white border-0 h-8 px-3 text-xs font-bold rounded-lg backdrop-blur-sm"
-                            >
-                                <Zap className="h-3.5 w-3.5 mr-1.5" /> Auto
-                            </Button>
-                        </div>
-                        <p className="text-blue-50 text-xs mb-6 leading-relaxed opacity-90">
-                            Petakan hirarki supervisi. Tentukan siapa manajer untuk setiap karyawan.
-                        </p>
-
-                        {/* Mobile Stats Grid - Compact */}
-                        <div className="grid grid-cols-3 gap-2">
-                            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-2.5 border border-white/20 flex flex-col items-center justify-center text-center h-20">
-                                <Users className="h-4 w-4 text-white opacity-90 mb-1" />
-                                <p className="text-xl font-black">{managers.length}</p>
-                                <p className="text-[9px] font-bold opacity-80 uppercase">Manajer</p>
-                            </div>
-                            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-2.5 border border-white/20 flex flex-col items-center justify-center text-center h-20">
-                                <Users className="h-4 w-4 text-white opacity-90 mb-1" />
-                                <p className="text-xl font-black">{employees.length}</p>
-                                <p className="text-[9px] font-bold opacity-80 uppercase">Karyawan</p>
-                            </div>
-                            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-2.5 border border-white/20 flex flex-col items-center justify-center text-center h-20">
-                                <UserCheck className="h-4 w-4 text-green-300 mb-1" />
-                                <p className="text-xl font-black">{assignments.length}</p>
-                                <p className="text-[9px] font-bold opacity-80 uppercase">Assign</p>
-                            </div>
-                        </div>
-                    </div>
-                    {/* Mobile List Content */}
-                    <div className="px-4 space-y-4">
-                        {Object.keys(groupedAssignments).length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-16 text-center opacity-60">
-                                <Users className="h-12 w-12 text-slate-300 mb-3" />
-                                <h3 className="text-sm font-bold text-slate-700">Belum Ada Struktur</h3>
-                                <p className="text-xs text-slate-500 mt-1 max-w-[200px]">Tap tombol + untuk mulai menghubungkan manajer dan karyawan.</p>
-                            </div>
-                        ) : (
-                            Object.entries(groupedAssignments).map(([managerId, data]) => (
-                                <div key={managerId} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3">
-                                    {/* Manager Header */}
-                                    <div className="flex items-start gap-3 border-b border-slate-50 pb-3">
-                                        <Avatar className="h-10 w-10 border border-slate-100">
-                                            <AvatarImage src={data.manager?.avatar_url} />
-                                            <AvatarFallback className="bg-blue-100 text-blue-600 font-bold text-xs">
-                                                {data.manager?.full_name?.substring(0, 2).toUpperCase()}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                        <div className="flex-1 min-w-0">
-                                            <h4 className="font-bold text-sm text-slate-900 truncate">{data.manager?.full_name}</h4>
-                                            <p className="text-[10px] text-slate-500 truncate">{data.manager?.departments?.name || 'Department -'}</p>
-                                        </div>
-                                        <Badge className="bg-slate-100 text-slate-600 border-none font-bold text-[10px]">
-                                            {data.employees.length} Bawahan
-                                        </Badge>
-                                    </div>
-
-                                    {/* Employees List (Compact) */}
-                                    <div className="space-y-2">
-                                        {data.employees.map((emp) => {
-                                            const assignment = assignments.find(
-                                                a => a.manager_id === managerId && a.employee_id === emp.id
-                                            );
-                                            return (
-                                                <div key={emp.id} className="flex items-center justify-between pl-2 pr-1 py-1 rounded-lg hover:bg-slate-50">
-                                                    <div className="flex items-center gap-2 overflow-hidden">
-                                                        <div className="h-1.5 w-1.5 rounded-full bg-blue-400 shrink-0" />
-                                                        <span className="text-xs font-medium text-slate-700 truncate">{emp.full_name}</span>
-                                                    </div>
-                                                    {assignment && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => handleDeleteAssignment(assignment.id)}
-                                                            className="h-6 w-6 text-slate-300 hover:text-red-500 -mr-1"
-                                                        >
-                                                            <Trash2 className="h-3 w-3" />
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-
-                    {/* Floating Add Button */}
-                    <div className="fixed bottom-24 right-6 z-40">
-                        <div className="absolute inset-0 bg-blue-500 rounded-full blur-lg opacity-30 animate-pulse"></div>
-                        <Button
-                            onClick={() => setDialogOpen(true)}
-                            className="relative h-14 w-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-xl flex items-center justify-center transition-transform active:scale-95"
-                        >
-                            <Plus className="h-6 w-6" />
-                        </Button>
-                    </div>
-
-                    {/* Reuse existing Dialog but ensure it fits mobile */}
-                    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                        <DialogContent className="max-w-[90vw] max-h-[85vh] rounded-[24px] p-0 flex flex-col overflow-hidden">
-                            <DialogHeader className="p-5 pb-2 bg-slate-50 shrink-0">
-                                <DialogTitle className="text-lg">Tambah hirarki</DialogTitle>
-                                <DialogDescription className="text-xs">Hubungkan Manajer & Karyawan</DialogDescription>
-                            </DialogHeader>
-
-                            <div className="flex-1 overflow-y-auto p-5 space-y-5">
-                                {/* Select Manager */}
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Pilih Manager</label>
-                                    <Select value={selectedManager} onValueChange={setSelectedManager}>
-                                        <SelectTrigger className="h-11 rounded-xl bg-slate-50 border-slate-200">
-                                            <SelectValue placeholder="Siapa atasannya?" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {managers.map(manager => (
-                                                <SelectItem key={manager.id} value={manager.id} className="text-xs py-2">
-                                                    {manager.full_name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {/* Select Employees */}
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex justify-between">
-                                        <span>Pilih Bawahan</span>
-                                        <span className="text-blue-600">{selectedEmployees.length} dipilih</span>
-                                    </label>
-                                    <div className="border border-slate-200 rounded-xl max-h-[250px] overflow-y-auto custom-scrollbar">
-                                        {employees.map(emp => (
-                                            <div
-                                                key={emp.id}
-                                                onClick={() => toggleEmployee(emp.id)}
-                                                className={`flex items-center gap-3 p-3 border-b border-slate-50 last:border-0 cursor-pointer h-12 transition-colors ${selectedEmployees.includes(emp.id) ? 'bg-blue-50/50' : 'bg-white'}`}
-                                            >
-                                                <div className={`w-4 h-4 rounded border flex items-center justify-center ${selectedEmployees.includes(emp.id) ? 'bg-blue-600 border-blue-600' : 'border-slate-300 bg-white'}`}>
-                                                    {selectedEmployees.includes(emp.id) && <UserCheck className="h-3 w-3 text-white" />}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className={`text-xs font-bold truncate ${selectedEmployees.includes(emp.id) ? 'text-blue-700' : 'text-slate-700'}`}>{emp.full_name}</p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <DialogFooter className="p-4 bg-white border-t border-slate-100 flex-row gap-2 shrink-0">
-                                <Button variant="ghost" onClick={() => setDialogOpen(false)} className="flex-1 rounded-xl h-11">Batal</Button>
-                                <Button onClick={handleAddAssignments} disabled={processing} className="flex-1 rounded-xl h-11 bg-blue-600">{processing ? '...' : 'Simpan'}</Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
+                <div className="flex justify-center items-center min-h-[60vh]">
+                    <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
                 </div>
             </DashboardLayout>
         );
@@ -453,253 +208,193 @@ export default function ManagerAssignments() {
 
     return (
         <DashboardLayout>
-            <div className="max-w-7xl mx-auto space-y-8 px-4 py-8">
-                {/* Header */}
-                <div className="flex items-center justify-between">
+            <div className="p-8 space-y-8">
+                {/* Header Section */}
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                     <div>
-                        <div className="flex items-center gap-3">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => navigate('/dashboard')}
-                                className="h-10 w-10"
-                            >
-                                <ChevronLeft className="h-5 w-5" />
-                            </Button>
-                            <div>
-                                <h1 className="text-3xl font-black text-slate-900 tracking-tight">Kelola Assignment Manager</h1>
-                                <p className="text-slate-500 mt-1">Atur siapa yang menjadi atasan dari karyawan mana.</p>
-                            </div>
-                        </div>
+                        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Peta Atasan</h1>
+                        <p className="text-slate-500 font-medium mt-1">Struktur hirarki manajer dan bawahan.</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-3">
                         <Button
-                            variant="secondary"
+                            variant="outline"
                             onClick={handleAutoAssign}
-                            disabled={processing}
-                            className="bg-purple-100/50 hover:bg-purple-100 text-purple-700 h-11 px-4 rounded-xl font-bold border border-purple-200"
+                            className="rounded-2xl h-11 border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-all border-2"
                         >
-                            <Zap className="h-4 w-4 mr-2" />
+                            <Zap className="h-4 w-4 mr-2 text-amber-500 fill-amber-500" />
                             Auto Assign
                         </Button>
                         <Button
                             onClick={() => setDialogOpen(true)}
-                            className="bg-blue-600 hover:bg-blue-700 h-11 px-6 rounded-xl font-bold gap-2"
+                            className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl h-11 px-6 font-black shadow-lg shadow-blue-200 gap-2"
                         >
                             <Plus className="h-5 w-5" />
-                            Tambah Assignment
+                            Tambah Atasan
                         </Button>
                     </div>
                 </div>
 
-                {/* Stats */}
-                <div className="grid grid-cols-3 gap-4">
-                    <Card className="border-none shadow-md">
-                        <CardContent className="p-6 flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
-                                <Users className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Manager</p>
-                                <p className="text-2xl font-black text-slate-900">{managers.length}</p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card className="border-none shadow-md">
-                        <CardContent className="p-6 flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
-                                <UserCheck className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Assignments</p>
-                                <p className="text-2xl font-black text-slate-900">{assignments.length}</p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card className="border-none shadow-md">
-                        <CardContent className="p-6 flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center">
-                                <Users className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Karyawan</p>
-                                <p className="text-2xl font-black text-slate-900">{employees.length}</p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Assignments List */}
-                <div className="space-y-4">
+                {/* Desktop Grid Layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                     {Object.keys(groupedAssignments).length === 0 ? (
-                        <Card className="border-none shadow-md">
-                            <CardContent className="py-20 text-center">
-                                <Users className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-                                <h3 className="text-xl font-bold text-slate-700">Belum Ada Assignment</h3>
-                                <p className="text-slate-500 mt-2">Klik "Tambah Assignment" untuk mulai assign manager ke karyawan.</p>
-                            </CardContent>
-                        </Card>
+                        <div className="col-span-full py-20 text-center opacity-40">
+                            <ShieldCheck className="h-16 w-16 mx-auto mb-4" />
+                            <h3 className="text-xl font-bold">Belum Ada Struktur Terdaftar</h3>
+                            <p className="text-sm font-medium">Klik 'Tambah Atasan' untuk mulai memetakan hirarki.</p>
+                        </div>
                     ) : (
                         Object.entries(groupedAssignments).map(([managerId, data]) => (
-                            <Card key={managerId} className="border-none shadow-md">
-                                <CardHeader className="bg-slate-50 border-b border-slate-100">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
-                                            <Avatar className="h-12 w-12 border-2 border-white shadow-sm">
-                                                <AvatarImage src={data.manager?.avatar_url} />
-                                                <AvatarFallback className="bg-blue-100 text-blue-600 font-bold">
-                                                    {data.manager?.full_name?.substring(0, 2).toUpperCase()}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div>
-                                                <CardTitle className="text-lg">{data.manager?.full_name}</CardTitle>
-                                                <CardDescription>{data.manager?.email}</CardDescription>
+                            <Card key={managerId} className="border-none shadow-xl shadow-slate-200/40 rounded-[32px] overflow-hidden bg-white ring-1 ring-slate-100/50 flex flex-col transition-all hover:scale-[1.01]">
+                                <CardHeader className="bg-slate-900 text-white p-6 pb-8 relative">
+                                    <div className="absolute top-0 right-0 p-6 opacity-10">
+                                        <Users size={80} />
+                                    </div>
+                                    <div className="flex items-center gap-4 relative z-10">
+                                        <Avatar className="h-14 w-14 border-4 border-white/10 shadow-lg bg-slate-800">
+                                            <AvatarImage src={data.manager?.avatar_url} />
+                                            <AvatarFallback className="bg-blue-600 text-white font-black">
+                                                {data.manager?.full_name?.substring(0, 2).toUpperCase()}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div className="min-w-0">
+                                            <h3 className="text-lg font-black tracking-tight truncate leading-tight">{data.manager?.full_name}</h3>
+                                            <div className="flex items-center gap-1.5 mt-1 opacity-70">
+                                                <Mail className="h-3 w-3" />
+                                                <span className="text-[10px] truncate font-medium">{data.manager?.email}</span>
                                             </div>
                                         </div>
-                                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                                            {data.employees.length} Karyawan
-                                        </Badge>
                                     </div>
                                 </CardHeader>
-                                <CardContent className="p-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                        {data.employees.map((emp) => {
-                                            const assignment = assignments.find(
-                                                a => a.manager_id === managerId && a.employee_id === emp.id
-                                            );
-                                            return (
-                                                <div
-                                                    key={emp.id}
-                                                    className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 hover:border-slate-200 transition-all"
-                                                >
-                                                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                        <Avatar className="h-10 w-10">
-                                                            <AvatarImage src={emp.avatar_url} />
-                                                            <AvatarFallback className="bg-slate-200 text-slate-600 text-sm">
-                                                                {emp.full_name?.substring(0, 2).toUpperCase()}
-                                                            </AvatarFallback>
-                                                        </Avatar>
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className="font-bold text-slate-900 text-sm truncate">{emp.full_name}</p>
-                                                            <p className="text-xs text-slate-500 truncate">{emp.email}</p>
+                                <CardContent className="p-6 pb-2 -mt-4 bg-white rounded-t-[32px] flex-1 relative z-20">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tim Terdaftar:</p>
+                                        <Badge className="bg-blue-50 text-blue-600 border-none font-black text-[10px]">
+                                            {data.employees.length} ORANG
+                                        </Badge>
+                                    </div>
+                                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                        {data.employees.map((emp) => (
+                                            <div key={emp.id} className="group flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100/50 hover:bg-white hover:shadow-md transition-all">
+                                                <div className="flex items-center gap-3 overflow-hidden">
+                                                    <Avatar className="h-9 w-9 border border-white">
+                                                        <AvatarImage src={emp.avatar_url} />
+                                                        <AvatarFallback className="bg-slate-200 text-slate-600 text-[10px] font-bold">
+                                                            {emp.full_name?.substring(0, 2).toUpperCase()}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="truncate">
+                                                        <p className="text-xs font-bold text-slate-800 truncate leading-none mb-1">{emp.full_name}</p>
+                                                        <div className="flex items-center gap-1 opacity-60">
+                                                            <Building2 className="h-2.5 w-2.5" />
+                                                            <span className="text-[9px] font-medium truncate italic">{emp.departments?.name || 'Staff Luar'}</span>
                                                         </div>
                                                     </div>
-                                                    {assignment && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => handleDeleteAssignment(assignment.id)}
-                                                            className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    )}
                                                 </div>
-                                            );
-                                        })}
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => handleDeleteAssignment(emp.assignmentId)}
+                                                    className="h-8 w-8 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
+                                        ))}
                                     </div>
                                 </CardContent>
+                                <div className="p-4 bg-slate-50/50 border-t border-slate-50 mt-auto">
+                                    <Button variant="ghost" className="w-full h-8 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-blue-600 rounded-xl" onClick={() => { setSelectedManager(managerId); setDialogOpen(true); }}>
+                                        + Tambah Anggota Tim
+                                    </Button>
+                                </div>
                             </Card>
                         ))
                     )}
                 </div>
-            </div>
 
-            {/* Add Assignment Dialog */}
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto rounded-3xl">
-                    <DialogHeader>
-                        <DialogTitle>Tambah Assignment Baru</DialogTitle>
-                        <DialogDescription>
-                            Pilih manager dan karyawan yang akan di-assign.
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="space-y-6 py-4">
-                        {/* Select Manager */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-700">Manager</label>
-                            <Select value={selectedManager} onValueChange={setSelectedManager}>
-                                <SelectTrigger className="h-12 rounded-xl">
-                                    <SelectValue placeholder="Pilih manager..." />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl">
-                                    {managers.map(manager => (
-                                        <SelectItem key={manager.id} value={manager.id}>
-                                            {manager.full_name} - {manager.email}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                {/* Dialog Form */}
+                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                    <DialogContent className="rounded-[40px] sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl">
+                        <div className="bg-slate-900 p-8 text-white relative">
+                            <div className="absolute top-0 right-0 p-8 opacity-10">
+                                <UserCheck size={120} />
+                            </div>
+                            <DialogHeader>
+                                <DialogTitle className="text-3xl font-black tracking-tight mb-2">Assign Manager</DialogTitle>
+                                <DialogDescription className="text-slate-400 font-medium">
+                                    Hubungkan atasan dengan satu atau lebih bawahan.
+                                </DialogDescription>
+                            </DialogHeader>
                         </div>
 
-                        {/* Select Employees */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-700">
-                                Karyawan ({selectedEmployees.length} dipilih)
-                            </label>
-                            <div className="border border-slate-200 rounded-xl p-4 max-h-[300px] overflow-y-auto space-y-2">
-                                {employees.length === 0 ? (
-                                    <p className="text-sm text-slate-500 text-center py-4">Tidak ada karyawan tersedia</p>
-                                ) : (
-                                    employees.map(emp => (
+                        <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-none">Pilih Manajer</label>
+                                <Select value={selectedManager} onValueChange={setSelectedManager}>
+                                    <SelectTrigger className="h-14 rounded-2xl border-slate-200 bg-slate-50 font-bold">
+                                        <SelectValue placeholder="-- Pilih Atasan --" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-2xl shadow-2xl border-slate-100">
+                                        {managers.map(manager => (
+                                            <SelectItem key={manager.id} value={manager.id} className="rounded-xl py-3 cursor-pointer">
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold">{manager.full_name}</span>
+                                                    <span className="text-[10px] text-slate-500 font-medium uppercase tracking-widest">{manager.departments?.name || 'Staff'}</span>
+                                                </div>
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Pilih Bawahan ({selectedEmployees.length})</label>
+                                    <button onClick={() => setSelectedEmployees([])} className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">Reset</button>
+                                </div>
+                                <div className="grid grid-cols-1 gap-2">
+                                    {employees.map(emp => (
                                         <div
                                             key={emp.id}
                                             onClick={() => toggleEmployee(emp.id)}
-                                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${selectedEmployees.includes(emp.id)
-                                                ? 'bg-blue-50 border-2 border-blue-200'
-                                                : 'bg-slate-50 border-2 border-transparent hover:border-slate-200'
-                                                }`}
-                                        >
-                                            <Avatar className="h-10 w-10">
-                                                <AvatarImage src={emp.avatar_url} />
-                                                <AvatarFallback className="bg-slate-200 text-slate-600 text-sm">
-                                                    {emp.full_name?.substring(0, 2).toUpperCase()}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="font-bold text-slate-900 text-sm truncate">{emp.full_name}</p>
-                                                <p className="text-xs text-slate-500 truncate">{emp.email}</p>
-                                            </div>
-                                            {selectedEmployees.includes(emp.id) && (
-                                                <UserCheck className="h-5 w-5 text-blue-600" />
+                                            className={cn(
+                                                "flex items-center gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer",
+                                                selectedEmployees.includes(emp.id)
+                                                    ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200"
+                                                    : "bg-slate-50 border-transparent hover:border-slate-200 text-slate-800"
                                             )}
+                                        >
+                                            <div className={cn(
+                                                "h-5 w-5 rounded-md border-2 flex items-center justify-center transition-colors",
+                                                selectedEmployees.includes(emp.id) ? "bg-white border-white" : "border-slate-300 bg-white"
+                                            )}>
+                                                {selectedEmployees.includes(emp.id) && <UserCheck className="h-3 w-3 text-blue-600" />}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-bold text-xs truncate leading-none">{emp.full_name}</p>
+                                                <p className={cn("text-[9px] font-medium mt-1 truncate opacity-70", selectedEmployees.includes(emp.id) ? "text-blue-50" : "text-slate-500 uppercase")}>
+                                                    {emp.departments?.name || 'UMUM'}
+                                                </p>
+                                            </div>
                                         </div>
-                                    ))
-                                )}
+                                    ))}
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() => setDialogOpen(false)}
-                            disabled={processing}
-                            className="rounded-xl"
-                        >
-                            Batal
-                        </Button>
-                        <Button
-                            onClick={handleAddAssignments}
-                            disabled={processing || !selectedManager || selectedEmployees.length === 0}
-                            className="bg-blue-600 hover:bg-blue-700 rounded-xl"
-                        >
-                            {processing ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Menyimpan...
-                                </>
-                            ) : (
-                                <>
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Tambah Assignment
-                                </>
-                            )}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                        <div className="p-8 bg-slate-50 border-t border-slate-100 flex gap-4">
+                            <Button variant="ghost" onClick={() => setDialogOpen(false)} className="h-12 rounded-2xl font-black text-slate-500 flex-1">Batal</Button>
+                            <Button
+                                onClick={handleAddAssignments}
+                                disabled={processing || !selectedManager || selectedEmployees.length === 0}
+                                className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl h-12 px-8 font-black shadow-lg shadow-blue-200 flex-[2] transition-all active:scale-95"
+                            >
+                                {processing ? <Loader2 className="h-5 w-5 animate-spin" /> : "Simpan Hirarki"}
+                            </Button>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            </div>
         </DashboardLayout>
     );
 }

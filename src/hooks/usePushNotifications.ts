@@ -144,10 +144,6 @@ export const usePushNotifications = () => {
                     if (lastToken !== token) {
                         await saveTokenToDatabase(token, 'pwa');
                         localStorage.setItem('fcm_token_pwa', token);
-
-                        toast({
-                            title: "PWA Push Aktif",
-                        });
                     }
 
                     // Listen for foreground messages

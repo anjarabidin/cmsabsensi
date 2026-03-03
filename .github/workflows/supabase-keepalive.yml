@@ -12,9 +12,9 @@ jobs:
     steps:
       - name: Ping Supabase REST API
         run: |
-          curl -f -X GET "${{ secrets.SUPABASE_URL }}/rest/v1/app_settings?select=key&limit=1" \
-          -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-          -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
+          curl -f -X GET "${{ secrets.VITE_SUPABASE_URL }}/rest/v1/app_settings?select=key&limit=1" \
+          -H "apikey: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}" \
+          -H "Authorization: Bearer ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}"
         # Note: If app_settings table doesn't have RLS for anon users, this might need a public table
         # Or you can just hit the health check if available.
         # This will count as API activity and keep the project alive.

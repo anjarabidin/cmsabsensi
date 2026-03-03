@@ -207,6 +207,7 @@ export default function Settings() {
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
     const [activeSection, setActiveSection] = useState<SectionId>('company');
+    const [showDetail, setShowDetail] = useState(false);
     const [settings, setSettings] = useState<SettingsState>(DEFAULTS);
     const [pingStatus, setPingStatus] = useState<'idle' | 'pinging' | 'ok' | 'error'>('idle');
     const keepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -549,8 +550,6 @@ export default function Settings() {
     // ── Mobile: section list → detail ────────────────────────────────────────
     if (isMobile) {
         const current = SECTIONS.find(s => s.id === activeSection);
-        const [showDetail, setShowDetail] = useState(false);
-
         const goTo = (id: SectionId) => { setActiveSection(id); setShowDetail(true); };
 
         if (!showDetail) {

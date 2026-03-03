@@ -156,7 +156,7 @@ export function DashboardTour() {
             const seenProfile = profile.has_seen_tour;
 
             if (!seenLocal && !seenProfile) {
-                // setRun(true); // DISABLED PER USER REQUEST to stop repeating tour
+                setRun(true);
             }
         };
 

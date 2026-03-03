@@ -128,26 +128,45 @@ export default function DeviceManagement() {
         if (!selectedDevice) return;
 
         try {
+            console.log('🔄 Attempting to reset device:', selectedDevice.id, 'for user:', selectedDevice.user_id);
+
+            // Try deleting by primary key first
             const { error } = await supabase
                 .from('user_devices')
                 .delete()
                 .eq('id', selectedDevice.id);
 
-            if (error) throw error;
+            if (error) {
+                console.error('❌ Delete error by ID:', error);
 
-            toast({
-                title: 'Berhasil Reset Perangkat',
-                description: `Akun ${selectedDevice.profiles.full_name} sekarang bisa login di perangkat lain.`,
-            });
+                // Fallback: Try deleting all devices for this user (Bulk reset)
+                const { error: fallbackError } = await supabase
+                    .from('user_devices')
+                    .delete()
+                    .eq('user_id', selectedDevice.user_id);
 
-            setDevices(devices.filter(d => d.id !== selectedDevice.id));
+                if (fallbackError) throw fallbackError;
+
+                toast({
+                    title: 'Reset Total Berhasil',
+                    description: `Semua perangkat untuk ${selectedDevice.profiles.full_name} telah dibersihkan.`,
+                });
+            } else {
+                toast({
+                    title: 'Berhasil Reset Perangkat',
+                    description: `Kunci perangkat spesifik untuk ${selectedDevice.profiles.full_name} telah dilepas.`,
+                });
+            }
+
+            // Refresh data
+            await fetchDevices();
             setResetDialogOpen(false);
             setSelectedDevice(null);
         } catch (error: any) {
-            console.error('Error resetting device:', error);
+            console.error('Critical Error resetting device:', error);
             toast({
                 title: 'Gagal reset perangkat',
-                description: error.message,
+                description: error.message || 'Terjadi kesalahan pada server database.',
                 variant: 'destructive',
             });
         }

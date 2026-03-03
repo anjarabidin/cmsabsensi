@@ -139,42 +139,71 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userAgent = navigator.userAgent;
 
     try {
-      const { data: existingDevice } = await supabase
+      // 1. Fetch ALL registered devices for this user
+      const { data: userDevices } = await supabase
         .from('user_devices')
-        .select('device_id')
-        .eq('user_id', userId)
+        .select('*')
+        .eq('user_id', userId);
+
+      const deviceList = userDevices || [];
+      const currentDevice = deviceList.find(d => d.device_id === deviceId);
+
+      // 2. Fetch max device limit from settings (default 3)
+      const { data: maxDevicesSetting } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'max_devices_per_user')
         .maybeSingle();
 
-      if (existingDevice) {
-        if (existingDevice.device_id !== deviceId) {
-          if (isSuperAdmin) {
-            await supabase.from('user_devices').update({
-              device_id: deviceId,
-              device_name: `${userAgent} (Reset)`,
-              last_login: new Date().toISOString()
-            }).eq('user_id', userId);
-            return { success: true };
-          }
-          return { success: false, error: `AKSES DITOLAK: Akun ini terkunci di perangkat lain.` };
-        }
-        // Fire-and-forget: update last_login without blocking
+      const maxAllowed = parseInt(maxDevicesSetting?.value || '3', 10);
+
+      // Case A: Device already registered
+      if (currentDevice) {
+        // Just update last login time
         supabase.from('user_devices')
           .update({ last_login: new Date().toISOString() })
-          .eq('user_id', userId)
+          .eq('id', currentDevice.id)
           .then(() => { });
-      } else {
-        // Fire-and-forget: register device without blocking
-        supabase.from('user_devices').insert({
-          user_id: userId,
-          device_id: deviceId,
-          device_name: userAgent,
-          last_login: new Date().toISOString()
-        }).then(() => { });
+        return { success: true };
       }
+
+      // Case B: New device, check limit
+      if (deviceList.length >= maxAllowed) {
+        // Super Admin can "take over" (replace the oldest device if limit reached)
+        if (isSuperAdmin) {
+          const oldestDevice = [...deviceList].sort((a, b) =>
+            new Date(a.last_login).getTime() - new Date(b.last_login).getTime()
+          )[0];
+
+          await supabase.from('user_devices')
+            .update({
+              device_id: deviceId,
+              device_name: `${userAgent} (Admin Asset)`,
+              last_login: new Date().toISOString()
+            })
+            .eq('id', oldestDevice.id);
+
+          return { success: true };
+        }
+
+        return {
+          success: false,
+          error: `AKSES DITOLAK: Anda sudah mencapai batas maksimal ${maxAllowed} perangkat. Silakan reset perangkat lama via Admin.`
+        };
+      }
+
+      // Case C: Register new device (under limit)
+      await supabase.from('user_devices').insert({
+        user_id: userId,
+        device_id: deviceId,
+        device_name: userAgent,
+        last_login: new Date().toISOString()
+      });
+
       return { success: true };
     } catch (err) {
       console.error('[Auth] Device check error:', err);
-      return { success: true }; // Fail open
+      return { success: true }; // Fail open to not block users if DB is flaking
     }
   };
 

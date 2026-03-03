@@ -42,9 +42,10 @@ interface SettingsState {
     reminder_clockin_minutes_before: number;
     reminder_clockout_minutes_before: number;
     reminder_workdays_only: boolean;
-    // Account Approval
+    // Account Approval & Security
     enable_account_approval: boolean;
     account_approval_roles: string;
+    max_devices_per_user: number;
 }
 
 const DEFAULTS: SettingsState = {
@@ -77,6 +78,7 @@ const DEFAULTS: SettingsState = {
     reminder_workdays_only: false,
     enable_account_approval: true,
     account_approval_roles: 'super_admin,admin_hr',
+    max_devices_per_user: 3,
 };
 
 // ─── Nav Sections ─────────────────────────────────────────────────────────────
@@ -411,6 +413,20 @@ export default function Settings() {
                         placeholder="super_admin,admin_hr"
                         disabled={!settings.enable_account_approval}
                         className="w-64 h-9 text-sm rounded-lg border-slate-200 focus:border-slate-400 focus:ring-0 disabled:opacity-40"
+                    />
+                </SettingRow>
+
+                <div className="h-px bg-slate-100 my-4" />
+
+                <SettingRow
+                    label="Maksimal Perangkat"
+                    desc="Jumlah maksimal browser/HP yang diizinkan login bersamaan untuk satu akun. Disarankan 2 atau 3 agar bisa sinkron HP & Laptop."
+                    tag="SECURITY"
+                >
+                    <NumField
+                        value={settings.max_devices_per_user}
+                        onChange={v => set('max_devices_per_user', v)}
+                        min={1} max={10} suffix="Unit"
                     />
                 </SettingRow>
             </SectionPanel>

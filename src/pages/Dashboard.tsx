@@ -25,6 +25,7 @@ import {
   Receipt,
   FileText,
   ChevronRight,
+  ChevronDown,
   LogOut,
   Info,
   ClipboardCheck,
@@ -46,6 +47,7 @@ import {
   Navigation
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { Attendance } from '@/types';
@@ -640,63 +642,54 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* DRIVER ASSIGNMENT CARD - MOVED OUT OF ADMIN SECTION */}
+            {/* COMPACT DRIVER ASSIGNMENT - REPLACED LARGE CARD WITH DROPDOWN CHIP */}
             {(loadingDriver || driverAssignment) && (
-              <div className="mx-3 relative z-20">
+              <div className="mx-3 relative z-20 mb-4">
                 {loadingDriver ? (
-                  <Card className="border-none shadow-xl rounded-[32px] overflow-hidden bg-white mb-6 p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <Skeleton className="h-10 w-10 rounded-2xl" />
-                      <div className="space-y-2">
-                        <Skeleton className="h-3 w-20" />
-                        <Skeleton className="h-4 w-32" />
-                      </div>
-                    </div>
-                    <Skeleton className="h-24 w-full rounded-3xl" />
-                  </Card>
+                  <Skeleton className="h-10 w-40 rounded-full" />
                 ) : (
-                  <Card className="border-none shadow-xl rounded-[32px] overflow-hidden bg-gradient-to-br from-blue-600 to-indigo-700 text-white mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
-                            {driverAssignment.role_type === 'driver' ? <Car className="h-5 w-5" /> : <Smartphone className="h-5 w-5" />}
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-black uppercase tracking-widest opacity-80">
-                              {driverAssignment.role_type === 'driver' ? 'Penugasan Driver' : 'Driver Pribadi'}
-                            </h4>
-                            <p className="text-xs font-bold text-blue-100 italic">Antar Jemput Aktif</p>
-                          </div>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="flex items-center gap-2.5 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full shadow-lg shadow-blue-200 border border-blue-400/20 active:scale-95 transition-all">
+                        <div className="h-5 w-5 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-md">
+                          {driverAssignment.role_type === 'driver' ? <Car className="h-3 w-3" /> : <Smartphone className="h-3 w-3" />}
                         </div>
-                        <Badge className="bg-white/20 text-white border-0">AKTIF</Badge>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="bg-white/10 p-4 rounded-3xl backdrop-blur-md border border-white/10">
-                            <p className="text-[10px] font-black uppercase text-blue-100 opacity-60 mb-1">
+                        <span className="text-[11px] font-black uppercase tracking-wider">
+                          {driverAssignment.role_type === 'driver' ? 'Tugas Driver' : 'Driver Pribadi'}
+                        </span>
+                        <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[85vw] p-0 border-none shadow-2xl rounded-[28px] overflow-hidden" align="start">
+                      <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-5 text-white">
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="text-[10px] font-black uppercase tracking-widest opacity-70">Detail Antar Jemput</h4>
+                          <Badge className="bg-emerald-500 text-white border-0 text-[9px] px-2 h-5">AKTIF</Badge>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="bg-white/10 p-4 rounded-2xl backdrop-blur-md border border-white/10">
+                            <p className="text-[8px] font-black uppercase text-blue-100 opacity-60 mb-1">
                               {driverAssignment.role_type === 'driver' ? 'Penumpang' : 'Driver Anda'}
                             </p>
                             <p className="text-sm font-black truncate">{driverAssignment.other_party_name}</p>
                           </div>
-                          <div className="bg-white/10 p-4 rounded-3xl backdrop-blur-md border border-white/10">
-                            <p className="text-[10px] font-black uppercase text-blue-100 opacity-60 mb-1">Kendaraan</p>
+                          <div className="bg-white/10 p-4 rounded-2xl backdrop-blur-md border border-white/10">
+                            <p className="text-[8px] font-black uppercase text-blue-100 opacity-60 mb-1">Kendaraan</p>
                             <p className="text-sm font-black truncate">{driverAssignment.vehicle || 'Pribadi'}</p>
                           </div>
                         </div>
-
                         {driverAssignment.role_type === 'driver' && (
                           <Button
-                            onClick={() => navigate('/driver-logbook')}
-                            className="w-full h-12 rounded-2xl bg-white text-blue-600 hover:bg-blue-50 font-black text-xs uppercase tracking-widest shadow-lg border-0 transition-all active:scale-95 flex items-center gap-2"
+                            onClick={() => { navigate('/driver-logbook'); }}
+                            className="w-full mt-4 h-11 rounded-xl bg-white text-blue-600 hover:bg-blue-50 font-black text-[11px] uppercase tracking-widest shadow-lg border-0"
                           >
-                            <Navigation className="h-4 w-4" /> Buka Logbook Driver
+                            Buka Logbook Driver
                           </Button>
                         )}
                       </div>
-                    </CardContent>
-                  </Card>
+                    </PopoverContent>
+                  </Popover>
                 )}
               </div>
             )}

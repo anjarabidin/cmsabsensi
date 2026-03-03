@@ -348,16 +348,16 @@ export default function Settings() {
         attendance: (
             <SectionPanel title="Kamera & Foto Absensi" desc="Atur metode verifikasi identitas saat karyawan melakukan clock in dan clock out.">
                 <SettingRow
-                    label="Foto Selfie Wajib"
-                    desc="Karyawan diwajibkan mengambil foto selfie saat absensi sebagai bukti kehadiran. Tidak memerlukan AI atau enrollment wajah."
-                    tag="REKOMENDASI"
+                    label="Foto Selfie Wajib (Reguler)"
+                    desc="Karyawan wajib mengambil foto selfie saat absensi. Foto hanya disimpan sebagai bukti dan tidak diproses oleh AI (MediaPipe)."
+                    tag="STABIL"
                 >
                     <ProSwitch checked={settings.require_selfie_photo} onChange={v => set('require_selfie_photo', v)} />
                 </SettingRow>
                 <SettingRow
-                    label="Verifikasi Wajah (AI) (Belum Berfungsi)"
-                    desc="Sistem akan mencocokkan wajah karyawan dengan data yang telah didaftarkan sebelumnya menggunakan MediaPipe."
-                    warning="Memerlukan enrollment wajah terlebih dahulu di halaman Profil. Dapat mempengaruhi performa di perangkat lama."
+                    label="Verifikasi Wajah (Eksperimental)"
+                    desc="Sistem akan mencocokkan wajah secara real-time dengan data pendaftaran menggunakan MediaPipe (AI)."
+                    warning="Memerlukan registrasi wajah di Profil. Mungkin lambat di beberapa perangkat."
                 >
                     <ProSwitch checked={settings.require_face_verification} onChange={v => set('require_face_verification', v)} />
                 </SettingRow>

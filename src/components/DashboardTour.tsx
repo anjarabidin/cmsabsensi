@@ -4,7 +4,7 @@ import Joyride, { CallBackProps, STATUS, Step } from 'react-joyride';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { User, Clock, LayoutGrid, Megaphone, Sparkles, Rocket } from 'lucide-react';
+import { User, Clock, LayoutGrid, Megaphone, Sparkles, Rocket, Calendar } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export function DashboardTour() {
@@ -48,7 +48,7 @@ export function DashboardTour() {
                         <h4 className="font-black text-base">Identitas Digital</h4>
                     </div>
                     <p className="text-slate-600 text-xs leading-relaxed">
-                        Data diri Anda terverifikasi di sini. Pastikan <strong>Employee ID</strong> dan <strong>Supervisor</strong> sudah benar.
+                        Data diri Anda terverifikasi di sini. Pastikan sudah benar.
                     </p>
                 </div>
             ),
@@ -63,10 +63,64 @@ export function DashboardTour() {
                         <div className="h-8 w-8 rounded-lg bg-amber-50 flex items-center justify-center shadow-sm">
                             <Clock className="h-4 w-4" />
                         </div>
-                        <h4 className="font-black text-base">Status Kehadiran</h4>
+                        <h4 className="font-black text-base">Kartu Presensi</h4>
                     </div>
                     <p className="text-slate-600 text-xs leading-relaxed">
-                        Pantau status kerja secara <i>real-time</i>. Warna kartu akan berubah otomatis mengikuti aktivitas absen Anda.
+                        Pantau status kerja secara <i>real-time</i>. Warna kartu akan berubah otomatis:
+                        <span className="block mt-1 font-bold text-blue-600">• Biru: Belum Absen</span>
+                        <span className="block font-bold text-green-600">• Hijau: Sudah Masuk</span>
+                        <span className="block font-bold text-slate-600">• Abu: Sudah Pulang</span>
+                    </p>
+                </div>
+            ),
+            spotlightPadding: 6,
+        },
+        {
+            target: '[data-tour="quick-action"]',
+            content: (
+                <div className="space-y-2 text-left p-1">
+                    <div className="flex items-center gap-2 text-blue-600">
+                        <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center shadow-sm">
+                            <Clock className="h-4 w-4" />
+                        </div>
+                        <h4 className="font-black text-base">Akses Cepat Absen</h4>
+                    </div>
+                    <p className="text-slate-600 text-xs leading-relaxed">
+                        Gunakan tombol ini untuk langsung menuju halaman <b>Absensi GPS</b>. Ini adalah cara tercepat untuk memulai hari Anda.
+                    </p>
+                </div>
+            ),
+            spotlightPadding: 6,
+        },
+        {
+            target: '[data-tour="nav-history"]',
+            content: (
+                <div className="space-y-2 text-left p-1">
+                    <div className="flex items-center gap-2 text-purple-600">
+                        <div className="h-8 w-8 rounded-lg bg-purple-50 flex items-center justify-center shadow-sm">
+                            <Calendar className="h-4 w-4" />
+                        </div>
+                        <h4 className="font-black text-base">Riwayat Kerja</h4>
+                    </div>
+                    <p className="text-slate-600 text-xs leading-relaxed">
+                        Lihat kembali catatan kehadiran, keterlambatan, dan lembur Anda selama sebulan terakhir di sini.
+                    </p>
+                </div>
+            ),
+            spotlightPadding: 6,
+        },
+        {
+            target: '[data-tour="nav-schedule"]',
+            content: (
+                <div className="space-y-2 text-left p-1">
+                    <div className="flex items-center gap-2 text-indigo-600">
+                        <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center shadow-sm">
+                            <LayoutGrid className="h-4 w-4" />
+                        </div>
+                        <h4 className="font-black text-base">Agenda & Kegiatan</h4>
+                    </div>
+                    <p className="text-slate-600 text-xs leading-relaxed">
+                        Cek jadwal meeting, acara kantor, atau catatan pribadi Anda agar tidak ada yang terlewat.
                     </p>
                 </div>
             ),
@@ -83,7 +137,7 @@ export function DashboardTour() {
                         <h4 className="font-black text-base">Pusat Layanan HR</h4>
                     </div>
                     <p className="text-slate-600 text-xs leading-relaxed">
-                        Mulai dari <b>Absensi GPS</b>, pengajuan <b>Cuti/Lembur</b>, hingga catatan harian dan laporan ada di sini.
+                        Semua pengajuan <b>Cuti</b>, <b>Klaim</b>, <b>Slip Gaji</b>, hingga <b>Album Foto</b> kantor ada dalam satu genggaman.
                     </p>
                 </div>
             ),
@@ -97,14 +151,31 @@ export function DashboardTour() {
                         <div className="h-8 w-8 rounded-lg bg-pink-50 flex items-center justify-center shadow-sm">
                             <Megaphone className="h-4 w-4" />
                         </div>
-                        <h4 className="font-black text-base">Informasi Terbaru</h4>
+                        <h4 className="font-black text-base">Berita & Artikel</h4>
                     </div>
                     <p className="text-slate-600 text-xs leading-relaxed">
-                        Jangan sampai ketinggalan update penting dari perusahaan. Semua berita akan tampil di sini.
+                        Update terbaru dari perusahaan dan tips produktivitas harian akan muncul di sini. Tetaplah terinformasi!
                     </p>
                 </div>
             ),
             spotlightPadding: 4,
+        },
+        {
+            target: '[data-tour="nav-profile"]',
+            content: (
+                <div className="space-y-2 text-left p-1">
+                    <div className="flex items-center gap-2 text-slate-600">
+                        <div className="h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center shadow-sm">
+                            <User className="h-4 w-4" />
+                        </div>
+                        <h4 className="font-black text-base">Manajemen Profil</h4>
+                    </div>
+                    <p className="text-slate-600 text-xs leading-relaxed">
+                        Lengkapi <b>Data Kepegawaian</b>, ganti <b>Password</b>, atau daftar <b>Face Recognition</b> di menu ini.
+                    </p>
+                </div>
+            ),
+            spotlightPadding: 6,
         },
         {
             target: 'body',
@@ -114,9 +185,9 @@ export function DashboardTour() {
                         <div className="text-4xl mb-1" style={{ animation: 'float-animation 2.5s ease-in-out infinite' }}>🛡️</div>
                     </div>
                     <div>
-                        <h3 className="font-black text-xl text-slate-900 mb-1">Biometrik</h3>
+                        <h3 className="font-black text-xl text-slate-900 mb-1">Keamanan Biometrik</h3>
                         <p className="text-slate-500 leading-relaxed text-xs font-medium">
-                            Gunakan <b>Sidik Jari</b> atau <b>Face ID</b> untuk login yang lebih instan dan aman.
+                            Gunakan <b>Sidik Jari</b> atau <b>Face ID</b> untuk verifikasi absensi yang lebih cepat dan bebas manipulasi.
                         </p>
                     </div>
                 </div>
@@ -148,20 +219,19 @@ export function DashboardTour() {
     ];
 
     useEffect(() => {
-        const checkTourStatus = async () => {
-            if (!user || !profile) return;
+        const checkTourStatus = () => {
+            if (!user) return;
 
-            // Check if seen in localStorage or profile
+            // Check if seen locally only (device-specific)
             const seenLocal = localStorage.getItem(`tour_seen_${user.id}`);
-            const seenProfile = profile.has_seen_tour;
 
-            if (!seenLocal && !seenProfile) {
+            if (!seenLocal) {
                 setRun(true);
             }
         };
 
         checkTourStatus();
-    }, [user, profile]);
+    }, [user]);
 
     const handleJoyrideCallback = async (data: CallBackProps) => {
         const { status } = data;
@@ -170,11 +240,6 @@ export function DashboardTour() {
             setRun(false);
             if (user) {
                 localStorage.setItem(`tour_seen_${user.id}`, 'true');
-
-                await supabase
-                    .from('profiles')
-                    .update({ has_seen_tour: true })
-                    .eq('id', user.id);
             }
 
             if (status === STATUS.FINISHED) {

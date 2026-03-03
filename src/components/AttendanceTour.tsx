@@ -92,7 +92,7 @@ export function AttendanceTour() {
                         <h4 className="font-black text-base italic">Coming Soon!</h4>
                     </div>
                     <p className="text-slate-600 text-xs leading-relaxed">
-                        Fitur <b>Bukti Foto Wajah</b> sedang kami siapkan untuk meningkatkan keamanan data Anda.
+                        Fitur <b>Bukti Foto Wajah</b> gunakan saat akan melakukan presensi.
                         <br />
                         <span className="text-[10px] text-slate-400 font-bold mt-1 block tracking-tight">Pantau terus pembaruan aplikasi! 🚀</span>
                     </p>
@@ -139,13 +139,14 @@ export function AttendanceTour() {
     ];
 
     useEffect(() => {
-        const checkTourStatus = async () => {
+        const checkTourStatus = () => {
             if (!user) return;
 
-            // Auto run only if not seen before
+            // Auto run only if not seen before on this device
             const seenLocal = localStorage.getItem(`tour_attendance_seen_${user.id}`);
+
             if (!seenLocal) {
-                // setRun(true); // DISABLED PER USER REQUEST to stop repeating tour
+                setRun(true);
             }
         };
         checkTourStatus();

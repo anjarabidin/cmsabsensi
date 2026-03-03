@@ -48,7 +48,8 @@ import {
   Shield,
   Info as InfoIcon,
   UserCheck,
-  Car
+  Car,
+  Fingerprint
 } from 'lucide-react';
 import { AppLogo } from '@/components/AppLogo';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
@@ -505,18 +506,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </Link>
           ) : (
             <div className="relative -top-6">
-              <button
-                onClick={() => {
-                  toast({
-                    title: "Fitur Segera Hadir",
-                    description: "Dashboard Scan Wajah masih dalam tahap pengembangan.",
-                    duration: 3000,
-                  });
-                }}
-                className="h-14 w-14 rounded-full bg-slate-100 text-slate-400 shadow-lg flex items-center justify-center transform transition-all active:scale-90 border-[4px] border-white ring-2 ring-slate-100"
+              <Link
+                to="/attendance"
+                className="h-14 w-14 rounded-full bg-blue-600 text-white shadow-xl shadow-blue-200 flex items-center justify-center transform transition-all active:scale-95 border-[4px] border-white ring-2 ring-blue-100"
               >
-                <ScanFace className="h-7 w-7 opacity-50" />
-              </button>
+                <Fingerprint className="h-7 w-7" />
+              </Link>
             </div>
           )}
 

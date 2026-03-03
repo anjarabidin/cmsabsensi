@@ -19,8 +19,8 @@ AS $$
 DECLARE
     approval_enabled BOOLEAN;
 BEGIN
-    -- Cek apakah approval diaktifkan (cast value ke text dulu baru ke boolean)
-    SELECT (value::text = '"true"') INTO approval_enabled 
+    -- Cek apakah approval diaktifkan (lebih robust terhadap berbagai format JSON)
+    SELECT (value::text = 'true' OR value::text = '"true"') INTO approval_enabled 
     FROM public.app_settings 
     WHERE key = 'enable_account_approval';
 

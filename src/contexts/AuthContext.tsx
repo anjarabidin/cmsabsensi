@@ -81,6 +81,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setProfile(profileRes.data as Profile);
 
+      // 🚨 ACCOUNT APPROVAL CHECK
+      // If the user's account is not active, sign them out immediately
+      if (profileRes.data && profileRes.data.is_active === false) {
+        console.warn('🔐 [AuthContext] Account is INACTIVE. Forcing sign out.');
+
+        // Show a descriptive toast for the user
+        toast({
+          title: "Akun Belum Aktif",
+          description: "Akun Anda sedang dalam peninjauan oleh Admin. Mohon tunggu persetujuan untuk dapat masuk.",
+          variant: "destructive",
+          duration: 6000
+        });
+
+        await supabase.auth.signOut();
+        setProfile(null);
+        setRoles([]);
+        setRole(null);
+        setActiveRole(null);
+        setLoading(false);
+        return [];
+      }
+
       if (roleRes.error) {
         console.error('❌ Error fetching roles:', roleRes.error);
         setLoading(false);

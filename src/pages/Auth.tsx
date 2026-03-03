@@ -62,8 +62,24 @@ export default function Auth() {
 
   const [fingerprintEnabled, setFingerprintEnabled] = useState(false);
   const [hasBiometricHardware, setHasBiometricHardware] = useState(false);
+  const [approvalEnabled, setApprovalEnabled] = useState(true);
 
   useEffect(() => {
+    const fetchSettings = async () => {
+      const { data } = await supabase
+        .from('app_settings')
+        .select('key, value')
+        .in('key', ['enable_account_approval']);
+
+      if (data) {
+        const approval = data.find(s => s.key === 'enable_account_approval');
+        if (approval) {
+          const val = approval.value;
+          setApprovalEnabled(val === true || String(val).replace(/"/g, '') === 'true');
+        }
+      }
+    };
+    fetchSettings();
     const saved = localStorage.getItem('last_active_user');
     const fpEnabled = localStorage.getItem('fingerprint_enabled') === 'true';
     if (saved) {
@@ -317,11 +333,20 @@ export default function Auth() {
     } else {
       // Cek apakah Auto-Login berhasil (Email Confirmation Disabled)
       if (authData.session) {
-        toast({
-          title: 'Registrasi Berhasil! 🎉',
-          description: 'Akun Anda telah dibuat. Mengalihkan ke Dashboard...',
-          variant: 'default',
-        });
+        if (approvalEnabled) {
+          toast({
+            title: 'Pendaftaran Terkirim! ⏳',
+            description: 'Akun Anda sedang dalam proses peninjauan oleh Admin. Mohon tunggu persetujuan untuk dapat masuk.',
+            duration: 8000,
+          });
+          setJustRegistered(true);
+        } else {
+          toast({
+            title: 'Registrasi Berhasil! 🎉',
+            description: 'Akun Anda telah dibuat. Mengalihkan ke Dashboard...',
+            variant: 'default',
+          });
+        }
       } else {
         // Cek jika akun butuh approval
         const { data: profile } = await supabase

@@ -571,6 +571,7 @@ export default function Dashboard() {
                 {/* Attendance Summary Slide */}
                 <div
                   data-tour="attendance-card"
+                  onClick={() => navigate('/attendance')}
                   className={cn(
                     "w-[85vw] md:w-full h-[120px] rounded-xl p-3 text-white shadow-lg flex flex-col justify-between shrink-0 relative overflow-hidden transition-all active:scale-95",
                     todayAttendance && !todayAttendance.clock_out

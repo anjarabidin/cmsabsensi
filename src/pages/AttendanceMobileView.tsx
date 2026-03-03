@@ -485,7 +485,7 @@ export default function AttendanceMobileView({
                         autoPlay
                         playsInline
                         muted
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover scale-x-[-1]"
                     />
                     <div className="absolute inset-0 z-10 pointer-events-none">
                         <div className="w-full h-full flex flex-col justify-between p-6">

@@ -872,7 +872,7 @@ export default function ProfilePage() {
               ) : (
                 <div className="space-y-6">
                   <div className="relative aspect-video rounded-2xl overflow-hidden bg-black">
-                    <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                    <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
                   </div>
                   <div className="flex gap-4">
                     <Button variant="outline" className="flex-1 h-12" onClick={() => { stopCamera(); setAvatarSource(null); }}>Batal</Button>

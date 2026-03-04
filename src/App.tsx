@@ -47,6 +47,7 @@ import DriverAssignments from "./pages/DriverAssignments";
 import RoleManagement from "./pages/RoleManagement";
 import Vehicles from "./pages/Vehicles";
 import DriverReceipts from "./pages/DriverReceipts";
+import AttendanceLog from "./pages/AttendanceLog";
 
 const queryClient = new QueryClient();
 
@@ -132,6 +133,7 @@ const App = () => {
                 <Route path="/team-map" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr', 'manager']}><TeamMap /></ProtectedRoute>} />
                 <Route path="/locations" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><Locations /></ProtectedRoute>} />
                 <Route path="/reports" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr', 'manager']}><Reports /></ProtectedRoute>} />
+                <Route path="/attendance-log" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><AttendanceLog /></ProtectedRoute>} />
                 <Route path="/payroll-report" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><PayrollReport /></ProtectedRoute>} />
                 <Route path="/payroll" element={<ProtectedRoute><Payroll /></ProtectedRoute>} />
                 <Route path="/employees" element={<ProtectedRoute><Employees /></ProtectedRoute>} />

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -137,11 +137,23 @@ export default function Dashboard() {
   const currentRole = activeRole || role;
   const isAdmin = currentRole === 'super_admin' || currentRole === 'admin_hr' || currentRole === 'manager' || profile?.email?.includes('admin');
 
+  const lastFetchRef = useRef<number>(0);
+  const isFetchingRef = useRef(false);
+
   // Initial load
   useEffect(() => {
-    console.log('🔵 [Dashboard] useEffect triggered:', { userId: user?.id, activeRole, profileId: profile?.id, departmentId: profile?.department_id });
+    const deps = { userId: user?.id, activeRole, profileId: profile?.id, departmentId: profile?.department_id };
+    console.log('🔵 [Dashboard] useEffect triggered:', deps);
+
+    // Only fetch if we have a user and we're not already fetching for THESE specific deps
+    // We add a small debounce/throttle to prevent rapid triggers during login handshake
     if (user?.id) {
-      fetchDashboardData();
+      const now = Date.now();
+      if (now - lastFetchRef.current < 1000) {
+        console.log('⏳ [Dashboard] Throttling fetchDashboardData (too frequent)');
+        return;
+      }
+      fetchDashboardData(false); // Initial load is NOT silent
     }
   }, [user?.id, activeRole, profile?.id, profile?.department_id]);
 
@@ -150,7 +162,7 @@ export default function Dashboard() {
     if (!user?.id) return;
     const autoRefreshInterval = setInterval(() => {
       console.log('[Dashboard] Auto-refresh triggered');
-      fetchDashboardData();
+      fetchDashboardData(true); // Background updates should be silent
     }, 5 * 60 * 1000); // 5 minutes
     return () => clearInterval(autoRefreshInterval);
   }, [user?.id]);
@@ -159,15 +171,16 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user?.id) return;
     const channel = supabase
-      .channel('dashboard-attendance-realtime')
+      .channel(`dashboard-attendance-${user.id}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'attendances',
+        filter: `user_id=eq.${user.id}`
       }, (payload) => {
-        console.log('[Dashboard] Realtime attendance change:', payload.eventType);
+        console.log('[Dashboard] Realtime attendance change for current user:', payload.eventType);
         // Silently refresh core data on change
-        fetchDashboardData();
+        fetchDashboardData(true);
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -181,13 +194,22 @@ export default function Dashboard() {
   };
 
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (silent = false) => {
     if (!user) {
       console.warn('⚠️ [Dashboard] fetchDashboardData called but user is null, skipping.');
       return;
     }
-    console.log('🟢 [Dashboard] fetchDashboardData START — setting loading=true');
-    setLoading(true);
+
+    if (isFetchingRef.current) {
+      console.log('⏳ [Dashboard] fetchDashboardData already in progress, skipping.');
+      return;
+    }
+
+    isFetchingRef.current = true;
+    lastFetchRef.current = Date.now();
+
+    console.log(`🟢 [Dashboard] fetchDashboardData START (silent=${silent})`);
+    if (!silent) setLoading(true);
 
     const today = format(new Date(), 'yyyy-MM-dd');
     const startOfMonth = format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd');
@@ -211,9 +233,9 @@ export default function Dashboard() {
       } catch (err) {
         console.error('❌ [Dashboard] fetchCoreData EXCEPTION:', err);
       } finally {
-        console.log('🔓 [Dashboard] fetchCoreData finally — setLoading(false) called');
+        console.log('🔓 [Dashboard] fetchCoreData finally — releasing loading states');
         setLoadingAttendance(false);
-        setLoading(false); // Hide main loader once core tools are ready
+        if (!silent) setLoading(false); // Hide main loader once core tools are ready
       }
     };
 
@@ -390,9 +412,14 @@ export default function Dashboard() {
       fetchDriverData(),
       fetchInformationalData(),
       fetchActivityData(),
-      fetchStatData()
+      fetchStatData(),
+      fetchApprovalData()
     ]).then(() => {
       console.log('🟢 [Dashboard] All background fetches COMPLETE.');
+      isFetchingRef.current = false;
+    }).catch(err => {
+      console.error('❌ [Dashboard] Background fetches error:', err);
+      isFetchingRef.current = false;
     });
 
     // 6. PROCESS TEAM DATA (Admin/Manager only, already backgrounded)

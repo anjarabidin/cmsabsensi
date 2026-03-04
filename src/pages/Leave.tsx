@@ -106,20 +106,32 @@ export default function LeavePage() {
             const totalUsed = (usedData || []).reduce((acc, curr) => acc + (curr.total_days || 0), 0);
             setUsedQuota(totalUsed);
 
-            // 3. Fetch App Settings
+            // 3. Fetch App Settings (Global Override)
             const { data: appSettings } = await supabase
                 .from('app_settings')
                 .select('key, value')
                 .filter('key', 'ilike', 'leave_%');
 
             const settings = { ...leaveSettings };
+            let globalMaxDays: number | null = null;
+            
             appSettings?.forEach(s => {
-                if (s.key === 'leave_max_days_per_year') settings.maxDays = Number(s.value);
-                if (s.key === 'leave_min_notice_days') settings.minNotice = Number(s.value);
-                if (s.key === 'leave_require_approval') settings.requireApproval = s.value === 'true' || s.value === true;
-                if (s.key === 'leave_allow_half_day') settings.allowHalfDay = s.value === 'true' || s.value === true;
+                const val = String(s.value).replace(/^"|"$/g, '');
+                if (s.key === 'leave_max_days_per_year') {
+                    settings.maxDays = Number(val);
+                    globalMaxDays = Number(val);
+                }
+                if (s.key === 'leave_min_notice_days') settings.minNotice = Number(val);
+                if (s.key === 'leave_require_approval') settings.requireApproval = val === 'true';
+                if (s.key === 'leave_allow_half_day') settings.allowHalfDay = val === 'true';
             });
+            
             setLeaveSettings(settings);
+            
+            // If global max days is set, override the local quota display
+            if (globalMaxDays !== null) {
+                setAnnualQuota(globalMaxDays);
+            }
 
         } catch (error) {
             console.error('Error fetching settings/quota:', error);

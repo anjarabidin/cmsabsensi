@@ -1,11 +1,11 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, Search, ShieldAlert, FileText, Calendar as CalendarIcon, Filter, ChevronLeft, X } from 'lucide-react';
+import { Loader2, Search, ShieldAlert, FileText, Calendar as CalendarIcon, Filter, ChevronLeft, X, RefreshCw, Clock, User, UserCheck, AlertCircle } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -46,6 +46,7 @@ export default function AuditLogs() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [actionFilter, setActionFilter] = useState<string>('ALL');
+    const [tableFilter, setTableFilter] = useState<string>('ALL');
     const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
 
     useEffect(() => {
@@ -110,11 +111,29 @@ export default function AuditLogs() {
             log.table_name.toLowerCase().includes(searchTerm.toLowerCase());
 
         const matchesAction = actionFilter === 'ALL' || log.action === actionFilter;
-
+        const matchesTable = tableFilter === 'ALL' || log.table_name === tableFilter;
         const matchesDate = !dateFilter || format(new Date(log.created_at), 'yyyy-MM-dd') === format(dateFilter, 'yyyy-MM-dd');
 
-        return matchesSearch && matchesAction && matchesDate;
+        return matchesSearch && matchesAction && matchesTable && matchesDate;
     });
+
+    const tableOptions = Array.from(new Set(logs.map(l => l.table_name))).sort();
+
+    const stats = useMemo(() => {
+        const total = filteredLogs.length;
+        const inserts = filteredLogs.filter(l => l.action === 'INSERT').length;
+        const updates = filteredLogs.filter(l => l.action === 'UPDATE').length;
+        const deletes = filteredLogs.filter(l => l.action === 'DELETE').length;
+
+        // Find most active table
+        const tableCounts: Record<string, number> = {};
+        filteredLogs.forEach(l => {
+            tableCounts[l.table_name] = (tableCounts[l.table_name] || 0) + 1;
+        });
+        const mostActiveTable = Object.entries(tableCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '-';
+
+        return { total, inserts, updates, deletes, mostActiveTable };
+    }, [filteredLogs]);
 
     const groupedLogs = filteredLogs.reduce((groups, log) => {
         const date = new Date(log.created_at);
@@ -155,10 +174,20 @@ export default function AuditLogs() {
                                 <ChevronLeft className="h-6 w-6" />
                             </Button>
                         )}
-                        <div>
+                        <div className="flex-1">
                             <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Audit Logs</h1>
-                            <p className="text-slate-500 font-medium text-xs md:text-sm">Riwayat aktivitas sistem.</p>
+                            <p className="text-slate-500 font-medium text-xs md:text-sm">Riwayat aktivitas sistem & perubahan data.</p>
                         </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={fetchLogs}
+                            disabled={loading}
+                            className="rounded-xl h-10 border-slate-200 bg-white"
+                        >
+                            <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} />
+                            Refresh
+                        </Button>
                     </div>
 
                     {/* Filter Row */}
@@ -185,6 +214,18 @@ export default function AuditLogs() {
                                 </SelectContent>
                             </Select>
 
+                            <Select value={tableFilter} onValueChange={setTableFilter}>
+                                <SelectTrigger className="w-[140px] h-10 rounded-xl bg-white border-slate-200">
+                                    <SelectValue placeholder="Semua Tabel" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="ALL">Semua Tabel</SelectItem>
+                                    {tableOptions.map(table => (
+                                        <SelectItem key={table} value={table}>{table}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <Button
@@ -208,13 +249,14 @@ export default function AuditLogs() {
                                 </PopoverContent>
                             </Popover>
 
-                            {(searchTerm || actionFilter !== 'ALL' || dateFilter) && (
+                            {(searchTerm || actionFilter !== 'ALL' || tableFilter !== 'ALL' || dateFilter) && (
                                 <Button
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => {
                                         setSearchTerm('');
                                         setActionFilter('ALL');
+                                        setTableFilter('ALL');
                                         setDateFilter(undefined);
                                     }}
                                     className="h-10 w-10 text-slate-500 hover:text-red-500"
@@ -228,26 +270,42 @@ export default function AuditLogs() {
 
                 <div className="space-y-6">
                     {/* Summary Cards */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-                        <Card className="bg-slate-900 text-white border-none shadow-md col-span-2 md:col-span-1 rounded-2xl">
-                            <CardHeader className="pb-2 p-4 md:p-6">
-                                <CardTitle className="text-xs md:text-sm font-medium text-slate-400">Total Aktivitas</CardTitle>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+                        <Card className="bg-slate-900 text-white border-none shadow-md overflow-hidden relative group rounded-2xl">
+                            <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/10 rounded-full group-hover:scale-110 transition-transform"></div>
+                            <CardHeader className="pb-2 p-4">
+                                <CardTitle className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Aktivitas</CardTitle>
                             </CardHeader>
-                            <CardContent className="p-4 md:p-6 pt-0">
-                                <div className="text-2xl md:text-3xl font-black">{filteredLogs.length}</div>
-                                <p className="text-[10px] text-slate-500 mt-1">Tampil saat ini</p>
+                            <CardContent className="p-4 pt-0">
+                                <div className="text-3xl font-black">{stats.total}</div>
+                                <div className="flex gap-2 mt-2">
+                                    <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-md">+{stats.inserts}</span>
+                                    <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-md">~{stats.updates}</span>
+                                    <span className="text-[10px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded-md">-{stats.deletes}</span>
+                                </div>
                             </CardContent>
                         </Card>
-                        {/* More stats can be added here */}
-                        <Card className="border-slate-100 shadow-sm rounded-2xl hidden md:block">
-                            <CardHeader className="pb-2 p-4 md:p-6">
-                                <CardTitle className="text-xs md:text-sm font-medium text-slate-500">Filter Aktif</CardTitle>
+
+                        <Card className="border-slate-100 shadow-sm rounded-2xl bg-white hidden sm:block">
+                            <CardHeader className="pb-2 p-4">
+                                <CardTitle className="text-xs font-bold text-slate-400 uppercase tracking-widest">Tabel Terpopuler</CardTitle>
                             </CardHeader>
-                            <CardContent className="p-4 md:p-6 pt-0">
-                                <div className="text-lg font-bold text-slate-700">
-                                    {actionFilter === 'ALL' ? 'Semua' : actionFilter}
+                            <CardContent className="p-4 pt-0">
+                                <div className="text-lg font-black text-slate-700 truncate">{stats.mostActiveTable}</div>
+                                <p className="text-[10px] text-slate-500 mt-1 uppercase font-bold tracking-tighter">Sering dimodifikasi</p>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border-slate-100 shadow-sm rounded-2xl bg-white hidden lg:block">
+                            <CardHeader className="pb-2 p-4">
+                                <CardTitle className="text-xs font-bold text-slate-400 uppercase tracking-widest">Status Filter</CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-4 pt-0">
+                                <div className="flex items-center gap-2">
+                                    <div className={cn("w-2 h-2 rounded-full", actionFilter !== 'ALL' ? "bg-blue-500 animate-pulse" : "bg-slate-300")}></div>
+                                    <div className="text-lg font-black text-slate-700">{actionFilter === 'ALL' ? 'Semua Aksi' : actionFilter}</div>
                                 </div>
-                                <p className="text-[10px] text-slate-500 mt-1">Jenis Aksi</p>
+                                <p className="text-[10px] text-slate-500 mt-1 uppercase font-bold tracking-tighter">Mode tampilan saat ini</p>
                             </CardContent>
                         </Card>
                     </div>
@@ -308,17 +366,19 @@ export default function AuditLogs() {
                                                             <div className="flex items-center justify-between gap-2">
                                                                 <div className="flex items-center gap-2">
                                                                     <Badge variant="outline" className={cn(
-                                                                        "uppercase text-[9px] font-extrabold border-none px-1.5 py-0.5 tracking-wider",
-                                                                        log.action === 'DELETE' ? "bg-red-50 text-red-600" :
-                                                                            log.action === 'UPDATE' ? "bg-amber-50 text-amber-600" :
-                                                                                "bg-emerald-50 text-emerald-600"
+                                                                        "uppercase text-[9px] font-extrabold border-none px-2 py-0.5 tracking-wider rounded-md",
+                                                                        log.action === 'DELETE' ? "bg-red-500 text-white shadow-sm" :
+                                                                            log.action === 'UPDATE' ? "bg-amber-500 text-white shadow-sm" :
+                                                                                "bg-emerald-500 text-white shadow-sm"
                                                                     )}>
-                                                                        {log.action}
+                                                                        {log.action === 'UPDATE' ? 'Ubah' : log.action === 'INSERT' ? 'Baru' : 'Hapus'}
                                                                     </Badge>
-                                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                                                                        <div className="w-1 h-1 rounded-full bg-slate-300"></div>
+                                                                    <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                                        <TableIcon table={log.table_name} />
                                                                         {log.table_name}
-                                                                    </span>
+                                                                        <span className="text-slate-200">#</span>
+                                                                        <span className="text-slate-300 font-mono text-[9px]">{log.record_id.slice(0, 8)}</span>
+                                                                    </div>
                                                                 </div>
                                                             </div>
 
@@ -340,6 +400,15 @@ export default function AuditLogs() {
             </div>
         </DashboardLayout>
     );
+}
+
+function TableIcon({ table }: { table: string }) {
+    const className = "w-3 h-3";
+    if (table === 'profiles') return <User className={className} />;
+    if (table.includes('attendance')) return <Clock className={className} />;
+    if (table.includes('leave') || table.includes('overtime') || table.includes('reimbursement')) return <FileText className={className} />;
+    if (table === 'app_settings') return <Filter className={className} />;
+    return <div className="w-1 h-1 rounded-full bg-slate-300"></div>;
 }
 
 // MAPPING KOLOM KE BAHASA MANUSIA
@@ -381,7 +450,24 @@ const COLUMN_LABELS: Record<string, string> = {
     name: 'Nama',
     title: 'Judul',
     content: 'Konten',
-    image_url: 'URL Gambar'
+    image_url: 'URL Gambar',
+
+    // Core Modules
+    employee_id: 'ID Karyawan',
+    position: 'Jabatan',
+    gender: 'Jenis Kelamin',
+    address: 'Alamat',
+    date_of_birth: 'Tanggal Lahir',
+
+    // Attendance specific
+    clock_in: 'Jam Masuk',
+    clock_out: 'Jam Pulang',
+    work_mode: 'Mode Kerja',
+    latitude: 'Lintang',
+    longitude: 'Bujur',
+
+    // Approval specific
+    status: 'Status Persetujuan'
 };
 
 const formatValue = (key: string, value: any) => {

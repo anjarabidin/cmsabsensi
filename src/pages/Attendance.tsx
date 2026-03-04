@@ -40,7 +40,7 @@ function deg2rad(deg: number) {
 }
 
 export default function AttendancePage() {
-  const { user } = useAuth();
+  const { user, profile, role } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { toast } = useToast();
@@ -67,6 +67,13 @@ export default function AttendancePage() {
   const [officeLocations, setOfficeLocations] = useState<OfficeLocation[]>([]);
   const [selectedLocationId, setSelectedLocationId] = useState<string>('');
   const [workMode, setWorkMode] = useState<WorkMode>('wfo');
+  // Auto-set field mode for drivers
+  useEffect(() => {
+    if (role === 'driver') {
+      setWorkMode('field');
+    }
+  }, [role]);
+
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -105,6 +112,9 @@ export default function AttendancePage() {
 
   useEffect(() => {
     fetchData();
+    // Auto-refresh GPS on mount
+    getLocation();
+
     // Pre-load MediaPipe if not native (PWA)
     if (!Capacitor.isNativePlatform()) {
       initialize();
@@ -112,7 +122,7 @@ export default function AttendancePage() {
     return () => {
       stopCamera();
     };
-  }, [user?.id]);
+  }, [user?.id, getLocation]);
 
   // ... (keep existing stream attach effect lines 82-94) ...
   useEffect(() => {
@@ -162,7 +172,15 @@ export default function AttendancePage() {
       officeLocationsCount: officeLocations.length
     });
 
-    if (workMode === 'wfo' && selectedLocationId && officeLocations.length > 0) {
+    if (role === 'driver' || workMode === 'field') {
+      if (blockFakeGps && isMocked) {
+        setIsLocationValid(false);
+        setLocationErrorMsg("Fake GPS Terdeteksi! Mohon gunakan lokasi asli.");
+      } else {
+        setIsLocationValid(true);
+        setLocationErrorMsg(null);
+      }
+    } else if (workMode === 'wfo' && selectedLocationId && officeLocations.length > 0) {
       const office = officeLocations.find(l => l.id === selectedLocationId);
       if (office) {
         const dist = getDistanceFromLatLonInM(latitude, longitude, office.latitude, office.longitude);
@@ -442,8 +460,6 @@ export default function AttendancePage() {
         setVerifying(false);
         return;
       }
-      ctx.translate(canvas.width, 0);
-      ctx.scale(-1, 1);
       ctx.drawImage(video, 0, 0);
 
       canvas.toBlob((blob) => {

@@ -82,6 +82,7 @@ const employeeNavGroups = [
       { key: 'overtime', title: 'Lembur', href: '/overtime', icon: Timer },
       { key: 'reimbursement', title: 'Reimbursement', href: '/reimbursement', icon: Receipt },
       { key: 'corrections', title: 'Koreksi Absen', href: '/corrections', icon: Check },
+      { key: 'approvals', title: 'Pusat Persetujuan', href: '/approvals', icon: ClipboardCheck },
     ]
   },
   {
@@ -113,6 +114,7 @@ const adminNavGroups = [
       { key: 'team_map', title: 'Pantau Tim', href: '/team-map', icon: Navigation },
 
       { key: 'reports', title: 'Laporan Kehadiran', href: '/reports', icon: BarChart3 },
+      { key: 'attendance_log', title: 'Log Foto Absen', href: '/attendance-log', icon: Camera },
     ]
   },
   {
@@ -172,6 +174,7 @@ const superAdminNavGroups = [
       { key: 'team_map', title: 'Pantau Tim', href: '/team-map', icon: Navigation },
 
       { key: 'reports', title: 'Laporan', href: '/reports', icon: BarChart3 },
+      { key: 'attendance_log', title: 'Log Foto Absen', href: '/attendance-log', icon: Camera },
     ]
   },
   {
@@ -225,6 +228,7 @@ const managerNavGroups = [
       { key: 'employees', title: 'Anggota Tim', href: '/employees', icon: Users },
       { key: 'albums', title: 'Album', href: '/albums', icon: Camera },
       { key: 'reports', title: 'Evaluasi Tim', href: '/reports', icon: BarChart3 },
+      { key: 'attendance_log', title: 'Log Foto Absen', href: '/attendance-log', icon: Camera },
     ]
   },
   {
@@ -255,6 +259,7 @@ const driverNavGroups = [
       { key: 'driver_logbook', title: 'Logbook Driver', href: '/driver-logbook', icon: Navigation },
       { key: 'driver_receipts', title: 'Nota & Biaya', href: '/driver-receipts', icon: Camera },
       { key: 'attendance', title: 'Absensi', href: '/attendance', icon: Clock },
+      { key: 'approvals', title: 'Pusat Persetujuan', href: '/approvals', icon: ClipboardCheck },
     ]
   },
   {

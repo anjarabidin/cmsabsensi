@@ -38,6 +38,7 @@ interface SettingsState {
     leave_max_days_per_year: number;
     leave_min_notice_days: number;
     leave_require_approval: boolean;
+    leave_allow_half_day: boolean;
     reminder_enabled: boolean;
     reminder_clockin_minutes_before: number;
     reminder_clockout_minutes_before: number;
@@ -272,6 +273,7 @@ export default function Settings() {
 
             enable_account_approval: toBool(m['enable_account_approval'], DEFAULTS.enable_account_approval),
             account_approval_roles: toString(m['account_approval_roles'], DEFAULTS.account_approval_roles),
+            max_devices_per_user: toNum(m['max_devices_per_user'], DEFAULTS.max_devices_per_user),
         });
         setLoading(false);
     }, []);

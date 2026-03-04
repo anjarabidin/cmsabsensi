@@ -22,6 +22,7 @@ import {
   User,
   FileText,
   RefreshCw,
+  Eye,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -117,10 +118,29 @@ export default function PayrollPage() {
 
       toast({ title: 'Berhasil', description: `Slip gaji berhasil diunggah untuk ${format(new Date(yearInt, parseInt(selectedMonth)), 'MMMM yyyy', { locale: id })}` });
       fetchUsersAndSlips();
-    } catch {
-      toast({ title: 'Upload Gagal', description: 'Terjadi kesalahan saat mengunggah', variant: 'destructive' });
+    } catch (error: any) {
+      console.error('Upload error detail:', error);
+      toast({
+        title: 'Upload Gagal',
+        description: error.message || 'Terjadi kesalahan saat mengunggah. Pastikan koneksi stabil.',
+        variant: 'destructive'
+      });
     } finally {
       setUploading(null);
+    }
+  };
+
+  const handleViewSlip = async (filePath: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('salary-slips')
+        .createSignedUrl(filePath, 60);
+      if (error) throw error;
+      if (data?.signedUrl) {
+        window.open(data.signedUrl, '_blank');
+      }
+    } catch {
+      toast({ title: 'Gagal', description: 'Gagal memuat preview file', variant: 'destructive' });
     }
   };
 
@@ -264,13 +284,22 @@ export default function PayrollPage() {
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       {slip && (
-                        <Button
-                          variant="ghost" size="icon"
-                          className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl"
-                          onClick={() => handleDeleteSlip(slip.id, slip.file_path)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        <>
+                          <Button
+                            variant="ghost" size="icon"
+                            className="h-8 w-8 text-violet-400 hover:text-violet-600 hover:bg-violet-50 rounded-xl"
+                            onClick={() => handleViewSlip(slip.file_path)}
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost" size="icon"
+                            className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl"
+                            onClick={() => handleDeleteSlip(slip.id, slip.file_path)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
                       )}
                       <div className="relative">
                         <input
@@ -476,13 +505,24 @@ export default function PayrollPage() {
                           <td className="px-8 py-5">
                             <div className="flex items-center justify-end gap-2">
                               {slip && (
-                                <Button
-                                  variant="ghost" size="icon"
-                                  className="h-9 w-9 rounded-xl text-slate-300 hover:text-red-500 hover:bg-red-50 border border-transparent transition-all"
-                                  onClick={() => handleDeleteSlip(slip.id, slip.file_path)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                <>
+                                  <Button
+                                    variant="ghost" size="icon"
+                                    className="h-9 w-9 rounded-xl text-slate-400 hover:text-violet-600 hover:bg-violet-50 border border-transparent transition-all"
+                                    onClick={() => handleViewSlip(slip.file_path)}
+                                    title="Pratinjau PDF"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost" size="icon"
+                                    className="h-9 w-9 rounded-xl text-slate-300 hover:text-red-500 hover:bg-red-50 border border-transparent transition-all"
+                                    onClick={() => handleDeleteSlip(slip.id, slip.file_path)}
+                                    title="Hapus Slip"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </>
                               )}
                               <div className="relative">
                                 <input

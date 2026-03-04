@@ -251,7 +251,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (!initialProfileFetched.current) {
             initialProfileFetched.current = true;
             // Fetch profile immediately to speed up initial load
-            await fetchProfile(session.user.id);
+            const roles = await fetchProfile(session.user.id);
+            // ⚡ Security: Check device lock on initial session too
+            checkDeviceLock(session.user.id, roles.includes('super_admin')).then(({ success }) => {
+              if (!success) {
+                toast({
+                  title: "Akses Perangkat Ditolak",
+                  description: "Akun Anda terdaftar di perangkat lain. Silakan hubungi admin.",
+                  variant: "destructive"
+                });
+                supabase.auth.signOut().then(() => {
+                  setProfile(null); setRole(null); setRoles([]); setActiveRole(null);
+                });
+              }
+            });
           }
         } else {
           setLoading(false);
@@ -273,9 +286,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
         if (newSession?.user) {
-          // If already fetching or fetched during init(), skip this trigger unless it's a new SIGNED_IN
-          if (initialProfileFetched.current && event === 'INITIAL_SESSION') {
-            console.log('🔐 [AuthContext] Profile already fetching/fetched, skipping INITIAL_SESSION trigger.');
+          // 🛡️ Guard: If we already have a profile for THIS user and we're not explicitly forced,
+          // OR if we are already in the middle of an initial fetch, skip it.
+          // This prevents double-fetching during complex bootstrap (init + onAuthStateChange).
+          const isFetchingSameUser = initialProfileFetched.current && user?.id === newSession.user.id;
+
+          if (isFetchingSameUser && event === 'INITIAL_SESSION') {
+            console.log('🔐 [AuthContext] Profile for user already fetching/fetched (INITIAL_SESSION), skipping.');
+            return;
+          }
+
+          if (isFetchingSameUser && event === 'SIGNED_IN' && profile) {
+            console.log('🔐 [AuthContext] Profile for user already exists (SIGNED_IN), skipping redundant fetch.');
             return;
           }
 

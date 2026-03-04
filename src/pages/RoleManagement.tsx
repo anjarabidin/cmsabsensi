@@ -77,6 +77,7 @@ const ALL_NAV_ITEMS: NavItemDef[] = [
     { key: 'locations', title: 'Lokasi Kantor/Titik Absen', icon: MapPin, group: '👥 SDM & HR', groupIcon: Users },
     { key: 'team_map', title: 'Pantau Lokasi Tim', icon: Navigation, group: '👥 SDM & HR', groupIcon: Users },
     { key: 'reports', title: 'Laporan Kehadiran', icon: BarChart3, group: '👥 SDM & HR', groupIcon: Users },
+    { key: 'attendance_log', title: 'Log Foto Absensi', icon: Camera, group: '👥 SDM & HR', groupIcon: Users },
     { key: 'approvals', title: 'Pusat Persetujuan', icon: ClipboardCheck, group: '👥 SDM & HR', groupIcon: Users },
 
     // ── Operasional Driver ────────────────────────────────────────────────────
@@ -133,7 +134,8 @@ export default function RoleManagement() {
     // Approval Settings State
     const [approvalSettings, setApprovalSettings] = useState({
         enabled: true,
-        roles: ['super_admin', 'admin_hr'] as AppRole[]
+        roles: ['super_admin', 'admin_hr'] as AppRole[],
+        users: [] as string[]
     });
     const [loadingSettings, setLoadingSettings] = useState(false);
     const [savingSettings, setSavingSettings] = useState(false);
@@ -263,14 +265,15 @@ export default function RoleManagement() {
         try {
             const { data } = await supabase.from('app_settings')
                 .select('key, value')
-                .in('key', ['enable_account_approval', 'account_approval_roles']);
+                .in('key', ['enable_account_approval', 'account_approval_roles', 'account_approval_users']);
 
             const m: Record<string, string> = {};
             data?.forEach(r => { m[r.key] = r.value; });
 
             setApprovalSettings({
                 enabled: m['enable_account_approval'] === 'true',
-                roles: (m['account_approval_roles'] || 'super_admin,admin_hr').split(',') as AppRole[]
+                roles: (m['account_approval_roles'] || 'super_admin,admin_hr').split(',').filter(Boolean) as AppRole[],
+                users: (m['account_approval_users'] || '').split(',').filter(Boolean)
             });
         } catch (e) {
             console.error('Error fetching approval settings:', e);
@@ -291,7 +294,8 @@ export default function RoleManagement() {
         try {
             const { error } = await supabase.from('app_settings').upsert([
                 { key: 'enable_account_approval', value: approvalSettings.enabled.toString(), updated_at: new Date().toISOString() },
-                { key: 'account_approval_roles', value: approvalSettings.roles.join(','), updated_at: new Date().toISOString() }
+                { key: 'account_approval_roles', value: approvalSettings.roles.join(','), updated_at: new Date().toISOString() },
+                { key: 'account_approval_users', value: approvalSettings.users.join(','), updated_at: new Date().toISOString() }
             ]);
             if (error) throw error;
             toast({ title: '✅ Pengaturan persetujuan disimpan', description: 'Aturan verifikasi akun baru telah diperbarui.' });
@@ -631,6 +635,74 @@ export default function RoleManagement() {
                                     </div>
                                 </div>
 
+                                {/* Specific Users Selection */}
+                                <div className={cn("space-y-4 transition-all pt-4 border-t border-slate-100", !approvalSettings.enabled && "opacity-40 grayscale pointer-events-none")}>
+                                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Pengguna Khusus (ID tertunjuk)</p>
+
+                                    <div className="space-y-3">
+                                        {/* Search to add user */}
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                            <Input
+                                                placeholder="Ketik nama untuk menambah peninjau khusus..."
+                                                className="pl-9 h-11 rounded-2xl border-slate-200"
+                                                onChange={(e) => {
+                                                    const term = e.target.value.toLowerCase();
+                                                    if (term.length < 2) return;
+                                                    // This is handled by listing results below if we want, but for now let's just show active list
+                                                }}
+                                            />
+                                        </div>
+
+                                        <div className="flex flex-wrap gap-2">
+                                            {approvalSettings.users.map(uid => {
+                                                const u = users.find(x => x.id === uid);
+                                                return (
+                                                    <Badge key={uid} className="bg-white border-slate-200 text-slate-700 py-1.5 px-3 rounded-xl flex items-center gap-2 group">
+                                                        <Avatar className="h-5 w-5">
+                                                            <AvatarImage src={u?.avatar_url || ''} />
+                                                            <AvatarFallback className="text-[8px]">{u?.full_name.slice(0, 2)}</AvatarFallback>
+                                                        </Avatar>
+                                                        <span className="font-bold text-xs">{u?.full_name || uid.slice(0, 8)}</span>
+                                                        <button
+                                                            onClick={() => setApprovalSettings(p => ({ ...p, users: p.users.filter(x => x !== uid) }))}
+                                                            className="text-slate-400 hover:text-red-500 transition-colors"
+                                                        >
+                                                            <AlertCircle className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    </Badge>
+                                                );
+                                            })}
+                                        </div>
+
+                                        <div className="bg-slate-50 rounded-2xl p-2 max-h-40 overflow-y-auto border border-slate-100 divide-y divide-slate-100">
+                                            <p className="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase">Saran Pengguna (Klik untuk Tambah)</p>
+                                            {users
+                                                .filter(u => !approvalSettings.users.includes(u.id))
+                                                .filter(u => !approvalSettings.roles.includes(u.current_role as any)) // Only show if not already covered by role
+                                                .slice(0, 5)
+                                                .map(u => (
+                                                    <button
+                                                        key={u.id}
+                                                        onClick={() => setApprovalSettings(p => ({ ...p, users: [...p.users, u.id] }))}
+                                                        className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white transition-colors text-left"
+                                                    >
+                                                        <Avatar className="h-6 w-6">
+                                                            <AvatarImage src={u.avatar_url || ''} />
+                                                            <AvatarFallback className="text-[8px]">{u.full_name.slice(0, 2)}</AvatarFallback>
+                                                        </Avatar>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-xs font-bold text-slate-800 truncate">{u.full_name}</p>
+                                                            <p className="text-[10px] text-slate-400 truncate">{u.email}</p>
+                                                        </div>
+                                                        <CheckCircle2 className="h-4 w-4 text-slate-200 group-hover:text-blue-500" />
+                                                    </button>
+                                                ))
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div className="pt-4">
                                     <Button
                                         onClick={handleSaveApprovalSettings}
@@ -648,10 +720,10 @@ export default function RoleManagement() {
                         <div className="p-6 rounded-[28px] bg-amber-50 border border-amber-100 flex gap-4">
                             <Mail className="h-6 w-6 text-amber-600 shrink-0" />
                             <div className="space-y-1">
-                                <p className="text-sm font-black text-amber-900">Catatan Sistem</p>
+                                <p className="text-sm font-black text-amber-900">Catatan Penting</p>
                                 <p className="text-xs text-amber-700 font-medium leading-relaxed">
-                                    Pengguna dengan peran terpilih akan melihat permintaan aktivasi di halaman <strong>Pusat Persetujuan</strong>.
-                                    Pastikan peran tersebut juga sudah diberikan akses menu &quot;Pusat Persetujuan&quot; pada tab Izin Menu.
+                                    Pengguna terpilih akan berhak menyetujui akun baru.
+                                    <strong> Agar menu muncul di sidebar mereka:</strong> Pergi ke tab <strong>Kelola User</strong>, klik <strong>Izin Menu</strong> pada user tersebut, dan aktifkan <strong>"Pusat Persetujuan"</strong>.
                                 </p>
                             </div>
                         </div>

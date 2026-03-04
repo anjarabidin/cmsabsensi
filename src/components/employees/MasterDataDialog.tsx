@@ -186,7 +186,7 @@ export function MasterDataDialog({ open, onOpenChange, onSuccess, tab: controlle
         } catch (error: any) {
             toast({
                 title: "Tidak dapat menghapus",
-                description: "Data mungkin sedang digunakan oleh karyawan.",
+                description: "Data mungkin sedang digunakan oleh staf.",
                 variant: "destructive"
             });
         }
@@ -240,7 +240,7 @@ export function MasterDataDialog({ open, onOpenChange, onSuccess, tab: controlle
 
                         <div className="p-6 h-full overflow-hidden">
                             <div className="flex flex-col lg:flex-row gap-6 h-full">
-                                {/* Left Column: Form Section - Hidden for Managers */}
+                                {/* Left Column: Form Section - Hidden for managers */}
                                 {userRole !== 'manager' && (
                                     <div className="lg:w-1/3 shrink-0 flex flex-col gap-4">
                                         <div className="bg-slate-50/80 border border-slate-100 rounded-2xl p-5 space-y-5 h-fit">

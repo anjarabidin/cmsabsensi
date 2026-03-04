@@ -7,10 +7,10 @@ INSERT INTO job_grades (name, level_rank, min_salary, max_salary) VALUES
 ('Grade 1 (Staff Pemula)', 1, 4500000, 6000000),
 ('Grade 2 (Staff Senior)', 2, 6000000, 8000000),
 ('Grade 3 (Supervisor)', 3, 8000000, 12000000),
-('Grade 4 (Assistant Manager)', 4, 12000000, 18000000),
-('Grade 5 (Manager)', 5, 18000000, 25000000),
-('Grade 6 (Senior Manager)', 6, 25000000, 35000000),
-('Grade 7 (General Manager)', 7, 35000000, 50000000),
+('Grade 4 (Assistant manager)', 4, 12000000, 18000000),
+('Grade 5 (manager)', 5, 18000000, 25000000),
+('Grade 6 (Senior manager)', 6, 25000000, 35000000),
+('Grade 7 (General manager)', 7, 35000000, 50000000),
 ('Grade 8 (Vice President)', 8, 50000000, 75000000),
 ('Grade 9 (Director)', 9, 75000000, 120000000)
 ON CONFLICT DO NOTHING;
@@ -96,7 +96,7 @@ BEGIN
 
         IF dept_hr_id IS NOT NULL AND grade_mgr_id IS NOT NULL THEN
              INSERT INTO job_positions (department_id, grade_id, title, code, is_leadership) VALUES
-             (dept_hr_id, grade_mgr_id, 'Manager Human Capital', 'MGR-HC', true)
+             (dept_hr_id, grade_mgr_id, 'manager Human Capital', 'MGR-HC', true)
              ON CONFLICT DO NOTHING;
         END IF;
     END IF;

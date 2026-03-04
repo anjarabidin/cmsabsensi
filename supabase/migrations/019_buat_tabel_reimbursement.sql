@@ -65,14 +65,14 @@ CREATE POLICY "Users can delete own pending reimbursements"
   TO authenticated 
   USING (user_id = auth.uid() AND status = 'pending');
 
--- E. Admins & Managers can view ALL requests
-CREATE POLICY "Admins and Managers can view all reimbursements" 
+-- E. Admins & managers can view ALL requests
+CREATE POLICY "Admins and managers can view all reimbursements" 
   ON public.reimbursements FOR SELECT 
   TO authenticated 
   USING (public.has_role(auth.uid(), 'admin_hr') OR public.has_role(auth.uid(), 'manager'));
 
--- F. Admins & Managers can update requests (Approve/Reject)
-CREATE POLICY "Admins and Managers can manage reimbursements" 
+-- F. Admins & managers can update requests (Approve/Reject)
+CREATE POLICY "Admins and managers can manage reimbursements" 
   ON public.reimbursements FOR UPDATE 
   TO authenticated 
   USING (public.has_role(auth.uid(), 'admin_hr') OR public.has_role(auth.uid(), 'manager'));

@@ -201,7 +201,7 @@ export default function AttendanceLog() {
                             <Camera className="h-8 w-8 text-blue-600" />
                             Log Foto Absensi
                         </h1>
-                        <p className="text-slate-500 font-medium text-sm mt-1">Monitoring bukti foto kehadiran karyawan secara real-time.</p>
+                        <p className="text-slate-500 font-medium text-sm mt-1">Monitoring bukti foto kehadiran staf secara real-time.</p>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -221,11 +221,11 @@ export default function AttendanceLog() {
                     <CardContent className="p-6">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Cari Karyawan</Label>
+                                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Cari Staf</Label>
                                 <div className="relative">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                                     <Input
-                                        placeholder="Nama atau ID Karyawan..."
+                                        placeholder="Nama atau ID Staf..."
                                         className="pl-10 h-12 rounded-2xl bg-slate-50 border-none shadow-inner"
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -300,7 +300,7 @@ export default function AttendanceLog() {
                                 <Camera className="h-10 w-10 text-slate-200" />
                             </div>
                             <h3 className="text-xl font-black text-slate-900">Tidak ada foto ditemukan</h3>
-                            <p className="text-slate-500 max-w-xs mt-2">Coba ganti filter tanggal atau cari karyawan lain.</p>
+                            <p className="text-slate-500 max-w-xs mt-2">Coba ganti filter tanggal atau cari staf lain.</p>
                         </CardContent>
                     </Card>
                 ) : (

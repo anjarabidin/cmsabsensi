@@ -42,7 +42,7 @@ ALTER TABLE public.attendance_corrections ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view own corrections" ON public.attendance_corrections;
 DROP POLICY IF EXISTS "Users can create corrections" ON public.attendance_corrections;
-DROP POLICY IF EXISTS "Admins/Managers can view all corrections" ON public.attendance_corrections;
+DROP POLICY IF EXISTS "Admins/managers can view all corrections" ON public.attendance_corrections;
 
 -- Allow users to fully manage their own pending corrections
 CREATE POLICY "Users can manage own corrections" 
@@ -51,7 +51,7 @@ CREATE POLICY "Users can manage own corrections"
   TO authenticated
   USING (user_id = auth.uid());
 
--- Allow Admins/Managers to view and update ALL corrections
+-- Allow Admins/managers to view and update ALL corrections
 CREATE POLICY "Admins treat corrections" 
   ON public.attendance_corrections
   FOR ALL

@@ -224,7 +224,7 @@ export default function DeviceManagement() {
                         <div className="relative w-full md:w-64">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                             <Input
-                                placeholder="Cari karyawan atau email..."
+                                placeholder="Cari staf atau email..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-9 h-11 rounded-xl border-slate-200 bg-white"
@@ -251,8 +251,8 @@ export default function DeviceManagement() {
                         <div>
                             <p className="text-sm font-bold text-blue-900">Tentang Fitur Device Lock</p>
                             <p className="text-xs text-blue-700 leading-relaxed mt-1">
-                                Sistem secara otomatis mengunci akun karyawan pada satu browser/perangkat saat pertama kali login.
-                                Gunakan fitur <b>Reset</b> jika karyawan ingin mengganti HP atau browser akses.
+                                Sistem secara otomatis mengunci akun staf pada satu browser/perangkat saat pertama kali login.
+                                Gunakan fitur <b>Reset</b> jika staf ingin mengganti HP atau browser akses.
                             </p>
                         </div>
                     </CardContent>
@@ -271,7 +271,7 @@ export default function DeviceManagement() {
                                 <Smartphone className="h-8 w-8" />
                             </div>
                             <p className="text-lg font-black text-slate-900">Tidak ada perangkat terdaftar</p>
-                            <p className="text-sm text-slate-500 max-w-xs mx-auto mt-2">Belum ada karyawan yang melakukan login atau tidak ditemukan hasil pencarian.</p>
+                            <p className="text-sm text-slate-500 max-w-xs mx-auto mt-2">Belum ada staf yang melakukan login atau tidak ditemukan hasil pencarian.</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -369,7 +369,7 @@ export default function DeviceManagement() {
                             <AlertDialogTitle className="text-2xl font-black text-slate-900 tracking-tight">Lepas Kunci?</AlertDialogTitle>
                             <AlertDialogDescription className="text-sm font-medium text-slate-500 leading-relaxed">
                                 Tindakan ini akan menghapus jejak perangkat akun <b>{selectedDevice?.profiles.full_name}</b>.
-                                Sistem akan mengizinkan karyawan ini login dari perangkat/browser baru mana pun.
+                                Sistem akan mengizinkan staf ini login dari perangkat/browser baru mana pun.
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter className="flex-col sm:flex-col gap-3 mt-8">

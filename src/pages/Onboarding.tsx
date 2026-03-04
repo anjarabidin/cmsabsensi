@@ -159,7 +159,7 @@ export default function OnboardingPage() {
             <div className="max-w-3xl mx-auto pt-[calc(1rem+env(safe-area-inset-top))] pb-8 px-4">
                 {/* Progress Bar */}
                 <div className="mb-8">
-                    <h1 className="text-2xl font-bold text-slate-800 mb-2">Lengkapi Data Karyawan</h1>
+                    <h1 className="text-2xl font-bold text-slate-800 mb-2">Lengkapi Data Staf</h1>
                     <p className="text-slate-500 mb-6">Mohon isi data dengan sebenar-benarnya sesuai KTP/KK untuk keperluan administrasi dan penggajian (Payroll).</p>
 
                     <div className="flex items-center justify-between text-sm font-medium text-slate-500 relative">
@@ -185,7 +185,7 @@ export default function OnboardingPage() {
                             <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-600">
                                 <FileText className="h-10 w-10" />
                             </div>
-                            <h2 className="text-2xl font-bold text-slate-800 mb-4">Selamat Datang di Portal Karyawan</h2>
+                            <h2 className="text-2xl font-bold text-slate-800 mb-4">Selamat Datang di Portal Staf</h2>
                             <p className="text-slate-600 max-w-lg mx-auto mb-8">
                                 Sebelum mulai bekerja, Anda diwajibkan melengkapi data diri untuk keperluan:
                                 <br /><br />

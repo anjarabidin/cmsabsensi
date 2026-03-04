@@ -1,6 +1,6 @@
--- Automatic Notifications for Managers
+-- Automatic Notifications for managers
 -- This script ensures that whenever an employee submits a request (Leave, Overtime, Correction, Reimbursement),
--- all Managers in their respective department receive a real-time notification.
+-- all managers in their respective department receive a real-time notification.
 
 CREATE OR REPLACE FUNCTION public.notify_managers_on_request()
 RETURNS TRIGGER AS $$
@@ -32,7 +32,7 @@ BEGIN
         v_notif_type := 'system';
     END IF;
 
-    -- Insert notification for all Managers in the same department
+    -- Insert notification for all managers in the same department
     INSERT INTO public.notifications (user_id, title, message, type, link)
     SELECT p.id, 
            v_type_label || ' Baru', 

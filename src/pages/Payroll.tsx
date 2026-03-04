@@ -234,7 +234,7 @@ export default function PayrollPage() {
             <div className="relative bg-white rounded-2xl shadow-sm ring-1 ring-slate-100">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
-                placeholder="Cari nama atau ID karyawan..."
+                placeholder="Cari nama atau ID staf..."
                 className="pl-10 h-11 border-none rounded-2xl bg-transparent focus-visible:ring-0 font-medium text-sm"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
@@ -251,7 +251,7 @@ export default function PayrollPage() {
             ) : filteredUsers.length === 0 ? (
               <div className="flex flex-col items-center py-16 text-center opacity-40">
                 <User className="h-10 w-10 text-slate-400 mb-2" />
-                <p className="font-bold text-slate-700 text-sm">Tidak ada karyawan</p>
+                <p className="font-bold text-slate-700 text-sm">Tidak ada staf</p>
               </div>
             ) : (
               filteredUsers.map(u => {
@@ -349,7 +349,7 @@ export default function PayrollPage() {
             </div>
             <div>
               <h1 className="text-2xl font-black text-slate-900">Manajemen Slip Gaji</h1>
-              <p className="text-sm text-slate-500 font-medium">Unggah slip PDF per karyawan untuk periode tertentu</p>
+              <p className="text-sm text-slate-500 font-medium">Unggah slip PDF per staf untuk periode tertentu</p>
             </div>
           </div>
           {/* Period Selector */}
@@ -378,7 +378,7 @@ export default function PayrollPage() {
           <Card className="border-none shadow-sm bg-white rounded-[24px] ring-1 ring-slate-100">
             <CardContent className="p-6 flex items-center justify-between">
               <div>
-                <p className="text-slate-400 font-black text-[9px] uppercase tracking-widest mb-1">Total Karyawan</p>
+                <p className="text-slate-400 font-black text-[9px] uppercase tracking-widest mb-1">Total Staf</p>
                 <h3 className="text-2xl font-black text-slate-900">{users.length}</h3>
               </div>
               <Users className="h-8 w-8 text-slate-100" />
@@ -411,8 +411,8 @@ export default function PayrollPage() {
             <div className="flex items-center gap-3">
               <FileText className="h-5 w-5 text-slate-400" />
               <div>
-                <h3 className="font-black text-slate-800">Daftar Karyawan — {periodLabel}</h3>
-                <p className="text-xs text-slate-400 font-medium">{filteredUsers.length} karyawan ditampilkan</p>
+                <h3 className="font-black text-slate-800">Daftar Staf — {periodLabel}</h3>
+                <p className="text-xs text-slate-400 font-medium">{filteredUsers.length} staf ditampilkan</p>
               </div>
             </div>
             <div className="relative w-72">
@@ -431,7 +431,7 @@ export default function PayrollPage() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-slate-50">
-                    <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Karyawan</th>
+                    <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Staf</th>
                     <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Departemen</th>
                     <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Status Slip</th>
                     <th className="px-8 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Aksi</th>
@@ -460,7 +460,7 @@ export default function PayrollPage() {
                       <td colSpan={4} className="py-20 text-center">
                         <div className="flex flex-col items-center opacity-30">
                           <User className="h-12 w-12 mb-3" />
-                          <p className="font-bold text-slate-700">Tidak ada karyawan ditemukan</p>
+                          <p className="font-bold text-slate-700">Tidak ada staf ditemukan</p>
                         </div>
                       </td>
                     </tr>

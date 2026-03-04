@@ -1,9 +1,9 @@
--- Hardening Manager Role RLS & Permissions
--- This migration ensures Managers can see and manage data within their own department
+-- Hardening manager Role RLS & Permissions
+-- This migration ensures managers can see and manage data within their own department
 
--- 1. Profiles: Managers can view all, but update only their department
-DROP POLICY IF EXISTS "Managers can update department profiles" ON public.profiles;
-CREATE POLICY "Managers can update department profiles" ON public.profiles
+-- 1. Profiles: managers can view all, but update only their department
+DROP POLICY IF EXISTS "managers can update department profiles" ON public.profiles;
+CREATE POLICY "managers can update department profiles" ON public.profiles
   FOR UPDATE TO authenticated
   USING (
     public.has_role(auth.uid(), 'manager') AND EXISTS (
@@ -13,8 +13,8 @@ CREATE POLICY "Managers can update department profiles" ON public.profiles
   );
 
 -- 2. Attendances
-DROP POLICY IF EXISTS "Managers can view department attendance" ON public.attendances;
-CREATE POLICY "Managers can view department attendance" ON public.attendances 
+DROP POLICY IF EXISTS "managers can view department attendance" ON public.attendances;
+CREATE POLICY "managers can view department attendance" ON public.attendances 
   FOR SELECT TO authenticated 
   USING (
     public.has_role(auth.uid(), 'manager') AND EXISTS (
@@ -25,8 +25,8 @@ CREATE POLICY "Managers can view department attendance" ON public.attendances
   );
 
 -- 3. Leave Requests
-DROP POLICY IF EXISTS "Managers can view and approve department leave requests" ON public.leave_requests;
-CREATE POLICY "Managers can view and approve department leave requests" ON public.leave_requests 
+DROP POLICY IF EXISTS "managers can view and approve department leave requests" ON public.leave_requests;
+CREATE POLICY "managers can view and approve department leave requests" ON public.leave_requests 
   FOR ALL TO authenticated 
   USING (
     public.has_role(auth.uid(), 'manager') AND EXISTS (
@@ -37,8 +37,8 @@ CREATE POLICY "Managers can view and approve department leave requests" ON publi
   );
 
 -- 4. Overtime Requests
-DROP POLICY IF EXISTS "Managers can view and approve department overtime requests" ON public.overtime_requests;
-CREATE POLICY "Managers can view and approve department overtime requests" ON public.overtime_requests 
+DROP POLICY IF EXISTS "managers can view and approve department overtime requests" ON public.overtime_requests;
+CREATE POLICY "managers can view and approve department overtime requests" ON public.overtime_requests 
   FOR ALL TO authenticated 
   USING (
     public.has_role(auth.uid(), 'manager') AND EXISTS (
@@ -49,8 +49,8 @@ CREATE POLICY "Managers can view and approve department overtime requests" ON pu
   );
 
 -- 5. Attendance Corrections
-DROP POLICY IF EXISTS "Managers can manage department corrections" ON public.attendance_corrections;
-CREATE POLICY "Managers can manage department corrections" ON public.attendance_corrections
+DROP POLICY IF EXISTS "managers can manage department corrections" ON public.attendance_corrections;
+CREATE POLICY "managers can manage department corrections" ON public.attendance_corrections
   FOR ALL TO authenticated
   USING (
     public.has_role(auth.uid(), 'manager') AND EXISTS (
@@ -61,14 +61,14 @@ CREATE POLICY "Managers can manage department corrections" ON public.attendance_
   );
 
 -- 6. Announcements
-DROP POLICY IF EXISTS "Managers can manage announcements" ON public.announcements;
-CREATE POLICY "Managers can manage announcements" ON public.announcements
+DROP POLICY IF EXISTS "managers can manage announcements" ON public.announcements;
+CREATE POLICY "managers can manage announcements" ON public.announcements
   FOR ALL TO authenticated
   USING (public.has_role(auth.uid(), 'manager') OR public.has_role(auth.uid(), 'admin_hr'));
 
--- 7. Departments: Allow Manager to update their own department info
-DROP POLICY IF EXISTS "Managers can update own department" ON public.departments;
-CREATE POLICY "Managers can update own department" ON public.departments
+-- 7. Departments: Allow manager to update their own department info
+DROP POLICY IF EXISTS "managers can update own department" ON public.departments;
+CREATE POLICY "managers can update own department" ON public.departments
   FOR UPDATE TO authenticated
   USING (
     public.has_role(auth.uid(), 'manager') AND EXISTS (

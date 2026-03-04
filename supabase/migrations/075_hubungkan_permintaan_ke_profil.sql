@@ -22,7 +22,7 @@ ALTER TABLE public.reimbursements
 DROP CONSTRAINT IF EXISTS reimbursements_user_id_fkey,
 ADD CONSTRAINT reimbursements_user_id_profiles_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
 
--- 5. Manager Assignments (Ensure link to profiles too for easy fetching)
+-- 5. manager Assignments (Ensure link to profiles too for easy fetching)
 ALTER TABLE public.manager_assignments
 DROP CONSTRAINT IF EXISTS manager_assignments_manager_id_fkey,
 ADD CONSTRAINT manager_assignments_manager_id_fkey FOREIGN KEY (manager_id) REFERENCES public.profiles(id) ON DELETE CASCADE;

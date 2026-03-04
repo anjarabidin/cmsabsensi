@@ -1,10 +1,10 @@
--- Revise Agenda Permissions to Allow Managers
+-- Revise Agenda Permissions to Allow managers
 -- Drop restrictive policies
 DROP POLICY IF EXISTS "Admins can manage all agendas" ON agendas;
 DROP POLICY IF EXISTS "Manage agendas" ON agendas;
 
 -- Create inclusive policy for Agendas
-CREATE POLICY "Managers and Admin can manage agendas" ON agendas
+CREATE POLICY "managers and Admin can manage agendas" ON agendas
 FOR ALL USING (
   EXISTS (
     SELECT 1 FROM profiles
@@ -18,7 +18,7 @@ DROP POLICY IF EXISTS "Admins can manage participants" ON agenda_participants;
 DROP POLICY IF EXISTS "Manage agenda participants" ON agenda_participants;
 
 -- Create inclusive policy for Participants
-CREATE POLICY "Managers and Admin can manage participants" ON agenda_participants
+CREATE POLICY "managers and Admin can manage participants" ON agenda_participants
 FOR ALL USING (
   EXISTS (
     SELECT 1 FROM profiles

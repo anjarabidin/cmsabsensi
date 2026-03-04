@@ -204,8 +204,8 @@ export default function PayrollDetailPage() {
             <div className="flex gap-4 flex-wrap">
               <Button variant="outline" className="h-12 rounded-2xl bg-white/10 border-white/20 text-white hover:bg-white/20 px-6 font-bold backdrop-blur-md shadow-xl transition-all hover:translate-y-[-2px]" onClick={() => {
                 const headers = [
-                  'ID Karyawan',
-                  'Nama Karyawan',
+                  'ID Staf',
+                  'Nama Staf',
                   'Hari Kerja',
                   'Hadir',
                   'Lembur (Jam)',
@@ -293,7 +293,7 @@ export default function PayrollDetailPage() {
                 <Table>
                   <TableHeader className="bg-slate-50/80">
                     <TableRow className="border-none hover:bg-transparent">
-                      <TableHead className="py-8 px-10 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Pegawai (ID)</TableHead>
+                      <TableHead className="py-8 px-10 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Staf (ID)</TableHead>
                       <TableHead className="text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Produktifitas</TableHead>
                       <TableHead className="text-right text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Gaji Pokok</TableHead>
                       <TableHead className="text-right text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Lembur & Tunj.</TableHead>

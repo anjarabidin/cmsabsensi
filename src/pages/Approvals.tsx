@@ -199,15 +199,15 @@ export default function Approvals() {
 
             // NOTE: We rely heavily on Row Level Security (RLS) policies here.
             // No complex frontend filtering needed anymore.
-            // RLS will ensure Manager only sees data from:
+            // RLS will ensure manager only sees data from:
             // 1. Their Assigned Employees
             // 2. OR Their Department Members (fallback)
 
             // Determine if we need department ID for Account Approval Only (since that table is public/profiles)
-            let managerDeptId: string | null = null;
+            let headUnitDeptId: string | null = null;
             if (role === 'manager' && user?.id) {
                 const { data: p } = await supabase.from('profiles').select('department_id').eq('id', user.id).single();
-                managerDeptId = p?.department_id;
+                headUnitDeptId = p?.department_id;
             }
 
             // Helper to fetch request tables
@@ -241,8 +241,8 @@ export default function Approvals() {
                     .order('created_at', { ascending: false });
 
                 // If specialized role like manager, still limit to their dept if needed
-                if (role === 'manager' && managerDeptId) {
-                    query = query.eq('department_id', managerDeptId);
+                if (role === 'manager' && headUnitDeptId) {
+                    query = query.eq('department_id', headUnitDeptId);
                 }
 
                 const { data, error } = await query;
@@ -299,7 +299,7 @@ export default function Approvals() {
             if (actionDialog.requestType === 'account') {
                 if (actionDialog.type === 'approve') {
                     const activatedUser = pendingAccounts.find(a => a.id === actionDialog.requestId);
-                    const userName = activatedUser?.full_name || 'Karyawan';
+                    const userName = activatedUser?.full_name || 'Staf';
 
                     const { error } = await supabase
                         .from('profiles')
@@ -459,7 +459,7 @@ export default function Approvals() {
     });
 
     const handleExportHistory = async () => {
-        const headers = ['No', 'Status', 'Karyawan', 'Tipe', 'Tanggal Pengajuan', 'Alasan/Keterangan', 'Catatan Penolakan'];
+        const headers = ['No', 'Status', 'Staf', 'Tipe', 'Tanggal Pengajuan', 'Alasan/Keterangan', 'Catatan Penolakan'];
         const rows = filteredHistory.map((req, index) => [
             String(index + 1),
             req.status === 'approved' ? '✅ DISETUJUI' : '❌ DITOLAK',
@@ -513,7 +513,7 @@ export default function Approvals() {
                                     Pusat Persetujuan
                                 </h1>
                                 <p className="text-sm text-slate-500 mt-1">
-                                    Overview permohonan dan aktivitas karyawan.
+                                    Overview permohonan dan aktivitas staf.
                                 </p>
                             </div>
                             <div className="flex gap-3">
@@ -786,7 +786,7 @@ export default function Approvals() {
                                                     <table className="w-full text-left text-sm">
                                                         <thead className="bg-slate-50 border-b border-slate-100 uppercase tracking-wider text-xs font-bold text-slate-500">
                                                             <tr>
-                                                                <th className="px-6 py-4">Karyawan</th>
+                                                                <th className="px-6 py-4">Staf</th>
                                                                 <th className="px-6 py-4">Tipe</th>
                                                                 <th className="px-6 py-4">Tanggal & Waktu</th>
                                                                 <th className="px-6 py-4">Alasan</th>
@@ -813,7 +813,7 @@ export default function Approvals() {
                                                                                 </Avatar>
                                                                                 <div>
                                                                                     <p className="font-bold text-slate-900">{req.profiles?.full_name}</p>
-                                                                                    <p className="text-xs text-slate-500">{req.profiles?.position || 'Karyawan'}</p>
+                                                                                    <p className="text-xs text-slate-500">{req.profiles?.position || 'Staf'}</p>
                                                                                 </div>
                                                                             </div>
                                                                         </td>
@@ -882,7 +882,7 @@ export default function Approvals() {
                                                                         </Avatar>
                                                                         <div>
                                                                             <p className="font-bold text-slate-900 text-sm">{req.profiles?.full_name}</p>
-                                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{req.profiles?.position || 'Karyawan'}</p>
+                                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{req.profiles?.position || 'Staf'}</p>
                                                                         </div>
                                                                     </div>
                                                                     <Badge variant="secondary" className={`capitalize font-black text-[10px] border-0 py-1 px-3 rounded-full ${req.type === 'leave' ? 'bg-orange-50 text-orange-600' :
@@ -938,7 +938,7 @@ export default function Approvals() {
                                         <table className="w-full text-left text-sm">
                                             <thead className="bg-slate-50 border-b border-slate-100 uppercase tracking-wider text-xs font-bold text-slate-500">
                                                 <tr>
-                                                    <th className="px-6 py-4">Karyawan</th>
+                                                    <th className="px-6 py-4">Staf</th>
                                                     <th className="px-6 py-4">Tipe</th>
                                                     <th className="px-6 py-4">Tanggal & Waktu</th>
                                                     <th className="px-6 py-4 text-center">Status</th>
@@ -958,7 +958,7 @@ export default function Approvals() {
                                                                 </Avatar>
                                                                 <div>
                                                                     <p className="font-bold text-slate-900">{req.profiles?.full_name}</p>
-                                                                    <p className="text-xs text-slate-500">{req.profiles?.position || 'Karyawan'}</p>
+                                                                    <p className="text-xs text-slate-500">{req.profiles?.position || 'Staf'}</p>
                                                                 </div>
                                                             </div>
                                                         </td>
@@ -1128,14 +1128,14 @@ export default function Approvals() {
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="employee">Staff</SelectItem>
-                                            <SelectItem value="manager">Head Unit</SelectItem>
+                                            <SelectItem value="manager">manager</SelectItem>
                                             <SelectItem value="admin_hr">Admin HR</SelectItem>
                                             <SelectItem value="super_admin">Super Admin</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">ID Karyawan</label>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">ID Staf</label>
                                     <Input
                                         placeholder="CMS-001"
                                         className="rounded-xl h-11"

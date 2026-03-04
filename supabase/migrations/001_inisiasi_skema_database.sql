@@ -300,7 +300,7 @@ CREATE POLICY "Users can insert their own attendance" ON public.attendances FOR 
 CREATE POLICY "Users can update their own attendance" ON public.attendances FOR UPDATE TO authenticated USING (user_id = auth.uid());
 CREATE POLICY "Admin HR can view all attendances" ON public.attendances FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin_hr'));
 CREATE POLICY "Admin HR can manage all attendances" ON public.attendances FOR ALL TO authenticated USING (public.has_role(auth.uid(), 'admin_hr'));
-CREATE POLICY "Managers can view team attendance" ON public.attendances FOR SELECT TO authenticated 
+CREATE POLICY "managers can view team attendance" ON public.attendances FOR SELECT TO authenticated 
   USING (public.has_role(auth.uid(), 'manager') AND EXISTS (
     SELECT 1 FROM public.manager_assignments WHERE manager_id = auth.uid() AND employee_id = public.attendances.user_id
   ));
@@ -311,7 +311,7 @@ CREATE POLICY "Users can create their own leave requests" ON public.leave_reques
 CREATE POLICY "Users can update their own pending requests" ON public.leave_requests FOR UPDATE TO authenticated 
   USING (user_id = auth.uid() AND status = 'pending');
 CREATE POLICY "Admin HR can manage all leave requests" ON public.leave_requests FOR ALL TO authenticated USING (public.has_role(auth.uid(), 'admin_hr'));
-CREATE POLICY "Managers can view and approve team leave requests" ON public.leave_requests FOR ALL TO authenticated 
+CREATE POLICY "managers can view and approve team leave requests" ON public.leave_requests FOR ALL TO authenticated 
   USING (public.has_role(auth.uid(), 'manager') AND EXISTS (
     SELECT 1 FROM public.manager_assignments WHERE manager_id = auth.uid() AND employee_id = public.leave_requests.user_id
   ));
@@ -322,7 +322,7 @@ CREATE POLICY "Users can create their own overtime requests" ON public.overtime_
 CREATE POLICY "Users can update their own pending requests" ON public.overtime_requests FOR UPDATE TO authenticated 
   USING (user_id = auth.uid() AND status = 'pending');
 CREATE POLICY "Admin HR can manage all overtime requests" ON public.overtime_requests FOR ALL TO authenticated USING (public.has_role(auth.uid(), 'admin_hr'));
-CREATE POLICY "Managers can view and approve team overtime requests" ON public.overtime_requests FOR ALL TO authenticated 
+CREATE POLICY "managers can view and approve team overtime requests" ON public.overtime_requests FOR ALL TO authenticated 
   USING (public.has_role(auth.uid(), 'manager') AND EXISTS (
     SELECT 1 FROM public.manager_assignments WHERE manager_id = auth.uid() AND employee_id = public.overtime_requests.user_id
   ));

@@ -71,7 +71,7 @@ const ALL_NAV_ITEMS: NavItemDef[] = [
     { key: 'payroll_report', title: 'Laporan Gaji', icon: BarChart3, group: '💰 Keuangan', groupIcon: DollarSign },
 
     // ── SDM / HR ──────────────────────────────────────────────────────────────
-    { key: 'employees', title: 'Data Karyawan', icon: Users, group: '👥 SDM & HR', groupIcon: Users },
+    { key: 'employees', title: 'Data Staf', icon: Users, group: '👥 SDM & HR', groupIcon: Users },
     { key: 'shifts', title: 'Jadwal & Shift', icon: Clock, group: '👥 SDM & HR', groupIcon: Users },
     { key: 'holidays', title: 'Hari Libur Nasional', icon: Calendar, group: '👥 SDM & HR', groupIcon: Users },
     { key: 'locations', title: 'Lokasi Kantor/Titik Absen', icon: MapPin, group: '👥 SDM & HR', groupIcon: Users },
@@ -104,8 +104,8 @@ const ALL_NAV_ITEMS: NavItemDef[] = [
 const ALL_ROLES: { value: AppRole; label: string; color: string; bg: string }[] = [
     { value: 'super_admin', label: 'Super Admin', color: 'text-purple-700', bg: 'bg-purple-50 ring-purple-200' },
     { value: 'admin_hr', label: 'Admin HR', color: 'text-blue-700', bg: 'bg-blue-50 ring-blue-200' },
-    { value: 'manager', label: 'Manager', color: 'text-green-700', bg: 'bg-green-50 ring-green-200' },
-    { value: 'employee', label: 'Karyawan', color: 'text-slate-700', bg: 'bg-slate-50 ring-slate-200' },
+    { value: 'manager', label: 'Head unit', color: 'text-green-700', bg: 'bg-green-50 ring-green-200' },
+    { value: 'employee', label: 'Staf', color: 'text-slate-700', bg: 'bg-slate-50 ring-slate-200' },
     { value: 'driver', label: 'Driver', color: 'text-orange-700', bg: 'bg-orange-50 ring-orange-200' },
 ];
 
@@ -578,7 +578,7 @@ export default function RoleManagement() {
                                     </div>
                                     <div>
                                         <CardTitle className="text-xl font-black text-slate-900 leading-tight">Persetujuan Akun Baru</CardTitle>
-                                        <CardDescription className="text-sm font-medium text-slate-500">Atur siapa yang berhak memverifikasi karyawan baru saat mendaftar.</CardDescription>
+                                        <CardDescription className="text-sm font-medium text-slate-500">Atur siapa yang berhak memverifikasi staf baru saat mendaftar.</CardDescription>
                                     </div>
                                 </div>
                             </CardHeader>

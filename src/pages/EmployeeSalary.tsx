@@ -107,7 +107,7 @@ export default function EmployeeSalaryPage() {
       console.error('Error fetching employee data:', error);
       toast({
         title: 'Error',
-        description: 'Gagal memuat data karyawan',
+        description: 'Gagal memuat data staf',
         variant: 'destructive',
       });
     } finally {
@@ -260,7 +260,7 @@ export default function EmployeeSalaryPage() {
         <Card>
           <CardHeader>
             <CardTitle>Update Gaji</CardTitle>
-            <CardDescription>Masukkan data gaji baru untuk karyawan</CardDescription>
+            <CardDescription>Masukkan data gaji baru untuk staf</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Effective Date */}
@@ -350,7 +350,7 @@ export default function EmployeeSalaryPage() {
               <h3 className="font-semibold">BPJS (%)</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>BPJS Kesehatan - Karyawan (%)</Label>
+                  <Label>BPJS Kesehatan - Staf (%)</Label>
                   <Input
                     type="number"
                     step="0.1"
@@ -368,7 +368,7 @@ export default function EmployeeSalaryPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>BPJS Ketenagakerjaan - Karyawan (%)</Label>
+                  <Label>BPJS Ketenagakerjaan - Staf (%)</Label>
                   <Input
                     type="number"
                     step="0.1"
@@ -454,7 +454,7 @@ export default function EmployeeSalaryPage() {
                 <History className="h-5 w-5" />
                 Riwayat Gaji
               </CardTitle>
-              <CardDescription>Perubahan gaji karyawan</CardDescription>
+              <CardDescription>Perubahan gaji staf</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               <Table>

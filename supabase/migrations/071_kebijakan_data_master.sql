@@ -42,9 +42,9 @@ BEGIN
         );
 
         INSERT INTO public.job_positions (department_id, title, is_leadership)
-        SELECT gen_dept_id, 'Manager', true
+        SELECT gen_dept_id, 'manager', true
         WHERE NOT EXISTS (
-            SELECT 1 FROM public.job_positions WHERE title = 'Manager' AND department_id = gen_dept_id
+            SELECT 1 FROM public.job_positions WHERE title = 'manager' AND department_id = gen_dept_id
         );
     END IF;
 END $$;

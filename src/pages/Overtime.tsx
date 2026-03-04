@@ -116,7 +116,7 @@ export default function OvertimePage() {
                 const notifications = adminUsers.map(admin => ({
                     user_id: admin.id,
                     title: 'Pengajuan Lembur Baru',
-                    message: `Pengajuan lembur dari karyawan untuk ${format(date, 'd MMMM yyyy', { locale: id })} (${hoursNum} jam)`,
+                    message: `Pengajuan lembur dari staf untuk ${format(date, 'd MMMM yyyy', { locale: id })} (${hoursNum} jam)`,
                     type: 'overtime',
                     link: '/approvals',
                     read: false

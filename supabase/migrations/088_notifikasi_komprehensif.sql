@@ -37,7 +37,7 @@ BEGIN
     INSERT INTO public.notifications (user_id, title, message, type, link)
     SELECT DISTINCT target_id, title, msg, n_type, lnk 
     FROM (
-        -- Category A: Department Managers
+        -- Category A: Department managers
         SELECT p.id as target_id, 
                v_type_label || ' Baru' as title, 
                v_employee_name || ' mengajukan ' || v_type_label || '.' as msg,
@@ -51,7 +51,7 @@ BEGIN
 
         UNION
 
-        -- Category B: Explicitly Assigned Managers
+        -- Category B: Explicitly Assigned managers
         SELECT ma.manager_id as target_id,
                v_type_label || ' Baru (Bawahan)' as title, 
                v_employee_name || ' mengajukan ' || v_type_label || '.' as msg,

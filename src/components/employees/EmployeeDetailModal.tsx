@@ -131,8 +131,8 @@ export function EmployeeDetailModal({ isOpen, onClose, employeeId, onUpdate }: E
             if (error) throw error;
 
             toast({
-                title: shouldVerify ? 'Karyawan Diverifikasi!' : 'Data Berhasil Disimpan',
-                description: shouldVerify ? 'Status karyawan kini Aktif.' : undefined,
+                title: shouldVerify ? 'Staf Diverifikasi!' : 'Data Berhasil Disimpan',
+                description: shouldVerify ? 'Status staf kini Aktif.' : undefined,
                 variant: shouldVerify ? 'default' : 'default'
             });
             onUpdate();
@@ -158,7 +158,7 @@ export function EmployeeDetailModal({ isOpen, onClose, employeeId, onUpdate }: E
                 <DialogHeader>
                     <div className="flex items-center justify-between">
                         <div>
-                            <DialogTitle className="text-xl">Manajemen Karyawan</DialogTitle>
+                            <DialogTitle className="text-xl">Manajemen Staf</DialogTitle>
                             <DialogDescription>Edit profil, karir, dan data penggajian dalam satu tempat.</DialogDescription>
                         </div>
                         <Badge variant={profile?.onboarding_status === 'approved' ? 'default' : 'secondary'}>
@@ -268,7 +268,7 @@ export function EmployeeDetailModal({ isOpen, onClose, employeeId, onUpdate }: E
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Atasan Langsung (Manager)</Label>
+                                    <Label>Atasan Langsung (manager)</Label>
                                     <Select value={formData.reports_to} onValueChange={v => updateField('reports_to', v)}>
                                         <SelectTrigger><SelectValue placeholder="Pilih Atasan..." /></SelectTrigger>
                                         <SelectContent>

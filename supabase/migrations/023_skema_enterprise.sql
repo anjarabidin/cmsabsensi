@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS job_positions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     department_id UUID REFERENCES departments(id),
     grade_id UUID REFERENCES job_grades(id),
-    title TEXT NOT NULL, -- E.g., "Senior Manager IT"
+    title TEXT NOT NULL, -- E.g., "Senior manager IT"
     code TEXT,
     is_leadership BOOLEAN DEFAULT false, -- If true, counts as 'Atasan'
     created_at TIMESTAMPTZ DEFAULT now(),

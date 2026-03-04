@@ -18,9 +18,9 @@ CREATE POLICY "Super Admin can manage all expenses"
     USING (public.has_role(auth.uid(), 'super_admin'))
     WITH CHECK (public.has_role(auth.uid(), 'super_admin'));
 
--- Perbaiki policy "Admins and Managers can view all expenses" → tambah super_admin
-DROP POLICY IF EXISTS "Admins and Managers can view all expenses" ON public.driver_expenses;
-CREATE POLICY "Admins and Managers can view all expenses"
+-- Perbaiki policy "Admins and managers can view all expenses" → tambah super_admin
+DROP POLICY IF EXISTS "Admins and managers can view all expenses" ON public.driver_expenses;
+CREATE POLICY "Admins and managers can view all expenses"
     ON public.driver_expenses FOR SELECT
     TO authenticated
     USING (

@@ -2,7 +2,7 @@
 -- This migration ensures 'super_admin' has full access to agendas and participants.
 
 -- 1. AGENDAS
-DROP POLICY IF EXISTS "Managers and Admin can manage agendas" ON public.agendas;
+DROP POLICY IF EXISTS "managers and Admin can manage agendas" ON public.agendas;
 DROP POLICY IF EXISTS "Manage agendas" ON public.agendas;
 DROP POLICY IF EXISTS "Super Admin can manage agendas" ON public.agendas;
 
@@ -19,7 +19,7 @@ DROP POLICY IF EXISTS "View agendas" ON public.agendas;
 CREATE POLICY "View agendas" ON public.agendas FOR SELECT TO authenticated USING (true);
 
 -- 2. AGENDA PARTICIPANTS
-DROP POLICY IF EXISTS "Managers and Admin can manage participants" ON public.agenda_participants;
+DROP POLICY IF EXISTS "managers and Admin can manage participants" ON public.agenda_participants;
 DROP POLICY IF EXISTS "Manage agenda participants" ON public.agenda_participants;
 
 CREATE POLICY "Super Admin and Admin can manage participants" ON public.agenda_participants

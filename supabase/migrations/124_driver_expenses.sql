@@ -29,14 +29,14 @@ ALTER TABLE public.driver_expenses ENABLE ROW LEVEL SECURITY;
 
 -- Clean up existing policies if any
 DROP POLICY IF EXISTS "Drivers can manage their own expenses" ON public.driver_expenses;
-DROP POLICY IF EXISTS "Admins and Managers can view all expenses" ON public.driver_expenses;
+DROP POLICY IF EXISTS "Admins and managers can view all expenses" ON public.driver_expenses;
 
 -- Policies
 CREATE POLICY "Drivers can manage their own expenses" 
 ON public.driver_expenses FOR ALL TO authenticated 
 USING (driver_id = auth.uid());
 
-CREATE POLICY "Admins and Managers can view all expenses" 
+CREATE POLICY "Admins and managers can view all expenses" 
 ON public.driver_expenses FOR SELECT TO authenticated 
 USING (public.has_role(auth.uid(), 'super_admin') OR public.has_role(auth.uid(), 'admin_hr') OR public.has_role(auth.uid(), 'manager'));
 

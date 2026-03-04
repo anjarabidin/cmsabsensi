@@ -108,7 +108,7 @@ export default function EmployeesPage() {
 
 
     const handleExportExcel = () => {
-        const headers = ['No', 'Nama Lengkap', 'ID Karyawan', 'NIK KTP', 'Email', 'Telepon', 'Departemen', 'Posisi', 'Status Akun'];
+        const headers = ['No', 'Nama Lengkap', 'ID Staf', 'NIK KTP', 'Email', 'Telepon', 'Departemen', 'Posisi', 'Status Akun'];
         const rows = employees.map((emp, index) => [
             String(index + 1),
             emp.full_name || '-',
@@ -122,11 +122,11 @@ export default function EmployeesPage() {
         ]);
 
         downloadExcel(headers, rows, {
-            filename: `Daftar_Karyawan_${format(new Date(), 'dd-MM-yyyy')}`,
-            title: 'DAFTAR KARYAWAN cms absensi',
+            filename: `Daftar_Staf_${format(new Date(), 'dd-MM-yyyy')}`,
+            title: 'DAFTAR STAF cms absensi',
             generatedBy: 'Administrator'
         });
-        toast({ title: "Berhasil", description: "Data karyawan berhasil diunduh." });
+        toast({ title: "Berhasil", description: "Data staf berhasil diunduh." });
     };
 
     useEffect(() => {
@@ -144,7 +144,7 @@ export default function EmployeesPage() {
                 empQuery = empQuery.eq('department_id', profile.department_id);
             }
 
-            // Hide Admin HR from Managers
+            // Hide Admin HR from managers
             if (role === 'manager') {
                 empQuery = empQuery.neq('role', 'admin_hr');
             }
@@ -168,7 +168,7 @@ export default function EmployeesPage() {
             console.error('Error fetching data:', error);
             toast({
                 title: 'Gagal memuat data',
-                description: 'Tidak dapat mengambil data karyawan, departemen, atau jabatan.',
+                description: 'Tidak dapat mengambil data staf, departemen, atau jabatan.',
                 variant: 'destructive'
             });
         } finally {
@@ -253,7 +253,7 @@ export default function EmployeesPage() {
 
             if (error) throw error;
 
-            toast({ title: "Berhasil", description: "Data karyawan berhasil diperbarui." });
+            toast({ title: "Berhasil", description: "Data staf berhasil diperbarui." });
 
             // Refresh Data
             fetchData();
@@ -411,9 +411,9 @@ export default function EmployeesPage() {
 
                                 <TabsContent value="structure" className="flex-1 p-0 m-0 bg-slate-50/30">
                                     <div className="p-4 space-y-6 pb-24">
-                                        {/* Managers */}
+                                        {/* managers */}
                                         <div className="space-y-3">
-                                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Pimpinan (Manager)</h3>
+                                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Pimpinan (Head unit)</h3>
                                             <div className="grid grid-cols-2 gap-3">
                                                 {employees.filter(e => e.role === 'manager').map(mgr => (
                                                     <div key={mgr.id} className="bg-white p-3 rounded-2xl border border-blue-100 shadow-sm flex flex-col items-center text-center gap-2" onClick={() => handleEditClick(mgr)}>
@@ -440,7 +440,7 @@ export default function EmployeesPage() {
                                                     </div>
                                                 ))}
                                                 {employees.filter(e => e.role === 'manager').length === 0 && (
-                                                    <div className="col-span-2 py-4 text-center text-[10px] text-slate-400 border border-dashed border-slate-200 rounded-xl">Belum ada manager</div>
+                                                    <div className="col-span-2 py-4 text-center text-[10px] text-slate-400 border border-dashed border-slate-200 rounded-xl">Belum ada Head unit</div>
                                                 )}
                                             </div>
                                         </div>
@@ -520,7 +520,7 @@ export default function EmployeesPage() {
                         <p className="text-slate-500 font-medium text-sm">
                             {profile?.role === 'manager'
                                 ? 'Kelola data personil dalam tim Anda.'
-                                : 'Pusat kontrol data karyawan dan hak akses sistem.'}
+                                : 'Pusat kontrol data staf dan hak akses sistem.'}
                         </p>
                     </div>
                     <div className="flex items-center gap-3">
@@ -547,7 +547,7 @@ export default function EmployeesPage() {
                                 <Users className="h-6 w-6" />
                             </div>
                             <div>
-                                <p className="text-sm font-bold text-slate-500">Total Karyawan</p>
+                                <p className="text-sm font-bold text-slate-500">Total Staf</p>
                                 <p className="text-2xl font-black text-slate-900">{employees.length}</p>
                             </div>
                         </CardContent>
@@ -598,7 +598,7 @@ export default function EmployeesPage() {
                     <Tabs defaultValue="list" className="w-full">
                         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 px-2 gap-4">
                             <TabsList className="grid w-full md:w-[400px] grid-cols-2 bg-slate-100 p-1 rounded-xl">
-                                <TabsTrigger value="list" className="rounded-lg font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">Daftar Karyawan</TabsTrigger>
+                                <TabsTrigger value="list" className="rounded-lg font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">Daftar Staf</TabsTrigger>
                                 <TabsTrigger value="chart" className="rounded-lg font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">Struktur Organisasi</TabsTrigger>
                             </TabsList>
 
@@ -623,7 +623,7 @@ export default function EmployeesPage() {
                                 <Table>
                                     <TableHeader className="bg-slate-50/80">
                                         <TableRow>
-                                            <TableHead className="pl-6 h-14 font-black text-slate-600 text-xs uppercase tracking-widest">Karyawan</TableHead>
+                                            <TableHead className="pl-6 h-14 font-black text-slate-600 text-xs uppercase tracking-widest">Staf</TableHead>
                                             <TableHead className="h-14 font-black text-slate-600 text-xs uppercase tracking-widest">Jabatan & Divisi</TableHead>
                                             <TableHead className="h-14 font-black text-slate-600 text-xs uppercase tracking-widest">Kontak</TableHead>
                                             <TableHead className="h-14 font-black text-slate-600 text-xs uppercase tracking-widest">Status Akun</TableHead>
@@ -645,7 +645,7 @@ export default function EmployeesPage() {
                                                 <TableCell colSpan={5} className="h-96 text-center text-slate-400">
                                                     <div className="flex flex-col items-center justify-center gap-4 opacity-50">
                                                         <UserX className="h-16 w-16" />
-                                                        <p>Tidak ada karyawan ditemukan.</p>
+                                                        <p>Tidak ada staf ditemukan.</p>
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
@@ -658,7 +658,7 @@ export default function EmployeesPage() {
                                                 // Rules:
                                                 // 1. Super Admin can edit everyone.
                                                 // 2. Admin HR can edit everyone EXCEPT Super Admin.
-                                                // 3. Manager can ONLY edit Employees (not other Managers or Admins).
+                                                // 3. manager can ONLY edit Employees (not other managers or Admins).
                                                 const canEdit = amISuperAdmin ||
                                                     (role === 'admin_hr' && !isTargetSuperAdmin) ||
                                                     (role === 'manager' && employee.role === 'employee');
@@ -688,7 +688,7 @@ export default function EmployeesPage() {
                                                                             <Badge className="bg-purple-100 text-purple-700 border-none text-[9px] px-1.5 h-4 hover:bg-purple-200">ADMIN HR</Badge>
                                                                         )}
                                                                         {employee.role === 'manager' && (
-                                                                            <Badge className="bg-cyan-100 text-cyan-700 border-none text-[9px] px-1.5 h-4 hover:bg-cyan-200">MANAGER</Badge>
+                                                                            <Badge className="bg-cyan-100 text-cyan-700 border-none text-[9px] px-1.5 h-4 hover:bg-cyan-200">Head unit</Badge>
                                                                         )}
                                                                         {employee.role === 'employee' && (
                                                                             <Badge className="bg-slate-100 text-slate-500 border-none text-[9px] px-1.5 h-4 hover:bg-slate-200">STAFF</Badge>
@@ -784,7 +784,7 @@ export default function EmployeesPage() {
                                                                                 </Button>
                                                                             </DropdownMenuTrigger>
                                                                             <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 shadow-xl border-slate-100">
-                                                                                <DropdownMenuLabel className="text-xs text-slate-400 font-medium">Opsi Karyawan</DropdownMenuLabel>
+                                                                                <DropdownMenuLabel className="text-xs text-slate-400 font-medium">Opsi Staf</DropdownMenuLabel>
                                                                                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditClick(employee); }} className="rounded-xl font-bold py-2.5">
                                                                                     <UserCog className="mr-2 h-4 w-4 text-blue-500" /> Edit Detail
                                                                                 </DropdownMenuItem>
@@ -840,12 +840,12 @@ export default function EmployeesPage() {
                                             <div className="flex-1 h-px bg-slate-100/80 ml-4" />
                                         </div>
 
-                                        {/* Managers Section */}
+                                        {/* managers Section */}
                                         {group.managers.length > 0 && (
                                             <div className="space-y-3 pl-6">
                                                 <h4 className="text-xs font-black text-blue-900/40 uppercase tracking-widest flex items-center gap-2">
                                                     <div className="w-2 h-2 rounded-full bg-blue-500" />
-                                                    Pimpinan Unit (Manager)
+                                                    Pimpinan Unit (Head unit)
                                                 </h4>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                                     {group.managers.map(mgr => (
@@ -860,7 +860,7 @@ export default function EmployeesPage() {
                                                                 </Avatar>
                                                                 <div className="min-w-0">
                                                                     <p className="font-black text-lg truncate leading-none mb-1">{mgr.full_name}</p>
-                                                                    <p className="text-blue-100 text-xs font-bold truncate opacity-80 uppercase tracking-tighter">{(mgr as any).job_position?.title || 'Manager'}</p>
+                                                                    <p className="text-blue-100 text-xs font-bold truncate opacity-80 uppercase tracking-tighter">{(mgr as any).job_position?.title || 'Head unit'}</p>
                                                                     <Badge variant="secondary" className="mt-2 bg-white/20 text-white border-none text-[9px] px-2 h-5 font-black uppercase">UNIT HEAD</Badge>
                                                                 </div>
                                                             </div>
@@ -908,7 +908,7 @@ export default function EmployeesPage() {
 
                                 {employees.length === 0 && (
                                     <div className="text-center py-20">
-                                        <p className="text-slate-400 font-bold">Belum ada data karyawan.</p>
+                                        <p className="text-slate-400 font-bold">Belum ada data staf.</p>
                                     </div>
                                 )}
                             </div>
@@ -922,8 +922,8 @@ export default function EmployeesPage() {
                 <DialogContent className="max-w-2xl rounded-[32px] p-0 overflow-hidden border-none shadow-2xl">
                     <div className="bg-slate-50 px-8 py-6 border-b border-slate-100 flex justify-between items-center">
                         <div>
-                            <DialogTitle className="text-xl font-black text-slate-900 tracking-tight">Edit Karyawan</DialogTitle>
-                            <DialogDescription className="text-slate-500 font-medium">Perbarui informasi dan hak akses karyawan.</DialogDescription>
+                            <DialogTitle className="text-xl font-black text-slate-900 tracking-tight">Edit Staf</DialogTitle>
+                            <DialogDescription className="text-slate-500 font-medium">Perbarui informasi dan hak akses staf.</DialogDescription>
                         </div>
                         <div className="h-12 w-12 bg-white rounded-2xl border border-slate-100 flex items-center justify-center shadow-sm">
                             <UserCog className="h-6 w-6 text-blue-600" />
@@ -948,7 +948,7 @@ export default function EmployeesPage() {
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">ID Karyawan (NIK)</Label>
+                                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">ID Staf (NIK)</Label>
                                         <Input
                                             value={editForm.employee_id || ''}
                                             onChange={e => setEditForm({ ...editForm, employee_id: e.target.value })}
@@ -1021,7 +1021,7 @@ export default function EmployeesPage() {
                                     </div>
                                 </div>
 
-                                {/* Shift Tetap — per Karyawan */}
+                                {/* Shift Tetap — per Staf */}
                                 <div className="pt-5 border-t border-slate-100">
                                     <div className="flex items-start justify-between mb-4">
                                         <div>

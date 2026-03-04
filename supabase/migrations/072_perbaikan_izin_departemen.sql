@@ -1,6 +1,6 @@
 -- DATA MASTER HARDENING (DEPARTMENTS & POSITIONS)
 -- Tujuan: Mengunci akses Data Master agar hanya Admin HR yang bisa mengubah struktur.
--- Manager hanya diperbolehkan MELIHAT (Read-Only) untuk referensi.
+-- manager hanya diperbolehkan MELIHAT (Read-Only) untuk referensi.
 
 -- 1. Pastikan RLS Aktif
 ALTER TABLE IF EXISTS public.departments ENABLE ROW LEVEL SECURITY;
@@ -9,7 +9,7 @@ ALTER TABLE IF EXISTS public.job_positions ENABLE ROW LEVEL SECURITY;
 -- 2. Reset Policy Departemen (Hapus semua policy lama yang mungkin bocor)
 DROP POLICY IF EXISTS "Departments are viewable by authenticated users" ON public.departments;
 DROP POLICY IF EXISTS "Admin HR can manage departments" ON public.departments;
-DROP POLICY IF EXISTS "Managers can update own department" ON public.departments; -- Hapus izin Manager edit dept
+DROP POLICY IF EXISTS "managers can update own department" ON public.departments; -- Hapus izin manager edit dept
 DROP POLICY IF EXISTS "Enable all for authenticated" ON public.departments; -- Jaga-jaga jika ada
 
 -- 3. Policy Baru Departemen (Strict)
@@ -44,4 +44,4 @@ CREATE POLICY "Manage Job Positions (Admin Only)" ON public.job_positions
     USING (public.has_role(auth.uid(), 'admin_hr'));
 
 -- Catatan:
--- Dengan script ini, Manager yang mencoba menghapus/edit departemen akan ditolak oleh database (Row Level Security Violation).
+-- Dengan script ini, manager yang mencoba menghapus/edit departemen akan ditolak oleh database (Row Level Security Violation).

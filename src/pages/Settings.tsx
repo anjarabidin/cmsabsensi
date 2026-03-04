@@ -95,7 +95,7 @@ interface NavSection {
 const SECTIONS: NavSection[] = [
     { id: 'company', label: 'Perusahaan', icon: Building2, desc: 'Identitas & zona waktu' },
     { id: 'attendance', label: 'Absensi', icon: Camera, desc: 'Kamera & foto kehadiran' },
-    { id: 'gps', label: 'Lokasi & GPS', icon: MapPin, desc: 'Validasi posisi karyawan' },
+    { id: 'gps', label: 'Lokasi & GPS', icon: MapPin, desc: 'Validasi posisi staf' },
     { id: 'schedule', label: 'Jam & Lembur', icon: Timer, desc: 'Batas jam & lembur' },
     { id: 'leave', label: 'Cuti & Izin', icon: CalendarDays, desc: 'Aturan pengajuan cuti' },
     { id: 'security', label: 'Keamanan', icon: Shield, desc: 'Persetujuan pendaftaran' },
@@ -348,10 +348,10 @@ export default function Settings() {
         ),
 
         attendance: (
-            <SectionPanel title="Kamera & Foto Absensi" desc="Atur metode verifikasi identitas saat karyawan melakukan clock in dan clock out.">
+            <SectionPanel title="Kamera & Foto Absensi" desc="Atur metode verifikasi identitas saat staf melakukan clock in dan clock out.">
                 <SettingRow
                     label="Foto Selfie Wajib (Reguler)"
-                    desc="Karyawan wajib mengambil foto selfie saat absensi. Foto hanya disimpan sebagai bukti dan tidak diproses oleh AI (MediaPipe)."
+                    desc="Staf wajib mengambil foto selfie saat absensi. Foto hanya disimpan sebagai bukti dan tidak diproses oleh AI (MediaPipe)."
                     tag="STABIL"
                 >
                     <ProSwitch checked={settings.require_selfie_photo} onChange={v => set('require_selfie_photo', v)} />
@@ -367,11 +367,11 @@ export default function Settings() {
         ),
 
         gps: (
-            <SectionPanel title="Lokasi & GPS" desc="Aturan validasi posisi geografis karyawan pada saat melakukan absensi.">
+            <SectionPanel title="Lokasi & GPS" desc="Aturan validasi posisi geografis staf pada saat melakukan absensi.">
                 <SettingRow label="Akurasi GPS Minimum" desc="Absensi akan ditolak apabila akurasi sinyal GPS lebih rendah dari nilai ini. Nilai lebih kecil berarti lebih ketat.">
                     <NumField value={settings.gps_min_accuracy_meters} onChange={v => set('gps_min_accuracy_meters', v)} min={10} max={500} suffix="meter" />
                 </SettingRow>
-                <SettingRow label="Izinkan Mode WFH" desc="Karyawan dapat memilih mode Work From Home saat melakukan absensi. Jika dinonaktifkan, semua absensi dianggap WFO.">
+                <SettingRow label="Izinkan Mode WFH" desc="Staf dapat memilih mode Work From Home saat melakukan absensi. Jika dinonaktifkan, semua absensi dianggap WFO.">
                     <ProSwitch checked={settings.allow_wfh_mode} onChange={v => set('allow_wfh_mode', v)} />
                 </SettingRow>
                 <SettingRow label="Blokir Fake GPS" desc="Absensi akan ditolak secara otomatis apabila sistem mendeteksi penggunaan aplikasi pemalsuan lokasi (mock location)." danger>
@@ -381,15 +381,15 @@ export default function Settings() {
         ),
 
         schedule: (
-            <SectionPanel title="Jam Absensi & Lembur" desc="Aturan batas waktu clock in dan perhitungan jam lembur karyawan.">
-                <SettingRow label="Batas Akhir Clock In" desc="Karyawan tidak dapat melakukan absen masuk melewati jam ini. Direkomendasikan 2 jam setelah jam masuk normal.">
+            <SectionPanel title="Jam Absensi & Lembur" desc="Aturan batas waktu clock in dan perhitungan jam lembur staf.">
+                <SettingRow label="Batas Akhir Clock In" desc="Staf tidak dapat melakukan absen masuk melewati jam ini. Direkomendasikan 2 jam setelah jam masuk normal.">
                     <TimeField h={settings.attendance_clock_in_latest_hour} m={settings.attendance_clock_in_latest_minute}
                         onH={v => set('attendance_clock_in_latest_hour', v)} onM={v => set('attendance_clock_in_latest_minute', v)} />
                 </SettingRow>
                 <SettingRow label="Minimum Menit Lembur" desc="Durasi minimum kerja melebihi jam pulang yang dihitung sebagai lembur. Kurang dari nilai ini tidak dihitung.">
                     <NumField value={settings.overtime_minimum_minutes} onChange={v => set('overtime_minimum_minutes', v)} min={0} max={120} suffix="menit" />
                 </SettingRow>
-                <SettingRow label="Lembur Perlu Persetujuan" desc="Karyawan harus mengajukan dan mendapatkan persetujuan lembur dari atasan sebelum bekerja melebihi jam normal.">
+                <SettingRow label="Lembur Perlu Persetujuan" desc="Staf harus mengajukan dan mendapatkan persetujuan lembur dari atasan sebelum bekerja melebihi jam normal.">
                     <ProSwitch checked={settings.overtime_require_approval} onChange={v => set('overtime_require_approval', v)} />
                 </SettingRow>
             </SectionPanel>
@@ -399,7 +399,7 @@ export default function Settings() {
             <SectionPanel title="Keamanan & Akun" desc="Konfigurasi persetujuan pendaftaran akun baru melalui sistem onboarding.">
                 <SettingRow
                     label="Persetujuan Akun Wajib"
-                    desc="Apabila diaktifkan, setiap pendaftaran karyawan baru harus disetujui administrator sebelum dapat masuk ke sistem."
+                    desc="Apabila diaktifkan, setiap pendaftaran staf baru harus disetujui administrator sebelum dapat masuk ke sistem."
                     tag="KEAMANAN"
                 >
                     <ProSwitch checked={settings.enable_account_approval} onChange={v => set('enable_account_approval', v)} />
@@ -435,8 +435,8 @@ export default function Settings() {
         ),
 
         leave: (
-            <SectionPanel title="Cuti & Izin" desc="Kebijakan pengajuan dan persetujuan cuti tahunan karyawan.">
-                <SettingRow label="Maks Hari Cuti per Tahun" desc="Jumlah maksimum hari cuti tahunan yang dapat diambil oleh setiap karyawan dalam satu tahun kalender.">
+            <SectionPanel title="Cuti & Izin" desc="Kebijakan pengajuan dan persetujuan cuti tahunan staf.">
+                <SettingRow label="Maks Hari Cuti per Tahun" desc="Jumlah maksimum hari cuti tahunan yang dapat diambil oleh setiap staf dalam satu tahun kalender.">
                     <NumField value={settings.leave_max_days_per_year} onChange={v => set('leave_max_days_per_year', v)} min={0} max={365} suffix="hari" />
                 </SettingRow>
                 <SettingRow label="Minimum H- Pengajuan" desc="Pengajuan cuti harus dilakukan minimal berapa hari sebelum tanggal yang diminta. Isi 0 untuk mengizinkan pengajuan mendadak.">
@@ -445,20 +445,20 @@ export default function Settings() {
                 <SettingRow label="Persetujuan Cuti Wajib" desc="Pengajuan cuti harus mendapatkan persetujuan dari admin atau manajer sebelum dianggap sah dan berlaku.">
                     <ProSwitch checked={settings.leave_require_approval} onChange={v => set('leave_require_approval', v)} />
                 </SettingRow>
-                <SettingRow label="Izinkan Cuti Setengah Hari" desc="Karyawan dapat mengajukan cuti untuk setengah hari kerja, baik sesi pagi maupun sesi siang.">
+                <SettingRow label="Izinkan Cuti Setengah Hari" desc="Staf dapat mengajukan cuti untuk setengah hari kerja, baik sesi pagi maupun sesi siang.">
                     <ProSwitch checked={settings.leave_allow_half_day} onChange={v => set('leave_allow_half_day', v)} />
                 </SettingRow>
             </SectionPanel>
         ),
 
         notification: (
-            <SectionPanel title="Notifikasi & Reminder" desc="Pengaturan pengingat absen otomatis. Reminder dikirim X menit sebelum jam shift masing-masing karyawan, sehingga tidak perlu setting per-orang.">
-                <SettingRow label="Aktifkan Pengingat Absensi" desc="Jika dimatikan, tidak ada pengingat clock-in maupun clock-out yang dikirim ke karyawan manapun.">
+            <SectionPanel title="Notifikasi & Reminder" desc="Pengaturan pengingat absen otomatis. Reminder dikirim X menit sebelum jam shift masing-masing staf, sehingga tidak perlu setting per-orang.">
+                <SettingRow label="Aktifkan Pengingat Absensi" desc="Jika dimatikan, tidak ada pengingat clock-in maupun clock-out yang dikirim ke staf manapun.">
                     <ProSwitch checked={settings.reminder_enabled} onChange={v => set('reminder_enabled', v)} />
                 </SettingRow>
                 <SettingRow
                     label="Menit Sebelum Masuk"
-                    desc={`Pengingat clock-in dikirim ${settings.reminder_clockin_minutes_before} menit sebelum shift karyawan dimulai.`}
+                    desc={`Pengingat clock-in dikirim ${settings.reminder_clockin_minutes_before} menit sebelum shift staf dimulai.`}
                     warning={settings.reminder_clockin_minutes_before < 5 ? "Nilai terlalu rendah — pengingat mungkin tidak ada waktu untuk diterima." : undefined}
                 >
                     <NumField
@@ -470,7 +470,7 @@ export default function Settings() {
                 </SettingRow>
                 <SettingRow
                     label="Menit Sebelum Pulang"
-                    desc={`Pengingat clock-out dikirim ${settings.reminder_clockout_minutes_before} menit sebelum shift karyawan berakhir.`}
+                    desc={`Pengingat clock-out dikirim ${settings.reminder_clockout_minutes_before} menit sebelum shift staf berakhir.`}
                     warning={settings.reminder_clockout_minutes_before < 5 ? "Nilai terlalu rendah — pengingat mungkin tidak ada waktu untuk diterima." : undefined}
                 >
                     <NumField

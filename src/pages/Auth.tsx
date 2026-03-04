@@ -147,7 +147,7 @@ export default function Auth() {
         localStorage.setItem('last_active_user', JSON.stringify({
           id: authData.user.id,
           email: loginEmail,
-          name: profile?.full_name || 'Karyawan',
+          name: profile?.full_name || 'Staf',
           avatar: profile?.avatar_url
         }));
       }

@@ -114,7 +114,7 @@ export default function LeavePage() {
 
             const settings = { ...leaveSettings };
             let globalMaxDays: number | null = null;
-            
+
             appSettings?.forEach(s => {
                 const val = String(s.value).replace(/^"|"$/g, '');
                 if (s.key === 'leave_max_days_per_year') {
@@ -125,9 +125,9 @@ export default function LeavePage() {
                 if (s.key === 'leave_require_approval') settings.requireApproval = val === 'true';
                 if (s.key === 'leave_allow_half_day') settings.allowHalfDay = val === 'true';
             });
-            
+
             setLeaveSettings(settings);
-            
+
             // If global max days is set, override the local quota display
             if (globalMaxDays !== null) {
                 setAnnualQuota(globalMaxDays);
@@ -556,7 +556,7 @@ export default function LeavePage() {
                                                 </div>
                                                 <div>
                                                     <div className="text-sm font-bold text-slate-700">
-                                                        {(activeRole || role) === 'manager' ? 'Admin HR / Super Admin' : `Manager ${deptName || 'Departemen'}`}
+                                                        {(activeRole || role) === 'manager' ? 'Admin HR / Super Admin' : `Head unit ${deptName || 'Departemen'}`}
                                                     </div>
                                                     <div className="text-[10px] text-slate-400">Perlu Persetujuan</div>
                                                 </div>
@@ -805,7 +805,7 @@ function LeaveForm({ leaveType, setLeaveType, startDate, setStartDate, endDate, 
                     </div>
                     <div>
                         <div className="text-sm font-bold text-slate-700">
-                            {userRole === 'manager' ? 'Admin HR / Super Admin' : `Manager ${deptName || 'Departemen'}`}
+                            {userRole === 'manager' ? 'Admin HR / Super Admin' : `Head unit ${deptName || 'Departemen'}`}
                         </div>
                         <div className="text-[10px] text-slate-400">Perlu Persetujuan</div>
                     </div>

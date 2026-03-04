@@ -234,7 +234,7 @@ export default function LocationsPage() {
                             </Button>
                             <div className="flex-1">
                                 <h1 className="text-xl font-bold tracking-tight drop-shadow-md">Lokasi Kantor</h1>
-                                <p className="text-blue-50 font-medium opacity-90 mt-1 text-xs">Kelola geo-fencing untuk lokasi absensi karyawan.</p>
+                                <p className="text-blue-50 font-medium opacity-90 mt-1 text-xs">Kelola geo-fencing untuk lokasi absensi staf.</p>
                             </div>
                             <Button onClick={() => { resetForm(); setDialogOpen(true); }} className="bg-white text-blue-600 hover:bg-blue-50 shadow-lg">
                                 <Plus className="mr-2 h-4 w-4" />
@@ -263,7 +263,7 @@ export default function LocationsPage() {
                                     </div>
                                     <h3 className="text-lg font-medium text-slate-900">Belum ada lokasi</h3>
                                     <p className="text-sm text-slate-500 max-w-sm mt-1 mb-4">
-                                        Tambahkan lokasi kantor untuk memungkinkan karyawan melakukan absensi.
+                                        Tambahkan lokasi kantor untuk memungkinkan staf melakukan absensi.
                                     </p>
                                     <Button variant="outline" onClick={() => setDialogOpen(true)}>
                                         Tambah Lokasi Pertama

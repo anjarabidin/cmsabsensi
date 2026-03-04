@@ -453,7 +453,7 @@ const COLUMN_LABELS: Record<string, string> = {
     image_url: 'URL Gambar',
 
     // Core Modules
-    employee_id: 'ID Karyawan',
+    employee_id: 'ID Staf',
     position: 'Jabatan',
     gender: 'Jenis Kelamin',
     address: 'Alamat',
@@ -484,8 +484,8 @@ const formatValue = (key: string, value: any) => {
         const roles: Record<string, string> = {
             super_admin: 'Super Admin',
             admin: 'Administrator',
-            employee: 'Karyawan',
-            manager: 'Manager'
+            employee: 'Staf',
+            manager: 'Head unit'
         };
         return roles[value] || value;
     }

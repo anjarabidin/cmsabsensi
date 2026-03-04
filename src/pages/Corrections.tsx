@@ -143,7 +143,7 @@ export default function CorrectionsPage() {
           const notifications = adminUsers.map(admin => ({
             user_id: admin.id,
             title: 'Pengajuan Koreksi Absensi',
-            message: `Karyawan ${user.email} mengajukan koreksi untuk tgl ${format(new Date(form.date), 'd MMM yyyy', { locale: id })}`,
+            message: `Staf ${user.email} mengajukan koreksi untuk tgl ${format(new Date(form.date), 'd MMM yyyy', { locale: id })}`,
             type: 'correction',
             link: '/approvals',
             read: false // Explicitly set read to false as per schema
@@ -390,7 +390,7 @@ export default function CorrectionsPage() {
           <div className="flex items-center gap-3">
             <div className="bg-blue-50 px-4 py-2 rounded-xl flex items-center gap-3 border border-blue-100">
               <AlertCircle className="h-5 w-5 text-blue-600" />
-              <span className="text-sm font-bold text-blue-700">Persetujuan Manager Diperlukan</span>
+              <span className="text-sm font-bold text-blue-700">Persetujuan Head unit Diperlukan</span>
             </div>
           </div>
         </div>

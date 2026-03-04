@@ -101,7 +101,7 @@ export default function ProfilePage() {
     };
   }, [user]);
 
-  const [deptManager, setDeptManager] = useState<any>(null);
+  const [deptmanager, setDeptmanager] = useState<any>(null);
   const [isEditingDept, setIsEditingDept] = useState(false);
   const [deptForm, setDeptForm] = useState({ name: '', description: '' });
   const [savingDept, setSavingDept] = useState(false);
@@ -114,7 +114,7 @@ export default function ProfilePage() {
         .eq('role', 'manager')
         .limit(1)
         .maybeSingle()
-        .then(({ data }) => setDeptManager(data));
+        .then(({ data }) => setDeptmanager(data));
     }
     if (profile?.department) {
       setDeptForm({
@@ -472,7 +472,7 @@ export default function ProfilePage() {
         <div className="max-w-7xl mx-auto p-8">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-3xl font-black text-slate-900 tracking-tight">Profil Karyawan</h1>
+              <h1 className="text-3xl font-black text-slate-900 tracking-tight">Profil Staf</h1>
               <p className="text-slate-500 font-medium mt-1">Kelola informasi pribadi dan pengaturan akun Anda.</p>
             </div>
             <Button
@@ -512,8 +512,8 @@ export default function ProfilePage() {
                       <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-none px-3 py-1 uppercase tracking-wider font-bold">
                         {profile?.role === 'super_admin' ? 'Super Admin' :
                           profile?.role === 'admin_hr' ? 'HR Admin' :
-                            profile?.role === 'manager' ? 'Manager' :
-                              profile?.position || 'Karyawan'}
+                            profile?.role === 'manager' ? 'Head unit' :
+                              profile?.position || 'Staf'}
                       </Badge>
                       <Badge variant="outline" className="border-slate-200 text-slate-500">
                         {profile?.employee_id || 'ID: --'}
@@ -634,26 +634,26 @@ export default function ProfilePage() {
                     </div>
                   </div>
 
-                  {/* Manager Info */}
+                  {/* manager Info */}
                   <div className="space-y-3">
-                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pimpinan Departemen</Label>
-                    {deptManager ? (
+                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pimpinan Unit (Head unit)</Label>
+                    {deptmanager ? (
                       <div className="flex items-center gap-4 p-3 bg-white border border-slate-100 rounded-2xl shadow-sm">
                         <Avatar className="h-10 w-10 border-2 border-slate-50">
-                          <AvatarImage src={deptManager.avatar_url || ''} />
+                          <AvatarImage src={deptmanager.avatar_url || ''} />
                           <AvatarFallback className="bg-blue-600 text-white font-bold text-xs">
-                            {deptManager.full_name?.substring(0, 2).toUpperCase()}
+                            {deptmanager.full_name?.substring(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-slate-900 truncate">{deptManager.full_name}</p>
-                          <p className="text-[10px] text-slate-500 font-medium truncate">{deptManager.position || 'Manager Departemen'}</p>
+                          <p className="text-sm font-bold text-slate-900 truncate">{deptmanager.full_name}</p>
+                          <p className="text-[10px] text-slate-500 font-medium truncate">{deptmanager.position || 'Head unit Unit'}</p>
                         </div>
-                        <Badge variant="outline" className="text-[9px] bg-blue-50 text-blue-600 border-blue-100 px-2 py-0.5">MANAGER</Badge>
+                        <Badge variant="outline" className="text-[9px] bg-blue-50 text-blue-600 border-blue-100 px-2 py-0.5">Head unit</Badge>
                       </div>
                     ) : (
                       <div className="p-4 text-center border-2 border-dashed border-slate-100 rounded-2xl">
-                        <p className="text-xs text-slate-400 font-medium italic">Manager belum ditunjuk</p>
+                        <p className="text-xs text-slate-400 font-medium italic">Head unit belum ditunjuk</p>
                       </div>
                     )}
                   </div>
@@ -943,14 +943,14 @@ export default function ProfilePage() {
                   <p className="text-blue-600 font-bold text-sm uppercase tracking-widest px-4 py-1 bg-blue-50 rounded-full inline-block">
                     {profile?.role === 'super_admin' ? 'Super Admin' :
                       profile?.role === 'admin_hr' ? 'HR Admin' :
-                        profile?.role === 'manager' ? 'Manager' :
-                          profile?.position || 'Karyawan'}
+                        profile?.role === 'manager' ? 'Head unit' :
+                          profile?.position || 'Staf'}
                   </p>
                 </div>
 
                 <div className="grid grid-cols-2 w-full gap-4 mt-8">
                   <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-100/50 text-center">
-                    <p className="text-[10px] uppercase tracking-widest font-black text-slate-400 mb-1">ID Karyawan</p>
+                    <p className="text-[10px] uppercase tracking-widest font-black text-slate-400 mb-1">ID Staf</p>
                     <p className="font-bold text-slate-700">{profile?.employee_id || '--'}</p>
                   </div>
                   <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-100/50 text-center">
@@ -1005,7 +1005,7 @@ export default function ProfilePage() {
                       <FileText className="h-6 w-6 text-slate-500" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-slate-500 mb-1">Dokumen Karyawan</p>
+                      <p className="text-xs font-bold text-slate-500 mb-1">Dokumen Staf</p>
                       <p className="font-black text-slate-800">Slip Gaji & Laporan Gaji</p>
                     </div>
                   </div>

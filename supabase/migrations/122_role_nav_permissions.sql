@@ -96,7 +96,7 @@ INSERT INTO public.role_nav_permissions (role, nav_key, is_enabled) VALUES
 ('admin_hr','driver_logbook',false),
 ('admin_hr','driver_reports',true),
 
--- ── MANAGER ─────────────────────────────────────────────────────
+-- ── manager ─────────────────────────────────────────────────────
 ('manager','dashboard',true),
 ('manager','attendance',true),
 ('manager','quick_attendance',false),

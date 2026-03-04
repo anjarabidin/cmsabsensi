@@ -38,8 +38,8 @@ CREATE POLICY "Admin HR can manage all albums"
     USING (public.has_role(auth.uid(), 'admin_hr'))
     WITH CHECK (public.has_role(auth.uid(), 'admin_hr'));
 
--- Manager: Kelola departemen sendiri atau buat publik
-CREATE POLICY "Managers can manage own department or public albums" 
+-- manager: Kelola departemen sendiri atau buat publik
+CREATE POLICY "managers can manage own department or public albums" 
     ON public.albums FOR ALL TO authenticated 
     USING (
         public.has_role(auth.uid(), 'manager') AND (
@@ -79,13 +79,13 @@ CREATE POLICY "Access album items based on album visibility"
 
 -- 7. Storage Policies for 'albums' bucket
 DROP POLICY IF EXISTS "Admin HR manage all album storage" ON storage.objects;
-DROP POLICY IF EXISTS "Managers manage own album storage" ON storage.objects;
+DROP POLICY IF EXISTS "managers manage own album storage" ON storage.objects;
 DROP POLICY IF EXISTS "Authenticated users view album storage" ON storage.objects;
 
 CREATE POLICY "Admin HR manage all album storage" ON storage.objects FOR ALL TO authenticated 
     USING (bucket_id = 'albums' AND public.has_role(auth.uid(), 'admin_hr'));
 
-CREATE POLICY "Managers manage own album storage" ON storage.objects FOR ALL TO authenticated 
+CREATE POLICY "managers manage own album storage" ON storage.objects FOR ALL TO authenticated 
     USING (bucket_id = 'albums' AND public.has_role(auth.uid(), 'manager'));
 
 CREATE POLICY "Authenticated users view album storage" ON storage.objects FOR SELECT TO authenticated 

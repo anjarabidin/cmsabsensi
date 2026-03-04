@@ -97,7 +97,7 @@ export default function Dashboard() {
   const [upcomingActivities, setUpcomingActivities] = useState<UpcomingActivity[]>([]);
   const [agendaPopupOpen, setAgendaPopupOpen] = useState(false);
   const [todayAgendas, setTodayAgendas] = useState<UpcomingActivity[]>([]);
-  const [deptManager, setDeptManager] = useState<any>(null);
+  const [deptHeadUnit, setDeptHeadUnit] = useState<any>(null);
   const [driverAssignment, setDriverAssignment] = useState<any>(null);
   const [pendingAccountsCount, setPendingAccountsCount] = useState(0);
   const [approvalPopupOpen, setApprovalPopupOpen] = useState(false);
@@ -252,7 +252,7 @@ export default function Dashboard() {
       }
     };
 
-    // 3. ANNOUNCEMENTS & MANAGER
+    // 3. ANNOUNCEMENTS & manager
     const fetchInformationalData = async () => {
       try {
         let announcementQuery = supabase.from('announcements')
@@ -264,7 +264,7 @@ export default function Dashboard() {
           announcementQuery = announcementQuery.eq('is_active', true);
         }
 
-        const [announcementsRes, managerRes] = await Promise.all([
+        const [announcementsRes, HeadUnitRes] = await Promise.all([
           announcementQuery,
           profile?.department_id
             ? supabase.from('profiles').select('full_name').eq('department_id', profile.department_id).eq('role', 'manager').limit(1).maybeSingle()
@@ -272,26 +272,24 @@ export default function Dashboard() {
         ]);
 
         if (announcementsRes.data) {
-          const filteredAnnouncements = (announcementsRes.data as Announcement[]).filter(a => {
-            if (!a.is_active) return false;
-            if (a.deleted_at) return false;
-            if (a.expires_at && new Date(a.expires_at) <= new Date()) return false;
-            return true;
+          const validAnnouncements = announcementsRes.data.filter(a => {
+            if (!a.is_broadcast) return true;
+            if (a.receiver_ids && a.receiver_ids.includes(profile?.id || '')) return true;
+            return false;
           });
+          setAnnouncements(validAnnouncements);
 
-          setAnnouncements(filteredAnnouncements);
-
-          // Logic for automatic announcement popup
-          if (filteredAnnouncements.length > 0) {
-            const latest = filteredAnnouncements[0];
-            const lastSeenId = localStorage.getItem('last_seen_announcement_id');
-            if (lastSeenId !== latest.id) {
+          if (validAnnouncements.length > 0) {
+            const lastShown = localStorage.getItem('last_announcement_id');
+            const latest = validAnnouncements[0];
+            if (lastShown !== latest.id && !announcementPopupOpen) {
               setActiveAnnouncement(latest);
               setAnnouncementPopupOpen(true);
+              localStorage.setItem('last_announcement_id', latest.id);
             }
           }
         }
-        if (managerRes?.data) setDeptManager(managerRes.data);
+        if (HeadUnitRes?.data) setDeptHeadUnit(HeadUnitRes.data);
       } catch (err) {
         console.error("Error fetching informational data:", err);
       } finally {
@@ -422,7 +420,7 @@ export default function Dashboard() {
       isFetchingRef.current = false;
     });
 
-    // 6. PROCESS TEAM DATA (Admin/Manager only, already backgrounded)
+    // 6. PROCESS TEAM DATA (Admin/manager only, already backgrounded)
     if (currentRole === 'super_admin' || currentRole === 'admin_hr' || currentRole === 'manager') {
       const fetchTeamData = async () => {
         let teamProfilesQuery = supabase.from('profiles').select('id').eq('is_active', true);
@@ -566,14 +564,14 @@ export default function Dashboard() {
                     <p className="text-[8px] text-white/70 font-bold bg-black/20 px-2 py-0.5 rounded-full inline-block backdrop-blur-sm border border-white/10 uppercase tracking-tighter">
                       {profile?.employee_id || 'ID: --'}
                     </p>
-                    {deptManager && profile?.role !== 'manager' && (
+                    {deptHeadUnit && profile?.role !== 'manager' && (
                       <p className="text-[7px] text-blue-100 font-bold bg-white/10 px-1.5 py-0.5 rounded-full backdrop-blur-sm truncate border border-white/5 uppercase">
-                        SV: {deptManager.full_name}
+                        SV: {deptHeadUnit.full_name}
                       </p>
                     )}
                     {profile?.role === 'manager' && (
                       <p className="text-[7px] text-amber-100 font-bold bg-amber-500/20 px-1.5 py-0.5 rounded-full backdrop-blur-sm border border-amber-500/20 uppercase">
-                        Unit Manager
+                        Unit Head unit
                       </p>
                     )}
                   </div>
@@ -857,7 +855,7 @@ export default function Dashboard() {
 
             </div>
 
-            {/* Admin Section - Only Visible to HR/Manager - NEW SEPARATE CARD */}
+            {/* Admin Section - Only Visible to HR/manager - NEW SEPARATE CARD */}
             {
               (currentRole === 'super_admin' || currentRole === 'admin_hr' || currentRole === 'manager') && (
                 <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 mx-3 mt-4 relative z-20">
@@ -1263,17 +1261,17 @@ export default function Dashboard() {
                 <p className="text-base text-slate-500 font-medium max-w-lg">
                   Selamat datang di dashboard absensi. Pantau produktivitas dan kelola jadwal Anda hari ini.
                 </p>
-                {deptManager && profile?.role !== 'manager' && (
+                {deptHeadUnit && profile?.role !== 'manager' && (
                   <div className="flex items-center gap-2 mt-1">
                     <Badge variant="outline" className="text-[10px] font-black bg-blue-50 text-blue-600 border-blue-100 px-2 h-5">
-                      MANAGER UNIT: {deptManager.full_name.toUpperCase()}
+                      HEAD UNIT: {deptHeadUnit.full_name.toUpperCase()}
                     </Badge>
                   </div>
                 )}
                 {profile?.role === 'manager' && (
                   <div className="flex items-center gap-2 mt-1">
                     <Badge variant="outline" className="text-[10px] font-black bg-amber-50 text-amber-700 border-amber-200 px-2 h-5">
-                      MANAJER UNIT: {((profile as any)?.department?.name || 'UNIT').toUpperCase()}
+                      HEAD UNIT: {((profile as any)?.department?.name || 'UNIT').toUpperCase()}
                     </Badge>
                   </div>
                 )}
@@ -1846,7 +1844,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <h2 className="text-2xl font-black tracking-tight mb-2">Persetujuan Akun Pending!</h2>
-                  <p className="text-purple-50 text-sm font-medium opacity-90 max-w-[280px]">Dibutuhkan tindakan segera untuk aktivasi akun karyawan baru.</p>
+                  <p className="text-purple-50 text-sm font-medium opacity-90 max-w-[280px]">Dibutuhkan tindakan segera untuk aktivasi akun staf baru.</p>
                 </div>
               </div>
 

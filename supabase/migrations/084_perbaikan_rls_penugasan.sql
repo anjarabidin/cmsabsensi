@@ -1,4 +1,4 @@
--- POLICY FIX: Izinkan Admin HR & Manager mengelola tabel manager_assignments
+-- POLICY FIX: Izinkan Admin HR & manager mengelola tabel manager_assignments
 -- Sebelumnya kena block RLS saat Auto-Assign.
 
 -- 1. Enable RLS (just in case)
@@ -6,7 +6,7 @@ ALTER TABLE public.manager_assignments ENABLE ROW LEVEL SECURITY;
 
 -- 2. Hapus policy lama yang mungkin restrict
 DROP POLICY IF EXISTS "Admin HR can manage assignments" ON public.manager_assignments;
-DROP POLICY IF EXISTS "Managers can see their own assignments" ON public.manager_assignments;
+DROP POLICY IF EXISTS "managers can see their own assignments" ON public.manager_assignments;
 
 -- 3. Policy BARU: Admin & Admin HR BOLEH MELAKUKAN APAPUN (All Access)
 CREATE POLICY "Admins can manage all assignments"
@@ -20,19 +20,19 @@ USING (
     )
 );
 
--- 4. Policy BARU: Manager boleh melihat (SELECT) timnya sendiri
-CREATE POLICY "Managers can view own assignments"
+-- 4. Policy BARU: manager boleh melihat (SELECT) timnya sendiri
+CREATE POLICY "managers can view own assignments"
 ON public.manager_assignments
 FOR SELECT
 USING (
     auth.uid() = manager_id
 );
 
--- Note: Manager TIDAK BOLEH insert sendiri (kecuali dikasih akses), 
+-- Note: manager TIDAK BOLEH insert sendiri (kecuali dikasih akses), 
 -- tapi biasanya Admin yang assign manager. 
--- Jika Manager boleh assign bawahan sendiri, uncomment ini:
+-- Jika manager boleh assign bawahan sendiri, uncomment ini:
 /*
-CREATE POLICY "Managers can insert own assignments"
+CREATE POLICY "managers can insert own assignments"
 ON public.manager_assignments
 FOR INSERT
 WITH CHECK (

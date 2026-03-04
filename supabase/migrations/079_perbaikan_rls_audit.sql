@@ -24,10 +24,10 @@ CREATE POLICY "Super admin can view audit logs" ON public.audit_logs
 -- 3. Update Policies for Super Admin Access
 
 -- LEAVE REQUESTS
-DROP POLICY IF EXISTS "Managers can view and approve team leave requests" ON public.leave_requests;
-DROP POLICY IF EXISTS "Managers and Admins can view leave requests" ON public.leave_requests;
+DROP POLICY IF EXISTS "managers can view and approve team leave requests" ON public.leave_requests;
+DROP POLICY IF EXISTS "managers and Admins can view leave requests" ON public.leave_requests;
 
-CREATE POLICY "Managers and Admins can view leave requests" ON public.leave_requests FOR ALL TO authenticated 
+CREATE POLICY "managers and Admins can view leave requests" ON public.leave_requests FOR ALL TO authenticated 
 USING (
   (auth.uid() = user_id) OR
   (public.has_role(auth.uid(), 'admin_hr')) OR
@@ -36,10 +36,10 @@ USING (
 );
 
 -- OVERTIME REQUESTS
-DROP POLICY IF EXISTS "Managers can view and approve team overtime" ON public.overtime_requests;
-DROP POLICY IF EXISTS "Managers and Admins can view overtime" ON public.overtime_requests;
+DROP POLICY IF EXISTS "managers can view and approve team overtime" ON public.overtime_requests;
+DROP POLICY IF EXISTS "managers and Admins can view overtime" ON public.overtime_requests;
 
-CREATE POLICY "Managers and Admins can view overtime" ON public.overtime_requests FOR ALL TO authenticated 
+CREATE POLICY "managers and Admins can view overtime" ON public.overtime_requests FOR ALL TO authenticated 
 USING (
   (auth.uid() = user_id) OR
   (public.has_role(auth.uid(), 'admin_hr')) OR
@@ -48,10 +48,10 @@ USING (
 );
 
 -- CORRECTIONS
-DROP POLICY IF EXISTS "Managers can view and approve corrections" ON public.attendance_corrections;
-DROP POLICY IF EXISTS "Managers and Admins can view corrections" ON public.attendance_corrections;
+DROP POLICY IF EXISTS "managers can view and approve corrections" ON public.attendance_corrections;
+DROP POLICY IF EXISTS "managers and Admins can view corrections" ON public.attendance_corrections;
 
-CREATE POLICY "Managers and Admins can view corrections" ON public.attendance_corrections FOR ALL TO authenticated 
+CREATE POLICY "managers and Admins can view corrections" ON public.attendance_corrections FOR ALL TO authenticated 
 USING (
   (auth.uid() = user_id) OR
   (public.has_role(auth.uid(), 'admin_hr')) OR
@@ -60,10 +60,10 @@ USING (
 );
 
 -- REIMBURSEMENTS
-DROP POLICY IF EXISTS "Managers can view and approve reimbursements" ON public.reimbursements;
-DROP POLICY IF EXISTS "Managers and Admins can view reimbursements" ON public.reimbursements;
+DROP POLICY IF EXISTS "managers can view and approve reimbursements" ON public.reimbursements;
+DROP POLICY IF EXISTS "managers and Admins can view reimbursements" ON public.reimbursements;
 
-CREATE POLICY "Managers and Admins can view reimbursements" ON public.reimbursements FOR ALL TO authenticated 
+CREATE POLICY "managers and Admins can view reimbursements" ON public.reimbursements FOR ALL TO authenticated 
 USING (
   (auth.uid() = user_id) OR
   (public.has_role(auth.uid(), 'admin_hr')) OR

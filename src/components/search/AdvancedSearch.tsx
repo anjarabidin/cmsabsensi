@@ -21,10 +21,10 @@ interface SearchFilters {
   roles?: string[];
 }
 
-export function AdvancedSearch({ 
-  onSearch, 
+export function AdvancedSearch({
+  onSearch,
   placeholder = "Cari...",
-  showFilters = true 
+  showFilters = true
 }: AdvancedSearchProps) {
   const [query, setQuery] = useState('');
   const [filters, setFilters] = useState<SearchFilters>({});
@@ -52,7 +52,7 @@ export function AdvancedSearch({
   // Role options
   const roleOptions = [
     { label: 'Admin HR', value: 'admin_hr' },
-    { label: 'Manager', value: 'manager' },
+    { label: 'manager', value: 'manager' },
     { label: 'Employee', value: 'employee' },
   ];
 
@@ -83,7 +83,7 @@ export function AdvancedSearch({
     }));
   }, []);
 
-  const hasActiveFilters = Object.values(filters).some(value => 
+  const hasActiveFilters = Object.values(filters).some(value =>
     value && (Array.isArray(value) ? value.length > 0 : true)
   );
 
@@ -121,7 +121,7 @@ export function AdvancedSearch({
               </Button>
             )}
           </div>
-          
+
           {showFilters && (
             <Button
               variant="outline"
@@ -216,8 +216,8 @@ export function AdvancedSearch({
             {filters.dateRange?.from && (
               <Badge variant="secondary" className="flex items-center gap-1">
                 Tanggal: {filters.dateRange.from.toLocaleDateString()} - {filters.dateRange.to?.toLocaleDateString()}
-                <X 
-                  className="h-3 w-3 cursor-pointer" 
+                <X
+                  className="h-3 w-3 cursor-pointer"
                   onClick={() => handleFilterChange('dateRange', undefined)}
                 />
               </Badge>
@@ -225,8 +225,8 @@ export function AdvancedSearch({
             {filters.departments?.map(dept => (
               <Badge key={dept} variant="secondary" className="flex items-center gap-1">
                 {dept}
-                <X 
-                  className="h-3 w-3 cursor-pointer" 
+                <X
+                  className="h-3 w-3 cursor-pointer"
                   onClick={() => handleFilterChange('departments', filters.departments?.filter(d => d !== dept))}
                 />
               </Badge>
@@ -234,8 +234,8 @@ export function AdvancedSearch({
             {filters.statuses?.map(status => (
               <Badge key={status} variant="secondary" className="flex items-center gap-1">
                 {status}
-                <X 
-                  className="h-3 w-3 cursor-pointer" 
+                <X
+                  className="h-3 w-3 cursor-pointer"
                   onClick={() => handleFilterChange('statuses', filters.statuses?.filter(s => s !== status))}
                 />
               </Badge>
@@ -243,8 +243,8 @@ export function AdvancedSearch({
             {filters.roles?.map(role => (
               <Badge key={role} variant="secondary" className="flex items-center gap-1">
                 {role}
-                <X 
-                  className="h-3 w-3 cursor-pointer" 
+                <X
+                  className="h-3 w-3 cursor-pointer"
                   onClick={() => handleFilterChange('roles', filters.roles?.filter(r => r !== role))}
                 />
               </Badge>

@@ -526,7 +526,7 @@ export default function InformationPage() {
                         <div className="md:col-span-4 space-y-6">
                             <Card className="border-none shadow-xl shadow-blue-900/5 rounded-[41px] bg-gradient-to-br from-blue-600 to-indigo-700 text-white overflow-hidden relative">
                                 <CardContent className="p-10 relative z-10">
-                                    <h3 className="font-black text-lg mb-2 tracking-tight">SDM & Karyawan</h3>
+                                    <h3 className="font-black text-lg mb-2 tracking-tight">SDM & Staf</h3>
                                     <p className="text-blue-100 text-xs font-medium mb-8 leading-relaxed">
                                         Butuh informasi lebih lanjut? Silakan hubungi tim SDM atau sampaikan melalui unit terkait.
                                     </p>

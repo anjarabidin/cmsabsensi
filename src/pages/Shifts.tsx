@@ -229,7 +229,7 @@ export default function ShiftsPage() {
 
             if (error) throw error;
 
-            toast({ title: 'Jadwal 1 Bulan Berhasil Dibuat', description: `Untuk ${employees.length} karyawan.` });
+            toast({ title: 'Jadwal 1 Bulan Berhasil Dibuat', description: `Untuk ${employees.length} staf.` });
             setBulkAssignOpen(false);
             fetchSchedules(selectedDate);
 
@@ -352,7 +352,7 @@ export default function ShiftsPage() {
                     .eq('id', shiftId);
                 toast({
                     title: '✅ Shift Default Berhasil Diset',
-                    description: 'Pengingat otomatis akan menggunakan shift ini untuk semua karyawan yang belum dijadwalkan.',
+                    description: 'Pengingat otomatis akan menggunakan shift ini untuk semua staf yang belum dijadwalkan.',
                 });
             }
             fetchShifts();
@@ -397,7 +397,7 @@ export default function ShiftsPage() {
                                     <Clock className="h-5 w-5 text-blue-200" />
                                     Manajemen Jadwal & Shift
                                 </h1>
-                                <p className="text-blue-50 font-medium opacity-90 mt-1 text-xs">Atur master shift dan penugasan jadwal karyawan.</p>
+                                <p className="text-blue-50 font-medium opacity-90 mt-1 text-xs">Atur master shift dan penugasan jadwal staf.</p>
                             </div>
                         </div>
 
@@ -534,7 +534,7 @@ export default function ShiftsPage() {
                 <div className="flex items-center justify-between mb-6 shrink-0">
                     <div className="space-y-1">
                         <h1 className="text-3xl font-black text-slate-900 tracking-tight">Manajemen Jadwal</h1>
-                        <p className="text-slate-500 font-medium text-sm">Atur shift kerja dan penugasan jadwal karyawan.</p>
+                        <p className="text-slate-500 font-medium text-sm">Atur shift kerja dan penugasan jadwal staf.</p>
                     </div>
                 </div>
 
@@ -654,7 +654,7 @@ export default function ShiftsPage() {
                                                             Shift Default
                                                         </Label>
                                                         <p className={cn("text-[10px] mt-0.5 max-w-[160px] leading-tight", (shift as any).is_default ? "text-emerald-600" : "text-slate-500")}>
-                                                            Berlaku otomatis jika karyawan tidak dijadwalkan.
+                                                            Berlaku otomatis jika staf tidak dijadwalkan.
                                                         </p>
                                                     </div>
                                                     <Switch
@@ -688,7 +688,7 @@ export default function ShiftsPage() {
                                     <div className="relative w-80">
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                                         <Input
-                                            placeholder="Cari karyawan..."
+                                            placeholder="Cari staf..."
                                             value={searchTerm}
                                             onChange={(e) => setSearchTerm(e.target.value)}
                                             className="pl-10 bg-white border-slate-200 rounded-xl"
@@ -852,7 +852,7 @@ function RosterTable({ employees, schedules, selectedDate, handleCellClick }: an
         <Table>
             <TableHeader className="bg-slate-50">
                 <TableRow>
-                    <TableHead className="min-w-[180px] sticky left-0 bg-slate-50 z-20 shadow-[1px_0_0_0_rgba(0,0,0,0.1)] py-4 font-bold text-slate-700">Karyawan</TableHead>
+                    <TableHead className="min-w-[180px] sticky left-0 bg-slate-50 z-20 shadow-[1px_0_0_0_rgba(0,0,0,0.1)] py-4 font-bold text-slate-700">Staf</TableHead>
                     {eachDayOfInterval({
                         start: startOfMonth(selectedDate),
                         end: endOfMonth(selectedDate)
@@ -877,7 +877,7 @@ function RosterTable({ employees, schedules, selectedDate, handleCellClick }: an
             <TableBody>
                 {employees.length === 0 ? (
                     <TableRow>
-                        <TableCell colSpan={32} className="text-center py-12 text-muted-foreground">Tidak ada karyawan yang sesuai filter.</TableCell>
+                        <TableCell colSpan={32} className="text-center py-12 text-muted-foreground">Tidak ada staf yang sesuai filter.</TableCell>
                     </TableRow>
                 ) : employees.map((employee: any) => (
                     <TableRow key={employee.id} className="hover:bg-slate-50 transition-colors group">
@@ -1028,7 +1028,7 @@ function BulkDialog({ bulkAssignOpen, setBulkAssignOpen, employees, shifts, sele
                         <CalendarDays className="h-5 w-5 text-blue-600" />
                         Isi Jadwal Otomatis
                     </DialogTitle>
-                    <CardDescription>Isi jadwal satu bulan penuh untuk SEMUA karyawan aktif ({employees.length} orang).</CardDescription>
+                    <CardDescription>Isi jadwal satu bulan penuh untuk SEMUA staf aktif ({employees.length} orang).</CardDescription>
                 </DialogHeader>
                 <div className="space-y-6 py-4">
                     <div className="grid gap-3">

@@ -8,6 +8,6 @@ CREATE POLICY "View own notifications" ON notifications FOR SELECT USING (user_i
 CREATE POLICY "Update own notifications" ON notifications FOR UPDATE USING (user_id = auth.uid());
 CREATE POLICY "Delete own notifications" ON notifications FOR DELETE USING (user_id = auth.uid());
 
--- 2. Insert notifications: Allow authenticated users (System, Admin, Manager) to send to anyone
+-- 2. Insert notifications: Allow authenticated users (System, Admin, manager) to send to anyone
 -- This is crucial for features like Agenda Invitations where Admin inserts notifs for Employees.
 CREATE POLICY "Insert notifications" ON notifications FOR INSERT WITH CHECK (auth.role() = 'authenticated');

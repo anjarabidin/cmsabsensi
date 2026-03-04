@@ -13,7 +13,6 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   const { user, activeRole, loading } = useAuth();
 
   if (loading) {
-    console.warn('⚠️ [ProtectedRoute] AuthContext loading=true → showing spinner. STUCK HERE = fetchProfile never resolved.');
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

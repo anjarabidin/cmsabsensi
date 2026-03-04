@@ -326,11 +326,11 @@ export default function ReportsPage() {
 
   // Helper: Prepare Export Data
   const getExportData = () => {
-    const headers = ['Tanggal', 'ID Karyawan', 'Nama', 'Departemen', 'Jabatan', 'Clock In', 'Clock Out', 'Mode', 'Terlambat', 'Menit Terlambat', 'Status', 'Durasi Kerja (Menit)'];
+    const headers = ['Tanggal', 'ID Staf', 'Nama', 'Departemen', 'Jabatan', 'Clock In', 'Clock Out', 'Mode', 'Terlambat', 'Menit Terlambat', 'Status', 'Durasi Kerja (Menit)'];
     const isAdmin = role === 'super_admin' || role === 'admin_hr';
 
     if (!isAdmin) {
-      // Standard behavior for Manager/Employee
+      // Standard behavior for manager/Employee
       const rows = filteredAttendances.map((a) => {
         const p = profileMap.get(a.user_id);
         return [
@@ -435,7 +435,7 @@ export default function ReportsPage() {
     const { headers, rows } = getExportData();
     downloadFormalCSV(headers, rows, {
       filename: `Report_Absensi_${startDate}_${endDate}`,
-      title: 'Laporan Kehadiran Karyawan',
+      title: 'Laporan Kehadiran Staf',
       period: `${startDate} s/d ${endDate}`,
       generatedBy: profile?.full_name || 'Administrator'
     });
@@ -446,7 +446,7 @@ export default function ReportsPage() {
     const { headers, rows } = getExportData();
     await downloadExcel(headers, rows, {
       filename: `Report_Absensi_${startDate}_${endDate}`,
-      title: 'Laporan Kehadiran Karyawan',
+      title: 'Laporan Kehadiran Staf',
       period: `${startDate} s/d ${endDate}`,
       generatedBy: profile?.full_name || 'Administrator'
     });
@@ -454,7 +454,7 @@ export default function ReportsPage() {
   };
 
   // Role Check Logic:
-  // - Admin/Manager: Can view ALL reports
+  // - Admin/manager: Can view ALL reports
   // - Employee: Can ONLY view their OWN reports (handled in fetchReport)
 
 
@@ -561,8 +561,8 @@ export default function ReportsPage() {
                             onChange={(e) => setSelectedRole(e.target.value)}
                           >
                             <option value="all">Semua Role</option>
-                            <option value="employee">Staff</option>
-                            <option value="manager">Manager</option>
+                            <option value="employee">Staf</option>
+                            <option value="manager">Head unit</option>
                             <option value="admin_hr">Admin HR</option>
                           </select>
                         </div>
@@ -572,7 +572,7 @@ export default function ReportsPage() {
                         <div className="relative flex-1">
                           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                           <Input
-                            placeholder="Cari nama karyawan..."
+                            placeholder="Cari nama staf..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="h-10 pl-9 text-xs rounded-xl bg-slate-200/50 border-none shadow-inner"
@@ -833,8 +833,8 @@ export default function ReportsPage() {
                       onChange={(e) => setSelectedRole(e.target.value)}
                     >
                       <option value="all">Semua Jabatan</option>
-                      <option value="employee">Staff</option>
-                      <option value="manager">Manager</option>
+                      <option value="employee">Staf</option>
+                      <option value="manager">Head unit</option>
                       <option value="admin_hr">Admin HR</option>
                     </select>
                   </>
@@ -912,7 +912,7 @@ export default function ReportsPage() {
                 <div className="relative w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input
-                    placeholder="Cari nama karyawan..."
+                    placeholder="Cari nama staf..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-9 h-10 rounded-xl border-slate-200 bg-white transition-all focus:ring-2 focus:ring-blue-100"

@@ -31,20 +31,20 @@ interface Assignment {
     employee?: Profile;
 }
 
-export default function ManagerAssignments() {
+export default function managerAssignments() {
     const { role, activeRole } = useAuth();
     const navigate = useNavigate();
     const { toast } = useToast();
     const isMobile = useIsMobile();
 
     const [assignments, setAssignments] = useState<Assignment[]>([]);
-    const [managers, setManagers] = useState<Profile[]>([]);
+    const [managers, setmanagers] = useState<Profile[]>([]);
     const [employees, setEmployees] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
     const [dialogOpen, setDialogOpen] = useState(false);
     const [processing, setProcessing] = useState(false);
 
-    const [selectedManager, setSelectedManager] = useState<string>('');
+    const [selectedmanager, setSelectedmanager] = useState<string>('');
     const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
 
     const canManage = activeRole === 'super_admin' || activeRole === 'admin_hr';
@@ -80,7 +80,7 @@ export default function ManagerAssignments() {
                 .order('full_name');
 
             if (managerError) throw managerError;
-            setManagers(managerData || []);
+            setmanagers(managerData || []);
 
             const { data: empData, error: empError } = await supabase
                 .from('profiles')
@@ -107,12 +107,14 @@ export default function ManagerAssignments() {
     };
 
     const handleAutoAssign = async () => {
-        const confirmMsg = "Otomatis memasangkan Manager dengan Karyawan di Departemen yang sama? Lanjutkan?";
+        const confirmMsg = "Otomatis memasangkan Head unit dengan Staf di Departemen yang sama? Lanjutkan?";
         if (!confirm(confirmMsg)) return;
 
         setProcessing(true);
         try {
-            const newAssignments: { manager_id: string; employee_id: string }[] = [];
+            const newAssignments: {
+                manager_id: string; employee_id: string
+            }[] = [];
             let count = 0;
 
             managers.forEach(mgr => {
@@ -146,15 +148,15 @@ export default function ManagerAssignments() {
     };
 
     const handleAddAssignments = async () => {
-        if (!selectedManager || selectedEmployees.length === 0) {
-            toast({ title: 'Tidak Lengkap', description: 'Pilih manager dan bawahan.', variant: 'destructive' });
+        if (!selectedmanager || selectedEmployees.length === 0) {
+            toast({ title: 'Tidak Lengkap', description: 'Pilih Head unit dan bawahan.', variant: 'destructive' });
             return;
         }
 
         setProcessing(true);
         try {
             const assignmentsToInsert = selectedEmployees.map(empId => ({
-                manager_id: selectedManager,
+                manager_id: selectedmanager,
                 employee_id: empId,
             }));
 
@@ -163,7 +165,7 @@ export default function ManagerAssignments() {
 
             toast({ title: 'Berhasil!', description: `${selectedEmployees.length} bawahan ditambahkan.` });
             setDialogOpen(false);
-            setSelectedManager('');
+            setSelectedmanager('');
             setSelectedEmployees([]);
             fetchData();
         } catch (error: any) {
@@ -212,8 +214,8 @@ export default function ManagerAssignments() {
                 {/* Header Section */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                     <div>
-                        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Peta Atasan</h1>
-                        <p className="text-slate-500 font-medium mt-1">Struktur hirarki manajer dan bawahan.</p>
+                        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Peta Head unit</h1>
+                        <p className="text-slate-500 font-medium mt-1">Struktur hirarki Head unit dan bawahan.</p>
                     </div>
                     <div className="flex gap-3">
                         <Button
@@ -229,7 +231,7 @@ export default function ManagerAssignments() {
                             className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl h-11 px-6 font-black shadow-lg shadow-blue-200 gap-2"
                         >
                             <Plus className="h-5 w-5" />
-                            Tambah Atasan
+                            Tambah Head unit
                         </Button>
                     </div>
                 </div>
@@ -240,7 +242,7 @@ export default function ManagerAssignments() {
                         <div className="col-span-full py-20 text-center opacity-40">
                             <ShieldCheck className="h-16 w-16 mx-auto mb-4" />
                             <h3 className="text-xl font-bold">Belum Ada Struktur Terdaftar</h3>
-                            <p className="text-sm font-medium">Klik 'Tambah Atasan' untuk mulai memetakan hirarki.</p>
+                            <p className="text-sm font-medium">Klik 'Tambah Head unit' untuk mulai memetakan hirarki.</p>
                         </div>
                     ) : (
                         Object.entries(groupedAssignments).map(([managerId, data]) => (
@@ -303,8 +305,8 @@ export default function ManagerAssignments() {
                                     </div>
                                 </CardContent>
                                 <div className="p-4 bg-slate-50/50 border-t border-slate-50 mt-auto">
-                                    <Button variant="ghost" className="w-full h-8 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-blue-600 rounded-xl" onClick={() => { setSelectedManager(managerId); setDialogOpen(true); }}>
-                                        + Tambah Anggota Tim
+                                    <Button variant="ghost" className="w-full h-8 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-blue-600 rounded-xl" onClick={() => { setSelectedmanager(managerId); setDialogOpen(true); }}>
+                                        + Tambah Anggota Tim (Head unit)
                                     </Button>
                                 </div>
                             </Card>
@@ -320,7 +322,7 @@ export default function ManagerAssignments() {
                                 <UserCheck size={120} />
                             </div>
                             <DialogHeader>
-                                <DialogTitle className="text-3xl font-black tracking-tight mb-2">Assign Manager</DialogTitle>
+                                <DialogTitle className="text-3xl font-black tracking-tight mb-2">Assign Head unit</DialogTitle>
                                 <DialogDescription className="text-slate-400 font-medium">
                                     Hubungkan atasan dengan satu atau lebih bawahan.
                                 </DialogDescription>
@@ -329,10 +331,10 @@ export default function ManagerAssignments() {
 
                         <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
                             <div className="space-y-3">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-none">Pilih Manajer</label>
-                                <Select value={selectedManager} onValueChange={setSelectedManager}>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-none">Pilih Head unit</label>
+                                <Select value={selectedmanager} onValueChange={setSelectedmanager}>
                                     <SelectTrigger className="h-14 rounded-2xl border-slate-200 bg-slate-50 font-bold">
-                                        <SelectValue placeholder="-- Pilih Atasan --" />
+                                        <SelectValue placeholder="-- Pilih Head unit --" />
                                     </SelectTrigger>
                                     <SelectContent className="rounded-2xl shadow-2xl border-slate-100">
                                         {managers.map(manager => (
@@ -386,15 +388,15 @@ export default function ManagerAssignments() {
                             <Button variant="ghost" onClick={() => setDialogOpen(false)} className="h-12 rounded-2xl font-black text-slate-500 flex-1">Batal</Button>
                             <Button
                                 onClick={handleAddAssignments}
-                                disabled={processing || !selectedManager || selectedEmployees.length === 0}
+                                disabled={processing || !selectedmanager || selectedEmployees.length === 0}
                                 className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl h-12 px-8 font-black shadow-lg shadow-blue-200 flex-[2] transition-all active:scale-95"
                             >
                                 {processing ? <Loader2 className="h-5 w-5 animate-spin" /> : "Simpan Hirarki"}
                             </Button>
                         </div>
-                    </DialogContent>
-                </Dialog>
-            </div>
-        </DashboardLayout>
+                    </DialogContent >
+                </Dialog >
+            </div >
+        </DashboardLayout >
     );
 }

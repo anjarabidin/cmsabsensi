@@ -163,7 +163,7 @@ export default function HistoryPage() {
 
     // Title
     doc.setFontSize(18);
-    doc.text('Laporan Absensi Karyawan', 14, 20);
+    doc.text('Laporan Absensi Staf', 14, 20);
 
     // Meta Info
     doc.setFontSize(10);

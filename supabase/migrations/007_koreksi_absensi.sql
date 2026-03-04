@@ -43,14 +43,14 @@ CREATE POLICY "Users can create corrections"
   ON public.attendance_corrections FOR INSERT 
   TO authenticated WITH CHECK (user_id = auth.uid());
 
-CREATE POLICY "Admins/Managers can view all corrections" 
+CREATE POLICY "Admins/managers can view all corrections" 
   ON public.attendance_corrections FOR SELECT 
   TO authenticated USING (
     public.has_role(auth.uid(), 'admin_hr') OR 
     public.has_role(auth.uid(), 'manager')
   );
 
-CREATE POLICY "Admins/Managers can update corrections" 
+CREATE POLICY "Admins/managers can update corrections" 
   ON public.attendance_corrections FOR UPDATE 
   TO authenticated USING (
     public.has_role(auth.uid(), 'admin_hr') OR 

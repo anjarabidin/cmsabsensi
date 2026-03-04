@@ -108,7 +108,7 @@ const adminNavGroups = [
   {
     title: 'Manajemen SDM',
     items: [
-      { key: 'employees', title: 'Data Karyawan', href: '/employees', icon: Users },
+      { key: 'employees', title: 'Data Staf', href: '/employees', icon: Users },
       { key: 'shifts', title: 'Jadwal & Shift', href: '/shifts', icon: Clock },
       { key: 'locations', title: 'Lokasi Kantor', href: '/locations', icon: MapPin },
       { key: 'team_map', title: 'Pantau Tim', href: '/team-map', icon: Navigation },
@@ -168,7 +168,7 @@ const superAdminNavGroups = [
   {
     title: 'Manajemen SDM',
     items: [
-      { key: 'employees', title: 'Data Karyawan', href: '/employees', icon: Users },
+      { key: 'employees', title: 'Data Staf', href: '/employees', icon: Users },
       { key: 'shifts', title: 'Jadwal & Shift', href: '/shifts', icon: Clock },
       { key: 'locations', title: 'Lokasi Kantor', href: '/locations', icon: MapPin },
       { key: 'team_map', title: 'Pantau Tim', href: '/team-map', icon: Navigation },
@@ -212,7 +212,7 @@ const superAdminNavGroups = [
   }
 ];
 
-const managerNavGroups = [
+const HeadUnitNavGroups = [
   {
     title: 'Overview',
     items: [
@@ -276,7 +276,7 @@ const getNavGroups = (role: string, perms: Record<string, boolean>) => {
   let groups;
   if (role === 'super_admin') groups = superAdminNavGroups;
   else if (role === 'admin_hr') groups = adminNavGroups;
-  else if (role === 'manager') groups = managerNavGroups;
+  else if (role === 'manager') groups = HeadUnitNavGroups;
   else if (role === 'driver') groups = driverNavGroups;
   else groups = employeeNavGroups;
 
@@ -428,8 +428,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     switch (activeRole) {
       case 'super_admin': return 'Super Admin';
       case 'admin_hr': return 'HRD';
-      case 'manager': return 'Manager';
-      case 'employee': return 'Staff';
+      case 'manager': return 'Head unit';
+      case 'employee': return 'Staf';
       case 'driver': return 'Driver';
       default: return '';
     }
@@ -439,8 +439,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     switch (role) {
       case 'super_admin': return 'System Administrator';
       case 'admin_hr': return 'Administrator';
-      case 'manager': return 'Manajer';
-      case 'employee': return 'Karyawan';
+      case 'manager': return 'Head unit';
+      case 'employee': return 'Staf';
       case 'driver': return 'Pengemudi';
       default: return '';
     }

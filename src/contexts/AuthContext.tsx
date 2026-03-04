@@ -33,6 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [navPermissions, setNavPermissions] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const initialProfileFetched = useRef(false);
+  const userIdRef = useRef<string | null>(null);
 
   // Helper to get or create device ID
   const getDeviceId = () => {
@@ -302,24 +303,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           initialProfileFetched.current = true;
-          console.log('🔐 [AuthContext] Deferring fetchProfile to next tick (avoid deadlock during _recoverAndRefresh)...');
+          // Use a small delay for SIGNED_IN events to ensure state is settled
+          const delay = event === 'SIGNED_IN' ? 100 : 0;
+
           setTimeout(async () => {
-            console.log('🔐 [AuthContext] fetchProfile executing (deferred tick)...');
-            const userRoles = await fetchProfile(newSession.user!.id);
-            // Device lock in background — never block the UI
-            checkDeviceLock(newSession.user!.id, userRoles.includes('super_admin')).then(({ success }) => {
-              if (!success) {
-                toast({
-                  title: "Akses Perangkat Ditolak",
-                  description: "Akun Anda terdaftar di perangkat lain. Silakan hubungi admin.",
-                  variant: "destructive"
-                });
-                supabase.auth.signOut().then(() => {
-                  setProfile(null); setRole(null); setRoles([]); setActiveRole(null);
-                });
-              }
-            });
-          }, 0);
+            if (newSession.user.id !== userIdRef.current) {
+              userIdRef.current = newSession.user.id;
+              console.log('🔐 [AuthContext] fetchProfile executing (deferred tick)...');
+              const userRoles = await fetchProfile(newSession.user!.id);
+              // Device lock in background — never block the UI
+              checkDeviceLock(newSession.user!.id, userRoles.includes('super_admin')).then(({ success }) => {
+                if (!success) {
+                  toast({
+                    title: "Akses Perangkat Ditolak",
+                    description: "Akun Anda terdaftar di perangkat lain. Silakan hubungi admin.",
+                    variant: "destructive"
+                  });
+                  supabase.auth.signOut().then(() => {
+                    setProfile(null); setRole(null); setRoles([]); setActiveRole(null);
+                  });
+                }
+              });
+            }
+          }, delay);
         }
       } else if (event === 'SIGNED_OUT') {
         initialProfileFetched.current = false;

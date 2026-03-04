@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
+import { cn } from '@/lib/utils';
 
 interface GoogleMapsEmbedProps {
     latitude: number;
     longitude: number;
+    height?: string;
+    className?: string;
 }
 
-export function GoogleMapsEmbed({ latitude, longitude }: GoogleMapsEmbedProps) {
+export function GoogleMapsEmbed({ latitude, longitude, height = '200px', className }: GoogleMapsEmbedProps) {
     const [isLoaded, setIsLoaded] = useState(false);
 
     useEffect(() => {
@@ -29,7 +32,7 @@ export function GoogleMapsEmbed({ latitude, longitude }: GoogleMapsEmbedProps) {
     }
 
     return (
-        <div className="h-[200px] w-full rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-slate-50">
+        <div style={{ height }} className={cn("w-full rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-slate-50", className)}>
             <iframe
                 src={publicEmbedUrl}
                 width="100%"

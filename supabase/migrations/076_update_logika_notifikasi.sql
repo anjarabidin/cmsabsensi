@@ -1,5 +1,5 @@
 -- IMPROVE NOTIFICATION LOGIC
--- Purpose: Notify Super Admin (admin_hr) and Assigned Managers, not just Dept Managers.
+-- Purpose: Notify Super Admin (admin_hr) and Assigned managers, not just Dept managers.
 
 CREATE OR REPLACE FUNCTION public.notify_managers_on_request()
 RETURNS TRIGGER AS $$
@@ -34,14 +34,14 @@ BEGIN
 
     -- Insert notification for TARGET USERS
     -- Targets: 
-    -- 1. Managers in same department
+    -- 1. managers in same department
     -- 2. Explicitly assigned managers
     -- 3. ALL Super Admins (admin_hr)
     
     INSERT INTO public.notifications (user_id, title, message, type, link)
     SELECT DISTINCT target_id, title, msg, n_type, lnk 
     FROM (
-        -- 1. Department Managers
+        -- 1. Department managers
         SELECT p.id as target_id, 
                v_type_label || ' Baru' as title, 
                v_employee_name || ' mengajukan ' || v_type_label || '.' as msg,
@@ -55,7 +55,7 @@ BEGIN
 
         UNION
 
-        -- 2. Assigned Managers
+        -- 2. Assigned managers
         SELECT ma.manager_id as target_id,
                v_type_label || ' Baru' as title, 
                v_employee_name || ' (Bawahan) mengajukan ' || v_type_label || '.' as msg,
@@ -69,7 +69,7 @@ BEGIN
         -- 3. Super Admins (Always loop in HR)
         SELECT ur.user_id as target_id,
                'HR: ' || v_type_label || ' Masuk' as title, 
-               v_employee_name || ' mengajukan ' || v_type_label || '. Mohon dicek jika Manager tidak merespon.' as msg,
+               v_employee_name || ' mengajukan ' || v_type_label || '. Mohon dicek jika manager tidak merespon.' as msg,
                'system' as n_type, -- Use system type for HR alerts
                v_link_url as lnk
         FROM public.user_roles ur

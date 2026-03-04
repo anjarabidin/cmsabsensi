@@ -43,7 +43,7 @@ export function VirtualTable<T extends Record<string, any>>({
   // Filter data based on search query
   const filteredData = useMemo(() => {
     if (!searchQuery) return data;
-    
+
     const query = searchQuery.toLowerCase();
     return data.filter(row => {
       return columns.some(column => {
@@ -57,14 +57,14 @@ export function VirtualTable<T extends Record<string, any>>({
   // Sort data
   const sortedData = useMemo(() => {
     if (!sortKey) return filteredData;
-    
+
     return [...filteredData].sort((a, b) => {
       const aValue = a[sortKey];
       const bValue = b[sortKey];
-      
+
       if (aValue === null || aValue === undefined) return 1;
       if (bValue === null || bValue === undefined) return -1;
-      
+
       const comparison = String(aValue).localeCompare(String(bValue));
       return sortDirection === 'asc' ? comparison : -comparison;
     });
@@ -77,7 +77,7 @@ export function VirtualTable<T extends Record<string, any>>({
       sortedData.length - 1,
       startIndex + Math.ceil(containerHeight / itemHeight) + 1
     );
-    
+
     return { startIndex, endIndex };
   }, [scrollTop, itemHeight, containerHeight, sortedData.length]);
 
@@ -99,15 +99,15 @@ export function VirtualTable<T extends Record<string, any>>({
   // Render cell content
   const renderCell = useCallback((column: VirtualTableColumn<T>, row: T) => {
     const value = row[column.key];
-    
+
     if (column.render) {
       return column.render(value, row);
     }
-    
+
     if (value === null || value === undefined) {
       return <span className="text-muted-foreground">-</span>;
     }
-    
+
     return String(value);
   }, []);
 
@@ -186,13 +186,13 @@ export function VirtualTable<T extends Record<string, any>>({
           >
             {/* Spacer for items above visible range */}
             <div style={{ height: visibleRange.startIndex * itemHeight }} />
-            
+
             {/* Visible items */}
             {visibleItems.map((row, index) => (
               <div
                 key={`${visibleRange.startIndex + index}`}
                 className="grid border-b hover:bg-muted/30 transition-colors cursor-pointer"
-                style={{ 
+                style={{
                   gridTemplateColumns: columns.map(col => `${col.width || 150}px`).join(' '),
                   height: itemHeight
                 }}
@@ -205,7 +205,7 @@ export function VirtualTable<T extends Record<string, any>>({
                 ))}
               </div>
             ))}
-            
+
             {/* Spacer for items below visible range */}
             <div style={{ height: (sortedData.length - visibleRange.endIndex - 1) * itemHeight }} />
           </div>
@@ -254,7 +254,7 @@ export function ExampleVirtualTable() {
     id: index + 1,
     name: `Employee ${index + 1}`,
     department: ['IT', 'HR', 'Finance', 'Marketing'][index % 4],
-    position: ['Developer', 'Manager', 'Analyst', 'Designer'][index % 4],
+    position: ['Developer', 'manager', 'Analyst', 'Designer'][index % 4],
     salary: 5000000 + (index % 10) * 1000000,
     status: ['Active', 'Inactive', 'On Leave'][index % 3]
   }));
@@ -264,17 +264,17 @@ export function ExampleVirtualTable() {
     { key: 'name', title: 'Name', width: 200, sortable: true },
     { key: 'department', title: 'Department', width: 120, sortable: true },
     { key: 'position', title: 'Position', width: 150, sortable: true },
-    { 
-      key: 'salary', 
-      title: 'Salary', 
-      width: 150, 
+    {
+      key: 'salary',
+      title: 'Salary',
+      width: 150,
       sortable: true,
       render: (value) => `Rp ${value.toLocaleString('id-ID')}`
     },
-    { 
-      key: 'status', 
-      title: 'Status', 
-      width: 100, 
+    {
+      key: 'status',
+      title: 'Status',
+      width: 100,
       sortable: true,
       render: (value) => (
         <Badge variant={value === 'Active' ? 'default' : value === 'On Leave' ? 'secondary' : 'destructive'}>

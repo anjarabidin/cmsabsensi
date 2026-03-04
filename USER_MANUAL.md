@@ -83,7 +83,7 @@ Sebagai filter keamanan agar tidak sembarang orang bisa masuk ke sistem:
 3.  Anda akan melihat daftar karyawan yang baru mendaftar.
 4.  Klik tombol **"SETUJUI"**. Akan muncul popup untuk mengisi data resmi:
     - **ID Karyawan (NIP)**: Masukkan kode pegawai resmi perusahaan.
-    - **Role**: Tentukan levelnya (Employee, Manager, Admin, atau Driver).
+    - **Role**: Tentukan levelnya (Employee, manager, Admin, atau Driver).
     - **Unit/Departemen**: Pilih departemen tempat karyawan bekerja.
     - **Jabatan**: Pilih posisi jabatan resmi.
 5.  Setelah diklik "Simpan", akun karyawan tersebut aktif dan mereka baru bisa login.

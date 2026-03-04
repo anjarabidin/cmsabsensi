@@ -1,7 +1,7 @@
 package com.dutasol.mruput;
 
 import android.Manifest;
-import android.content.pm.PackageManager;
+import android.content.pm.Packagemanager;
 import android.os.Bundle;
 import android.webkit.PermissionRequest;
 
@@ -42,8 +42,8 @@ public class MainActivity extends BridgeActivity {
   }
 
   private void requestCameraPermissionsIfNeeded() {
-    boolean cameraGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED;
-    boolean audioGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+    boolean cameraGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == Packagemanager.PERMISSION_GRANTED;
+    boolean audioGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == Packagemanager.PERMISSION_GRANTED;
 
     if (!cameraGranted || !audioGranted) {
       ActivityCompat.requestPermissions(

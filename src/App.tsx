@@ -42,7 +42,7 @@ import Settings from "./pages/Settings";
 import DeviceManagement from "./pages/DeviceManagement";
 import DriverLogbook from "./pages/DriverLogbook";
 import DriverReports from "./pages/DriverReports";
-import ManagerAssignments from "./pages/ManagerAssignments";
+import managerAssignments from "./pages/managerAssignments";
 import DriverAssignments from "./pages/DriverAssignments";
 import RoleManagement from "./pages/RoleManagement";
 import Vehicles from "./pages/Vehicles";
@@ -154,7 +154,7 @@ const App = () => {
                 <Route path="/driver-logbook" element={<ProtectedRoute><DriverLogbook /></ProtectedRoute>} />
                 <Route path="/driver-receipts" element={<ProtectedRoute><DriverReceipts /></ProtectedRoute>} />
                 <Route path="/driver-reports" element={<ProtectedRoute><DriverReports /></ProtectedRoute>} />
-                <Route path="/manager-assignments" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><ManagerAssignments /></ProtectedRoute>} />
+                <Route path="/manager-assignments" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><managerAssignments /></ProtectedRoute>} />
                 <Route path="/driver-assignments" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><DriverAssignments /></ProtectedRoute>} />
                 <Route path="/vehicles" element={<ProtectedRoute allowedRoles={['super_admin', 'admin_hr']}><Vehicles /></ProtectedRoute>} />
                 <Route path="/role-management" element={<ProtectedRoute allowedRoles={['super_admin']}><RoleManagement /></ProtectedRoute>} />

@@ -1,4 +1,4 @@
--- Update RLS Policies for Approvals to allow Managers to view requests from their Department
+-- Update RLS Policies for Approvals to allow managers to view requests from their Department
 -- This is a fallback mechanism: If no assignment exists, check department match.
 
 -- 1. Helper Function to check if user is manager of the requestor's department
@@ -21,9 +21,9 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
 -- 2. Update Leave Requests Policy
-DROP POLICY IF EXISTS "Managers can view and approve team leave requests" ON public.leave_requests;
+DROP POLICY IF EXISTS "managers can view and approve team leave requests" ON public.leave_requests;
 
-CREATE POLICY "Managers can view and approve team leave requests" ON public.leave_requests FOR ALL TO authenticated 
+CREATE POLICY "managers can view and approve team leave requests" ON public.leave_requests FOR ALL TO authenticated 
 USING (
   public.has_role(auth.uid(), 'manager') AND (
     -- Option A: Explicit Assignment
@@ -38,9 +38,9 @@ USING (
 );
 
 -- 3. Update Overtime Requests Policy
-DROP POLICY IF EXISTS "Managers can view and approve team overtime" ON public.overtime_requests;
+DROP POLICY IF EXISTS "managers can view and approve team overtime" ON public.overtime_requests;
 
-CREATE POLICY "Managers can view and approve team overtime" ON public.overtime_requests FOR ALL TO authenticated 
+CREATE POLICY "managers can view and approve team overtime" ON public.overtime_requests FOR ALL TO authenticated 
 USING (
   public.has_role(auth.uid(), 'manager') AND (
     EXISTS (
@@ -53,11 +53,11 @@ USING (
 );
 
 -- 4. Update Correction Requests Policy
-DROP POLICY IF EXISTS "Managers can view and approve corrections" ON public.attendance_corrections;
+DROP POLICY IF EXISTS "managers can view and approve corrections" ON public.attendance_corrections;
 -- Check if policy exists with exact name, usually it follows pattern. If not sure, we can do DO block but direct replacement is fine for now usually.
 -- Let's try to be safe and drop if exists logic is implicit in replacement for some systems but standard SQL needs drop.
 
-CREATE POLICY "Managers can view and approve corrections" ON public.attendance_corrections FOR ALL TO authenticated 
+CREATE POLICY "managers can view and approve corrections" ON public.attendance_corrections FOR ALL TO authenticated 
 USING (
   public.has_role(auth.uid(), 'manager') AND (
     EXISTS (
@@ -70,9 +70,9 @@ USING (
 );
 
 -- 5. Update Reimbursement Requests Policy
-DROP POLICY IF EXISTS "Managers can view and approve reimbursements" ON public.reimbursements;
+DROP POLICY IF EXISTS "managers can view and approve reimbursements" ON public.reimbursements;
 
-CREATE POLICY "Managers can view and approve reimbursements" ON public.reimbursements FOR ALL TO authenticated 
+CREATE POLICY "managers can view and approve reimbursements" ON public.reimbursements FOR ALL TO authenticated 
 USING (
   public.has_role(auth.uid(), 'manager') AND (
     EXISTS (

@@ -110,7 +110,7 @@ export default function TeamMap() {
                         <MapIcon className="h-8 w-8 text-slate-300" />
                     </div>
                     <h2 className="text-lg font-bold">Akses Dibatasi</h2>
-                    <p className="text-slate-500">Hanya Manager dan HR yang dapat melihat lokasi tim.</p>
+                    <p className="text-slate-500">Hanya Head unit dan HR yang dapat melihat lokasi tim.</p>
                 </div>
             </DashboardLayout>
         );
@@ -144,7 +144,7 @@ export default function TeamMap() {
                                 <div>
                                     <h1 className="text-xl font-black leading-tight tracking-tight">Pantau Tim</h1>
                                     <p className="text-xs text-blue-100 opacity-90 font-medium">
-                                        <span className="font-bold">{locations.length}</span> Karyawan Hadir
+                                        <span className="font-bold">{locations.length}</span> Staf Hadir
                                     </p>
                                 </div>
                             </div>
@@ -215,7 +215,7 @@ export default function TeamMap() {
                                                     </Badge>
                                                 </div>
                                                 <p className="text-xs font-medium text-slate-500 mb-2 truncate">
-                                                    {loc.profiles.position || 'Staff Karyawan'}
+                                                    {loc.profiles.position || 'Staf'}
                                                 </p>
                                                 <div className="flex items-center gap-3">
                                                     <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 rounded-lg text-blue-700">
@@ -276,7 +276,7 @@ export default function TeamMap() {
                                 {locations.length} Orang
                             </Badge>
                         </h1>
-                        <p className="text-slate-500 font-medium text-sm">Lokasi real-time karyawan yang hadir hari ini.</p>
+                        <p className="text-slate-500 font-medium text-sm">Lokasi real-time staf yang hadir hari ini.</p>
                     </div>
                     <Button variant="outline" onClick={fetchLocations} disabled={loading} className="gap-2 rounded-xl border-slate-200 font-bold hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200">
                         <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -291,7 +291,7 @@ export default function TeamMap() {
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                                 <Input
-                                    placeholder="Cari karyawan..."
+                                    placeholder="Cari staf..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-10 rounded-xl border-slate-200 bg-white focus:ring-2 focus:ring-blue-100 transition-all"
@@ -333,7 +333,7 @@ export default function TeamMap() {
                                             <h4 className={cn("text-sm font-bold truncate", selectedLocation?.id === loc.id ? "text-blue-900" : "text-slate-700")}>
                                                 {loc.profiles.full_name}
                                             </h4>
-                                            <p className="text-xs text-slate-500 truncate mb-1">{loc.profiles.position || 'Employee'}</p>
+                                            <p className="text-xs text-slate-500 truncate mb-1">{loc.profiles.position || 'Staf'}</p>
                                             <div className="flex items-center gap-1 text-[10px] font-medium text-slate-400">
                                                 <Clock className="h-3 w-3" />
                                                 {format(new Date(loc.clock_in), 'HH:mm')} • {loc.clock_in_latitude?.toFixed(4)}, {loc.clock_in_longitude?.toFixed(4)}
@@ -395,7 +395,7 @@ export default function TeamMap() {
                         ) : (
                             <div className="flex items-center justify-center h-full flex-col text-slate-400">
                                 <Search className="h-16 w-16 mb-4 opacity-20" />
-                                <p className="text-sm font-medium">Pilih karyawan untuk melihat lokasi peta.</p>
+                                <p className="text-sm font-medium">Pilih staf untuk melihat lokasi peta.</p>
                             </div>
                         )}
                     </Card>

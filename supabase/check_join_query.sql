@@ -22,7 +22,7 @@ JOIN information_schema.constraint_column_usage AS ccu
 WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_name='leave_requests';
 
 -- 3. Cek Simulasi Query Frontend (JOIN)
--- Ganti 'UUID_MANAGER_ANDA' dengan ID akun manager yang sedang login (Helmi Afandi)
+-- Ganti 'UUID_manager_ANDA' dengan ID akun manager yang sedang login (Helmi Afandi)
 -- Kita gunakan auth.uid() simulasi dengan SET LOCAL ROLE
 -- TAPI karena itu ribet, kita test query biasa saja dulu tanpa RLS.
 

@@ -482,7 +482,7 @@ export default function AgendaPage() {
                                             <div className="relative">
                                                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                                                 <Input
-                                                    placeholder="Cari nama karyawan..."
+                                                    placeholder="Cari nama staf..."
                                                     value={employeeSearch}
                                                     onChange={e => setEmployeeSearch(e.target.value)}
                                                     className="pl-9 h-9 text-xs rounded-xl bg-slate-50 border-slate-200 focus:bg-white transition-all"
@@ -493,7 +493,7 @@ export default function AgendaPage() {
                                                 {Object.keys(groupedEmployees).length === 0 ? (
                                                     <div className="p-8 text-center flex flex-col items-center justify-center text-slate-400">
                                                         <Users className="h-8 w-8 mb-2 opacity-50" />
-                                                        <span className="text-xs">Tidak ada karyawan ditemukan</span>
+                                                        <span className="text-xs">Tidak ada staf ditemukan</span>
                                                     </div>
                                                 ) : (
                                                     Object.entries(groupedEmployees).map(([dept, emps]) => (
@@ -1098,7 +1098,7 @@ export default function AgendaPage() {
                                 <div className="relative">
                                     <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                                     <Input
-                                        placeholder="Cari nama karyawan..."
+                                        placeholder="Cari nama staf..."
                                         value={employeeSearch}
                                         onChange={e => setEmployeeSearch(e.target.value)}
                                         className="pl-9 h-9 text-xs rounded-xl bg-slate-50 border-slate-200 focus:bg-white transition-all"
@@ -1109,7 +1109,7 @@ export default function AgendaPage() {
                                     {Object.keys(groupedEmployees).length === 0 ? (
                                         <div className="p-8 text-center flex flex-col items-center justify-center text-slate-400">
                                             <Users className="h-8 w-8 mb-2 opacity-50" />
-                                            <span className="text-xs">Tidak ada karyawan ditemukan</span>
+                                            <span className="text-xs">Tidak ada staf ditemukan</span>
                                         </div>
                                     ) : (
                                         Object.entries(groupedEmployees).map(([dept, emps]) => (

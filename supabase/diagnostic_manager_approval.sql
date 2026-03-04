@@ -1,6 +1,6 @@
--- Query Diagnostic untuk Manager Approval
+-- Query Diagnostic untuk manager Approval
 
--- 1. Cek Manager Assignment
+-- 1. Cek manager Assignment
 SELECT 
     ma.manager_id,
     m.full_name as manager_name,

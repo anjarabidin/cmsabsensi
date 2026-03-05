@@ -69,6 +69,13 @@ export default function ProfilePage() {
   const [faceDataRegistered, setFaceDataRegistered] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
+  // Password Management State
+  const [changePasswordDialogOpen, setChangePasswordDialogOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+
   useEffect(() => {
     // Check dark mode preference
     const darkMode = document.documentElement.classList.contains('dark') ||
@@ -405,6 +412,70 @@ export default function ProfilePage() {
       toast({ title: 'Berhasil', description: 'Persetujuan biometrik tersimpan.' });
     } finally {
       setConsentSaving(false);
+    }
+  };
+
+  const handleResetPasswordEmail = async () => {
+    if (!user?.email) return;
+    setIsResettingPassword(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+        redirectTo: `${window.location.origin}/auth?type=recovery`,
+      });
+      if (error) throw error;
+      toast({
+        title: "Email Terkirim",
+        description: "Instruksi reset kata sandi telah dikirim ke email Anda.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Gagal Mengirim Email",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Password Tidak Cocok",
+        description: "Konfirmasi password harus sama dengan password baru.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast({
+        title: "Password Terlalu Pendek",
+        description: "Password minimal terdiri dari 6 karakter.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+
+      toast({
+        title: "Password Diperbarui",
+        description: "Kata sandi Anda telah berhasil diubah.",
+      });
+      setChangePasswordDialogOpen(false);
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error: any) {
+      toast({
+        title: "Gagal Memperbarui Password",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -771,6 +842,27 @@ export default function ProfilePage() {
                       <Switch checked={fingerprintEnabled} onCheckedChange={toggleFingerprint} />
                     </div>
                   </div>
+
+                  {/* Password Management Buttons */}
+                  <div className="pt-4 border-t border-slate-100 grid grid-cols-2 gap-4">
+                    <Button
+                      variant="outline"
+                      className="h-12 rounded-xl border-slate-200 font-bold text-slate-700 hover:bg-slate-50 gap-2"
+                      onClick={() => setChangePasswordDialogOpen(true)}
+                    >
+                      <Lock className="h-4 w-4 text-blue-500" />
+                      Ubah Kata Sandi
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-12 rounded-xl border-slate-200 font-bold text-slate-700 hover:bg-slate-50 gap-2"
+                      onClick={handleResetPasswordEmail}
+                      disabled={isResettingPassword}
+                    >
+                      {isResettingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4 text-indigo-500" />}
+                      Reset via Email
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -836,6 +928,48 @@ export default function ProfilePage() {
                   {loggingOut ? <Loader2 className="animate-spin" /> : "Ya, Keluar"}
                 </Button>
               </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Change Password Dialog */}
+        <Dialog open={changePasswordDialogOpen} onOpenChange={(open) => { if (!open) { setNewPassword(''); setConfirmPassword(''); } setChangePasswordDialogOpen(open); }}>
+          <DialogContent className="sm:max-w-md rounded-[28px] p-0 overflow-hidden">
+            <div className="bg-slate-900 px-8 py-6 text-white">
+              <DialogTitle className="text-xl font-black text-white">Ubah Kata Sandi</DialogTitle>
+              <DialogDescription className="text-slate-400 text-xs mt-1">Buat kata sandi baru yang kuat untuk akun Anda.</DialogDescription>
+            </div>
+            <div className="px-8 py-6 space-y-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-black uppercase text-slate-400 tracking-wider">Kata Sandi Baru</Label>
+                <Input
+                  type="password"
+                  placeholder="Minimal 6 karakter"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  className="h-12 rounded-xl bg-slate-50 border-slate-200 font-bold"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-black uppercase text-slate-400 tracking-wider">Konfirmasi Kata Sandi</Label>
+                <Input
+                  type="password"
+                  placeholder="Ulangi kata sandi baru"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  className="h-12 rounded-xl bg-slate-50 border-slate-200 font-bold"
+                />
+              </div>
+            </div>
+            <div className="px-8 pb-6 flex gap-3">
+              <Button variant="ghost" className="flex-1 h-12 rounded-xl font-bold" onClick={() => setChangePasswordDialogOpen(false)}>Batal</Button>
+              <Button
+                className="flex-[2] h-12 rounded-xl bg-blue-600 hover:bg-blue-700 font-bold text-white shadow-lg shadow-blue-200"
+                onClick={handleChangePassword}
+                disabled={isChangingPassword}
+              >
+                {isChangingPassword ? <Loader2 className="animate-spin h-5 w-5" /> : 'Simpan Kata Sandi'}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -1145,6 +1279,28 @@ export default function ProfilePage() {
                   </div>
                   <Switch checked={isDarkMode} onCheckedChange={toggleDarkMode} />
                 </div>
+
+                <div className="h-px bg-slate-100 dark:bg-slate-800 my-2" />
+
+                {/* Password Management Mobile */}
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    className="h-14 rounded-2xl font-bold border-slate-200 text-slate-700 hover:bg-slate-50"
+                    onClick={handleResetPasswordEmail}
+                    disabled={isResettingPassword}
+                  >
+                    {isResettingPassword ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Mail className="h-4 w-4 mr-2 text-blue-500" />}
+                    <span className="text-xs">Reset Email</span>
+                  </Button>
+                  <Button
+                    className="h-14 rounded-2xl font-bold bg-slate-900 hover:bg-slate-800 text-white"
+                    onClick={() => setChangePasswordDialogOpen(true)}
+                  >
+                    <Lock className="h-4 w-4 mr-2 text-amber-400" />
+                    <span className="text-xs">Ubah Sandi</span>
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -1290,6 +1446,65 @@ export default function ProfilePage() {
           accept="image/*"
           onChange={handleAvatarFileSelect}
         />
+
+        {/* --- Change Password Dialog --- */}
+        <Dialog open={changePasswordDialogOpen} onOpenChange={setChangePasswordDialogOpen}>
+          <DialogContent className="max-w-[360px] rounded-[32px] border-none p-8">
+            <div className="flex flex-col items-center">
+              <div className="h-16 w-16 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center mb-6 border border-amber-100">
+                <Lock className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-black text-slate-900 mb-2">Ubah Kata Sandi</h3>
+              <p className="text-center text-slate-500 text-sm mb-6 leading-relaxed">
+                Silakan masukkan kata sandi baru Anda di bawah ini.
+              </p>
+
+              <div className="w-full space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Password Baru</Label>
+                  <Input
+                    type="password"
+                    placeholder="Minimal 6 karakter"
+                    className="h-12 rounded-2xl border-slate-200"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Konfirmasi Password</Label>
+                  <Input
+                    type="password"
+                    placeholder="Ulangi password baru"
+                    className="h-12 rounded-2xl border-slate-200"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-4">
+                  <Button
+                    variant="ghost"
+                    className="h-14 rounded-2xl font-bold text-slate-500"
+                    onClick={() => {
+                      setChangePasswordDialogOpen(false);
+                      setNewPassword('');
+                      setConfirmPassword('');
+                    }}
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    className="h-14 rounded-2xl font-black bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-200"
+                    onClick={handleChangePassword}
+                    disabled={isChangingPassword}
+                  >
+                    {isChangingPassword ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Simpan'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

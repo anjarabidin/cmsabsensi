@@ -886,7 +886,7 @@ export default function Dashboard() {
                   <div className="grid grid-cols-4 md:grid-cols-8 gap-y-4 gap-x-2 text-center mb-6">
                     <MenuGridItem href="/team-map" icon={Users} label="Pantau Tim" color="text-cyan-600" bg="bg-white border border-slate-200" />
                     <MenuGridItem href="/employees" icon={Users} label="Data Staff" color="text-indigo-600" bg="bg-white border border-slate-200" roles={['super_admin', 'admin_hr', 'manager']} />
-
+                    <MenuGridItem href="/agenda" icon={CalendarDays} label="Buat Agenda" color="text-blue-600" bg="bg-blue-50 border border-blue-100" roles={['super_admin', 'admin_hr', 'manager']} />
                     <MenuGridItem href="/driver-assignments" icon={Car} label="Tugas Driver" color="text-slate-800" bg="bg-white border border-slate-200" roles={['super_admin', 'admin_hr']} />
                     <MenuGridItem href="/shifts" icon={Clock} label="Jadwal Shift" color="text-pink-600" bg="bg-white border border-slate-200" roles={['super_admin', 'admin_hr', 'manager']} />
                     <MenuGridItem href="/reports" icon={BarChart3} label="Laporan" color="text-slate-600" bg="bg-white border border-slate-200" roles={['super_admin', 'admin_hr', 'manager']} />

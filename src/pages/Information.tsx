@@ -153,6 +153,20 @@ export default function InformationPage() {
             return;
         }
 
+        // VALIDATION: Prevent past dates/times
+        if (newExpiresAt) {
+            const expireDate = new Date(newExpiresAt);
+            const now = new Date();
+            if (expireDate <= now) {
+                toast({
+                    title: "Waktu Tidak Valid",
+                    description: "Tanggal berakhir tidak boleh di masa lalu atau saat ini.",
+                    variant: "destructive"
+                });
+                return;
+            }
+        }
+
         try {
             setIsSubmitting(true);
 
@@ -578,6 +592,7 @@ export default function InformationPage() {
                                 <Input
                                     type="datetime-local"
                                     value={newExpiresAt}
+                                    min={format(new Date(), "yyyy-MM-dd'T'HH:mm")}
                                     onChange={(e) => setNewExpiresAt(e.target.value)}
                                     className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold focus:bg-white text-slate-900 px-5 focus:ring-8 focus:ring-blue-500/5 transition-all outline-none"
                                 />

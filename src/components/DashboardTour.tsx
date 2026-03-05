@@ -68,8 +68,8 @@ export function DashboardTour() {
                     <p className="text-slate-600 text-xs leading-relaxed">
                         Pantau status kerja secara <i>real-time</i>. Warna kartu akan berubah otomatis:
                         <span className="block mt-1 font-bold text-blue-600">• Biru: Belum Absen</span>
-                        <span className="block font-bold text-green-600">• Hijau: Sudah Masuk</span>
-                        <span className="block font-bold text-slate-600">• Abu: Sudah Pulang</span>
+                        <span className="block font-bold text-green-600">• Orange: Sudah Masuk</span>
+                        <span className="block font-bold text-slate-600">• Hijau: Sudah Pulang</span>
                     </p>
                 </div>
             ),

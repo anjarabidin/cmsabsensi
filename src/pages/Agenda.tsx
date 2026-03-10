@@ -133,24 +133,24 @@ function AgendaFormDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-[32px] border-none shadow-2xl">
+            <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-[32px] border-none shadow-2xl flex flex-col max-h-[95svh] sm:max-h-[90vh]">
                 {/* Header */}
-                <div className="bg-slate-900 px-8 py-6 text-white flex justify-between items-center">
+                <div className="bg-slate-900 px-6 py-4 sm:px-8 sm:py-6 text-white flex justify-between items-center shrink-0">
                     <div>
-                        <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-white">
+                        <DialogTitle className="text-xl sm:text-2xl font-black uppercase tracking-tighter text-white">
                             {isEditing ? 'Edit Agenda' : 'Buat Agenda Baru'}
                         </DialogTitle>
                         <DialogDescription className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 opacity-70">
                             {isEditing ? 'Perbarui detail kegiatan.' : 'Tambahkan jadwal rapat atau kegiatan tim.'}
                         </DialogDescription>
                     </div>
-                    <div className="h-14 w-14 bg-white/10 rounded-2xl flex items-center justify-center shrink-0">
-                        <CalendarIcon className="h-7 w-7 text-blue-400" />
+                    <div className="h-10 w-10 sm:h-14 sm:w-14 bg-white/10 rounded-2xl flex items-center justify-center shrink-0">
+                        <CalendarIcon className="h-5 w-5 sm:h-7 sm:w-7 text-blue-400" />
                     </div>
                 </div>
 
                 {/* Body */}
-                <div className="px-8 py-6 space-y-5 max-h-[65vh] overflow-y-auto">
+                <div className="px-6 sm:px-8 py-5 space-y-5 flex-1 overflow-y-auto overscroll-contain">
                     {/* Judul */}
                     <div className="space-y-2">
                         <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Judul Kegiatan *</Label>
@@ -324,14 +324,14 @@ function AgendaFormDialog({
                 </div>
 
                 {/* Footer */}
-                <div className="px-8 py-5 bg-slate-50 flex gap-3 border-t border-slate-100">
-                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="flex-1 h-12 font-black rounded-2xl text-slate-400 hover:bg-white uppercase tracking-widest text-[10px]">
+                <div className="px-4 py-4 sm:px-8 sm:py-5 bg-slate-50 flex gap-3 border-t border-slate-100 shrink-0">
+                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="flex-1 h-11 font-black rounded-2xl text-slate-400 hover:bg-white uppercase tracking-widest text-[10px]">
                         Batal
                     </Button>
                     <Button
                         onClick={onSave}
                         disabled={creating}
-                        className="flex-[2] h-12 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl shadow-xl shadow-blue-200 uppercase tracking-widest text-[10px] transition-all active:scale-95"
+                        className="flex-[2] h-11 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl shadow-xl shadow-blue-200 uppercase tracking-widest text-[10px] transition-all active:scale-95"
                     >
                         {creating ? <Loader2 className="animate-spin h-5 w-5" /> : (isEditing ? 'Simpan Perubahan' : 'Publikasikan Agenda')}
                     </Button>
@@ -648,13 +648,11 @@ export default function AgendaPage() {
     if (isMobile) {
         return (
             <DashboardLayout>
-                <div className="relative min-h-screen bg-slate-50/50 pb-24">
-                    {/* Gradient Header BG */}
-                    <div className="absolute top-0 left-0 w-full h-[180px] bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 rounded-b-[40px] z-0 shadow-lg" />
-
-                    <div className="relative z-10 max-w-4xl mx-auto px-4 pt-6 space-y-4">
-                        {/* Header */}
-                        <div className="flex items-center justify-between text-white mb-2">
+                <div className="min-h-screen bg-slate-50/50 pb-24">
+                    {/* Gradient Header — normal flow (no absolute) agar tidak clash dengan overflow-x-hidden */}
+                    <div className="bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 rounded-b-[40px] shadow-lg px-4 pt-6 pb-8">
+                        {/* Header Bar */}
+                        <div className="flex items-center justify-between text-white mb-2 max-w-4xl mx-auto">
                             <div className="flex items-center gap-3">
                                 <Button
                                     variant="ghost" size="icon"
@@ -671,17 +669,20 @@ export default function AgendaPage() {
                                 </div>
                             </div>
 
-                            {/* Tombol Buat disini, TERPISAH dari Dialog */}
+                            {/* Tombol Buat — tidak ada overlay yang menghalangi */}
                             {canManage && (
                                 <Button
                                     onClick={handleOpenCreate}
-                                    className="bg-white text-blue-600 hover:bg-white/90 h-9 px-4 rounded-xl font-bold text-xs gap-1.5 shadow-lg"
+                                    className="bg-white text-blue-600 hover:bg-blue-50 h-9 px-4 rounded-xl font-bold text-xs gap-1.5 shadow-lg"
                                 >
                                     <Plus className="h-3.5 w-3.5" />
                                     Buat
                                 </Button>
                             )}
                         </div>
+                    </div>
+
+                    <div className="max-w-4xl mx-auto px-4 -mt-4 space-y-4">
 
                         {/* Mobile Calendar */}
                         <Card className="border-none shadow-xl shadow-slate-200/50 overflow-hidden bg-white rounded-3xl">

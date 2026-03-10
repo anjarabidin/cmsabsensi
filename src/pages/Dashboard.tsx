@@ -1247,11 +1247,12 @@ export default function Dashboard() {
   // -------------------------------------------------------------------------
   return (
     <DashboardLayout>
+      {/* Tour — renders mobile or desktop steps based on screen width */}
       <DashboardTour />
       <div className="max-w-7xl mx-auto space-y-8 px-6 py-8">
 
         {/* Header Section - Simplified to Greeting only */}
-        <div data-tour="profile-header">
+        <div data-tour="desktop-header" data-tour-profile="profile-header">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-tight">
@@ -1470,7 +1471,7 @@ export default function Dashboard() {
             )}
 
             {/* 2. Stats Grid - Clean & Big */}
-            <div data-tour="main-menu-grid">
+            <div data-tour="desktop-stats" data-tour-menu="main-menu-grid">
               <div className="grid grid-cols-4 gap-6">
                 {loadingStats ? (
                   Array(4).fill(0).map((_, i) => (
@@ -1537,7 +1538,7 @@ export default function Dashboard() {
             </div>
 
             {/* 3. Charts Section */}
-            <div className="grid grid-cols-1 gap-6">
+            <div data-tour="desktop-chart" className="grid grid-cols-1 gap-6">
               <Card className="border-none shadow-xl shadow-slate-200/40 rounded-[32px] overflow-hidden bg-white ring-1 ring-slate-100">
                 <CardHeader className="border-b border-slate-50 p-6 bg-slate-50/30">
                   <div className="flex items-center gap-3">
@@ -1599,7 +1600,7 @@ export default function Dashboard() {
             )}
 
             {/* Announcements Widget */}
-            <Card className="border-none shadow-xl shadow-slate-200/40 rounded-[32px] overflow-hidden bg-white ring-1 ring-slate-100 h-fit">
+            <Card data-tour="desktop-announcements" className="border-none shadow-xl shadow-slate-200/40 rounded-[32px] overflow-hidden bg-white ring-1 ring-slate-100 h-fit">
               <CardHeader className="flex flex-row items-center justify-between border-b border-slate-50 p-6">
                 <CardTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
                   <Megaphone className="h-5 w-5 text-orange-500" /> Pengumuman
@@ -1641,7 +1642,7 @@ export default function Dashboard() {
             </Card>
 
             {/* Upcoming Agenda Widget */}
-            <Card className="border-none shadow-xl shadow-slate-200/40 rounded-[32px] overflow-hidden bg-white ring-1 ring-slate-100">
+            <Card data-tour="desktop-agenda-widget" className="border-none shadow-xl shadow-slate-200/40 rounded-[32px] overflow-hidden bg-white ring-1 ring-slate-100">
               <CardHeader className="flex flex-row items-center justify-between border-b border-slate-50 p-6">
                 <CardTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
                   <CalendarDays className="h-5 w-5 text-indigo-500" /> Agenda Hari Ini
@@ -1762,7 +1763,6 @@ export default function Dashboard() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-        <DashboardTour />
 
         {/* TODAY'S AGENDA POPUP */}
         <Dialog open={agendaPopupOpen} onOpenChange={setAgendaPopupOpen}>
